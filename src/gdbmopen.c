@@ -136,6 +136,7 @@ static int
 validate_header (gdbm_file_header const *hdr, struct stat const *st)
 {
   int dir_size, dir_bits;
+  int result = GDBM_NO_ERROR;
   
   /* Is the magic number good? */
   if (hdr->header_magic != GDBM_MAGIC)
@@ -169,8 +170,7 @@ validate_header (gdbm_file_header const *hdr, struct stat const *st)
     }
 
   if (hdr->next_block != st->st_size)
-    /* FIXME: Should return GDBM_NEED_RECOVERY instead? */
-    return GDBM_BAD_HEADER;
+    result = GDBM_NEED_RECOVERY;
 
   /* Make sure dir and dir + dir_size fall within the file boundary */
   if (!(hdr->dir > 0
@@ -196,9 +196,20 @@ validate_header (gdbm_file_header const *hdr, struct stat const *st)
       != hdr->avail.size)
     return GDBM_BAD_HEADER;    
   
-  return 0;
+  return result;
 }
-  
+
+int
+_gdbm_validate_header (GDBM_FILE dbf)
+{
+  struct stat file_stat;
+    
+  if (fstat (dbf->desc, &file_stat))
+    return GDBM_FILE_STAT_ERROR;
+
+  return validate_header (dbf->header, &file_stat);
+}
+
 /* Do we have ftruncate? */
 static inline int
 _gdbm_ftruncate (GDBM_FILE dbf)
@@ -261,7 +272,7 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
   dbf->mapped_size = 0;
   dbf->mapped_pos = 0;
   dbf->mapped_off = 0;
-  
+
   /* Save name of file. */
   dbf->name = strdup (file_name);
   if (dbf->name == NULL)
@@ -521,7 +532,11 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
 
       /* Is the header valid? */
       rc = validate_header (&partial_header, &file_stat);
-      if (rc != GDBM_NO_ERROR)
+      if (rc == GDBM_NEED_RECOVERY)
+	{
+	  dbf->need_recovery = 1;
+	}
+      else if (rc != GDBM_NO_ERROR)
 	{
 	  if (!(flags & GDBM_CLOERROR))
 	    dbf->desc = -1;
@@ -627,7 +642,8 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
   dbf->bucket_changed = FALSE;
   dbf->second_changed = FALSE;
 
-  GDBM_DEBUG (GDBM_DEBUG_ALL, "%s: opened successfully", dbf->name);
+  GDBM_DEBUG (GDBM_DEBUG_ALL, "%s: opened %s", dbf->name,
+	      dbf->need_recovery ? "for recovery" : "successfully");
 
   /* Everything is fine, return the pointer to the file
      information structure.  */
@@ -664,20 +680,23 @@ gdbm_open (const char *file, int block_size, int flags, int mode,
 
   switch (flags & GDBM_OPENMASK)
     {
-      case GDBM_READER:
-	fbits = O_RDONLY;
-	break;
+    case GDBM_READER:
+      fbits = O_RDONLY;
+      break;
 
-      case GDBM_WRITER:
-	fbits = O_RDWR;
-	break;
+    case GDBM_WRITER:
+      fbits = O_RDWR;
+      break;
 
-      case GDBM_NEWDB:
-	fbits = O_RDWR|O_CREAT;
-	break;
+    case GDBM_WRCREAT:
+    case GDBM_NEWDB:
+      fbits = O_RDWR|O_CREAT;
+      break;
 
-      default:
-	fbits = O_RDWR|O_CREAT;
+    default:
+      errno = EINVAL;
+      GDBM_SET_ERRNO2 (NULL, GDBM_FILE_OPEN_ERROR, FALSE, GDBM_DEBUG_OPEN);
+      return NULL;
     }
   if (flags & GDBM_CLOEXEC)
     fbits |= O_CLOEXEC;

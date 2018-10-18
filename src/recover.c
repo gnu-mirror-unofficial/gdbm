@@ -206,6 +206,8 @@ check_db (GDBM_FILE dbf)
   int bucket_dir, i;
   int nbuckets = GDBM_DIR_COUNT (dbf);
 
+  if (_gdbm_validate_header (dbf))
+    return 1;
   for (bucket_dir = 0; bucket_dir < nbuckets;
        bucket_dir = _gdbm_next_bucket_dir (dbf, bucket_dir))
     {      
@@ -410,7 +412,7 @@ gdbm_recover (GDBM_FILE dbf, gdbm_recovery *rcvr, int flags)
 	}
 
       rc = run_recovery (dbf, new_dbf, rcvr, flags);
-  
+      
       if (rc == 0)
 	rc = _gdbm_finish_transfer (dbf, new_dbf, rcvr, flags);
       else

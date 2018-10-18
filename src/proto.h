@@ -53,6 +53,8 @@ void _gdbm_cache_entry_invalidate (GDBM_FILE, int);
 int gdbm_avail_block_validate (GDBM_FILE dbf, avail_block *avblk);
 int gdbm_bucket_avail_table_validate (GDBM_FILE dbf, hash_bucket *bucket);
 
+int _gdbm_validate_header (GDBM_FILE dbf);
+
 /* From mmap.c */
 int _gdbm_mapped_init	(GDBM_FILE);
 void _gdbm_mapped_unmap	(GDBM_FILE);

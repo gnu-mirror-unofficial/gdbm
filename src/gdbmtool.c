@@ -969,7 +969,7 @@ export_handler (struct handler_param *param)
   int i;
   int filemode;
 
-  for (i = 0; i < param->argc; i++)
+  for (i = 1; i < param->argc; i++)
     {
       if (strcmp (PARAM_STRING (param, i), "truncate") == 0)
 	 flags = GDBM_NEWDB;
