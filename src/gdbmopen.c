@@ -169,7 +169,13 @@ validate_header (gdbm_file_header const *hdr, struct stat const *st)
       return GDBM_BLOCK_SIZE_ERROR;
     }
 
-  if (hdr->next_block != st->st_size)
+  /* Technically speaking, the condition below should read
+         hdr->next_block != st->st_size
+     However, gdbm versions prior to commit 4e819c98 could leave
+     hdr->next_block pointing beyond current end of file. To ensure
+     backward compatibility with these versions, the condition has been
+     slackened to this: */
+  if (hdr->next_block < st->st_size)
     result = GDBM_NEED_RECOVERY;
 
   /* Make sure dir and dir + dir_size fall within the file boundary */
