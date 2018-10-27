@@ -1,8 +1,17 @@
-GNU dbm NEWS -- history of user-visible changes. 2018-08-21
+GNU dbm NEWS -- history of user-visible changes. 2018-10-27
 Copyright (C) 1990-2018 Free Software Foundation, Inc.
 See the end of file for copying conditions.
 
 Please send gdbm bug reports to <bug-gdbm@gnu.org>.
+
+Version 1.18.1 - 2018-10-27
+
+* Fix debian bug 910911
+
+This restores backward compatibility with databases created by version
+1.8 (and some later versions, with mmapped I/O disabled).
+See https://bugs.debian.org/910911 for a detailed description.
+
 
 Version 1.18 - 2018-08-21
 
