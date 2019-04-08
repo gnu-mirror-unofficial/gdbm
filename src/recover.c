@@ -155,6 +155,7 @@ _gdbm_finish_transfer (GDBM_FILE dbf, GDBM_FILE new_dbf,
       free (dbf->bucket_cache);
    }
 
+   dbf->lock_type         = new_dbf->lock_type;
    dbf->desc              = new_dbf->desc;
    dbf->header            = new_dbf->header;
    dbf->dir               = new_dbf->dir;
