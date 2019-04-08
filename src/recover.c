@@ -1,5 +1,5 @@
 /* This file is part of GDBM, the GNU data base manager.
-   Copyright (C) 2016-2018 Free Software Foundation, Inc.
+   Copyright (C) 2016-2019 Free Software Foundation, Inc.
 
    GDBM is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -155,36 +155,36 @@ _gdbm_finish_transfer (GDBM_FILE dbf, GDBM_FILE new_dbf,
       free (dbf->bucket_cache);
    }
 
-   dbf->lock_type         = new_dbf->lock_type;
-   dbf->desc              = new_dbf->desc;
-   dbf->header            = new_dbf->header;
-   dbf->dir               = new_dbf->dir;
-   dbf->bucket            = new_dbf->bucket;
-   dbf->bucket_dir        = new_dbf->bucket_dir;
-   dbf->last_read         = new_dbf->last_read;
-   dbf->bucket_cache      = new_dbf->bucket_cache;
-   dbf->cache_size        = new_dbf->cache_size;
-   dbf->header_changed    = new_dbf->header_changed;
-   dbf->directory_changed = new_dbf->directory_changed;
-   dbf->bucket_changed    = new_dbf->bucket_changed;
-   dbf->second_changed    = new_dbf->second_changed;
-
-   free (new_dbf->name);
-   free (new_dbf);
+  dbf->lock_type         = new_dbf->lock_type;
+  dbf->desc              = new_dbf->desc;
+  dbf->header            = new_dbf->header;
+  dbf->dir               = new_dbf->dir;
+  dbf->bucket            = new_dbf->bucket;
+  dbf->bucket_dir        = new_dbf->bucket_dir;
+  dbf->last_read         = new_dbf->last_read;
+  dbf->bucket_cache      = new_dbf->bucket_cache;
+  dbf->cache_size        = new_dbf->cache_size;
+  dbf->header_changed    = new_dbf->header_changed;
+  dbf->directory_changed = new_dbf->directory_changed;
+  dbf->bucket_changed    = new_dbf->bucket_changed;
+  dbf->second_changed    = new_dbf->second_changed;
+  
+  free (new_dbf->name);
+  free (new_dbf);
    
  #if HAVE_MMAP
-   /* Re-initialize mapping if required */
-   if (dbf->memory_mapping)
-     _gdbm_mapped_init (dbf);
+  /* Re-initialize mapping if required */
+  if (dbf->memory_mapping)
+    _gdbm_mapped_init (dbf);
  #endif
 
-   /* Make sure the new database is all on disk. */
-   gdbm_file_sync (dbf);
-
-   /* Force the right stuff for a correct bucket cache. */
-   dbf->cache_entry    = &dbf->bucket_cache[0];
-   return _gdbm_get_bucket (dbf, 0);
- }
+  /* Make sure the new database is all on disk. */
+  gdbm_file_sync (dbf);
+  
+  /* Force the right stuff for a correct bucket cache. */
+  dbf->cache_entry    = &dbf->bucket_cache[0];
+  return _gdbm_get_bucket (dbf, 0);
+}
 
 int
 _gdbm_next_bucket_dir (GDBM_FILE dbf, int bucket_dir)
