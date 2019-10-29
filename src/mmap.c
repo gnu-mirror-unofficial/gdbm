@@ -33,6 +33,14 @@
 #  define MAP_FAILED ((void*)-1)
 # endif
 
+# if defined(MAP_POPULATE)
+#  define GDBM_MMAP_FLAGS MAP_POPULATE
+# elif defined(MAP_PREFAULT_READ)
+#  define GDBM_MMAP_FLAGS MAP_PREFAULT_READ
+# else
+#  define GDBM_MMAP_FLAGS 0
+# endif
+
 /* Translate current offset in the mapped region into the absolute position */
 # define _GDBM_MMAPPED_POS(dbf) ((dbf)->mapped_off + (dbf)->mapped_pos)
 /* Return true if the absolute offset OFF lies within the currentlty mmapped
@@ -90,7 +98,7 @@ int
 _gdbm_internal_remap (GDBM_FILE dbf, size_t size)
 {
   void *p;
-  int flags = PROT_READ;
+  int prot = PROT_READ;
   size_t page_size = sysconf (_SC_PAGESIZE);
 
   if (dbf->mapped_region)
@@ -107,9 +115,9 @@ _gdbm_internal_remap (GDBM_FILE dbf, size_t size)
   dbf->mapped_off = (dbf->mapped_off / page_size) * page_size;
 
   if (dbf->read_write)
-    flags |= PROT_WRITE;
+    prot |= PROT_WRITE;
   
-  p = mmap (NULL, dbf->mapped_size, flags, MAP_SHARED,
+  p = mmap (NULL, dbf->mapped_size, prot, MAP_SHARED | GDBM_MMAP_FLAGS,
 	    dbf->desc, dbf->mapped_off);
   if (p == MAP_FAILED)
     {
