@@ -24,9 +24,7 @@
 #include <signal.h>
 #include <pwd.h>
 #include <sys/ioctl.h>
-#ifdef HAVE_SYS_TERMIOS_H
-# include <sys/termios.h>
-#endif
+#include <termios.h>
 #include <stdarg.h>
 #ifdef HAVE_LOCALE_H
 # include <locale.h>
@@ -37,8 +35,6 @@ GDBM_FILE gdbm_file = NULL;   /* Database to operate upon */
 datum key_data;               /* Current key */
 datum return_data;            /* Current data */
 int open_mode;                /* Default open mode */
-
-#define SIZE_T_MAX ((size_t)-1)
 
 unsigned input_line;
 

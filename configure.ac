@@ -96,7 +96,7 @@ dnl Internationalization macros.
 AM_GNU_GETTEXT([external], [need-ngettext])
 AM_GNU_GETTEXT_VERSION(0.18)
 
-AC_CHECK_HEADERS([sys/file.h sys/termios.h string.h locale.h getopt.h])
+AC_CHECK_HEADERS([sys/file.h string.h locale.h getopt.h])
 
 AC_CHECK_LIB(dbm, main)
 AC_CHECK_LIB(ndbm, main)

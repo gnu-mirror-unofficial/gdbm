@@ -54,5 +54,7 @@
 /* The size of the bucket cache. */
 #define DEFAULT_CACHESIZE  100
 
+#ifndef SIZE_T_MAX
 /* Maximum size representable by a size_t variable */
-#define SIZE_T_MAX ((size_t)-1)
+# define SIZE_T_MAX ((size_t)-1)
+#endif

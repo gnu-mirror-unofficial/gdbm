@@ -21,6 +21,7 @@
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
+#include <unistd.h>
 #include "gdbm.h"
 
 int
@@ -28,7 +29,6 @@ main (int argc, char **argv)
 {
   GDBM_FILE dbf;
   char dbname[] = "junk.gdbm";
-  int rc;
   
   assert (argc == 1);
   
