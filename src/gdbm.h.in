@@ -228,9 +228,10 @@ extern int gdbm_copy_meta (GDBM_FILE dst, GDBM_FILE src);
 # define GDBM_FILE_CLOSE_ERROR          37  
 # define GDBM_FILE_SYNC_ERROR           38
 # define GDBM_FILE_TRUNCATE_ERROR       39
-  
+# define GDBM_BUCKET_CACHE_CORRUPTED    40
+
 # define _GDBM_MIN_ERRNO	0
-# define _GDBM_MAX_ERRNO	GDBM_FILE_TRUNCATE_ERROR
+# define _GDBM_MAX_ERRNO	GDBM_BUCKET_CACHE_CORRUPTED
 
 /* This one was never used and will be removed in the future */
 # define GDBM_UNKNOWN_UPDATE GDBM_UNKNOWN_ERROR
@@ -275,8 +276,20 @@ extern void gdbm_debug_parse_state (int (*f) (void *, int, char const *),
 				    void *d);
   
 extern void gdbm_debug_datum (datum dat, char const *pfx);
-  
 #endif
+
+/* Cache statistics */  
+struct gdbm_cache_stat
+{
+  off_t adr;
+  size_t hits;
+};
+
+void gdbm_get_cache_stats (GDBM_FILE dbf,
+			   size_t *access_count,
+			   size_t *cache_count,
+			   struct gdbm_cache_stat *bstat,
+			   size_t nstat);
   
 # if defined(__cplusplus) || defined(c_plusplus)
 }

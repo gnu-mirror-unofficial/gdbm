@@ -21,11 +21,15 @@
 /* From bucket.c */
 void _gdbm_new_bucket	(GDBM_FILE, hash_bucket *, int);
 int _gdbm_get_bucket	(GDBM_FILE, int);
-int _gdbm_read_bucket_at (GDBM_FILE dbf, off_t off, hash_bucket *bucket,
-			  size_t size);
+int _gdbm_fetch_data   (GDBM_FILE dbf, off_t off, size_t size, void *buf);
 
 int _gdbm_split_bucket (GDBM_FILE, int);
 int _gdbm_write_bucket (GDBM_FILE, cache_elem *);
+int _gdbm_cache_init   (GDBM_FILE, size_t);
+void _gdbm_cache_free  (GDBM_FILE dbf);
+int _gdbm_cache_flush  (GDBM_FILE dbf);
+
+cache_elem *_gdbm_cache_elem_new (GDBM_FILE dbf, off_t adr);
 
 /* From falloc.c */
 off_t _gdbm_alloc       (GDBM_FILE, int);
@@ -47,9 +51,6 @@ int _gdbm_end_update   (GDBM_FILE);
 void _gdbm_fatal	(GDBM_FILE, const char *);
 
 /* From gdbmopen.c */
-int _gdbm_init_cache	(GDBM_FILE, size_t);
-void _gdbm_cache_entry_invalidate (GDBM_FILE, int);
-
 int gdbm_avail_block_validate (GDBM_FILE dbf, avail_block *avblk);
 int gdbm_bucket_avail_table_validate (GDBM_FILE dbf, hash_bucket *bucket);
 
@@ -85,6 +86,22 @@ int _gdbm_dump (GDBM_FILE dbf, FILE *fp);
 
 /* From recover.c */
 int _gdbm_next_bucket_dir (GDBM_FILE dbf, int bucket_dir);
+
+/* cachetree.c */
+cache_tree *_gdbm_cache_tree_alloc (GDBM_FILE dbf);
+void _gdbm_cache_tree_destroy (cache_tree *tree);
+int _gdbm_cache_tree_delete (cache_tree *tree, cache_elem *elem);
+void _gdbm_rbt_remove_node (cache_tree *tree, struct cache_node *n);
+
+/* Return codes for _gdbm_cache_tree_lookup. */
+enum
+  {
+    node_found,   /* Returned element was found in cache. */
+    node_new,     /* Returned element has been created and inserted to cache */
+    node_failure  /* An error occurred. */
+  };
+
+int _gdbm_cache_tree_lookup (cache_tree *tree, off_t adr, cache_elem **retval);
 
 /* I/O functions */
 static inline ssize_t

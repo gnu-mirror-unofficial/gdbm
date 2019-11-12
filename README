@@ -1,6 +1,12 @@
 GNU dbm README
 See the end of file for copying conditions.
 
+* Note
+
+This is an experimental branch of GNU DBM.  Its goal is to evaluate
+possibilities of improving the caching scheme.  Please don't use it
+in production.
+
 * Introduction
 
 This file contains brief information about configuring, testing

@@ -75,19 +75,7 @@ _gdbm_end_update (GDBM_FILE dbf)
   /* Write the other changed buckets if there are any. */
   if (dbf->second_changed)
     {
-      if (dbf->bucket_cache != NULL)
-        {
-          int index;
-
-          for (index = 0; index < dbf->cache_size; index++)
-	    {
-	      if (dbf->bucket_cache[index].ca_changed)
-		{
-		  if (_gdbm_write_bucket (dbf, &dbf->bucket_cache[index]))
-		    return -1;
-		}
-            }
-        }
+      _gdbm_cache_flush (dbf);
       dbf->second_changed = FALSE;
     }
   
