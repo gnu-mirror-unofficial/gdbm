@@ -165,7 +165,7 @@ static void rbt_delete_fixup (cache_tree *tree, cache_node *n);
 
 /* Remove N from the TREE. */
 void
-_gdbm_rbt_remove_node (cache_tree *tree, cache_node *n)
+_gdbm_cache_tree_delete (cache_tree *tree, cache_node *n)
 {
   cache_node *child;
 
@@ -476,40 +476,13 @@ _gdbm_cache_tree_destroy (cache_tree *tree)
 {
   cache_node *n;
   while ((n = tree->root) != NULL)
-    _gdbm_rbt_remove_node (tree, n);
+    _gdbm_cache_tree_delete (tree, n);
   while ((n = tree->avail) != NULL)
     {
       tree->avail = n->parent;
       free (n);
     }
   free (tree);
-}
-
-/* Delete the node with ELEM from the TREE.
-   Note, that it actually removes the node whith elem->ca_adr equal to
-   that of ELEM, which means that it's elem pointer could theoretically
-   have differ from ELEM.  However, the actual algorithm ensures it is
-   the same.
-*/
-int
-_gdbm_cache_tree_delete (cache_tree *tree, cache_elem *elem)
-{
-  cache_node *n;
-  
-  switch (cache_tree_lookup (tree, elem->ca_adr, 0, &n))
-    {
-    case node_found:
-      assert (n->elem == elem);
-      _gdbm_rbt_remove_node (tree, n);
-      break;
-
-    case node_new:
-      break;
-      
-    case node_failure:
-      return -1;
-    }
-  return 0;
 }
 
 /* Look up the node with elem->ca_adr equal to ADR.

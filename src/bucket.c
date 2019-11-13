@@ -159,7 +159,7 @@ _gdbm_cache_elem_new (GDBM_FILE dbf, off_t adr)
 static void
 cache_elem_free (GDBM_FILE dbf, cache_elem *elem)
 {
-  _gdbm_rbt_remove_node (dbf->cache_tree, elem->ca_node);
+  _gdbm_cache_tree_delete (dbf->cache_tree, elem->ca_node);
   lru_unlink_elem (dbf, elem);
   elem->ca_next = dbf->cache_avail;
   dbf->cache_avail = elem;

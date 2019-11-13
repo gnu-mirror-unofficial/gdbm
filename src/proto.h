@@ -90,8 +90,7 @@ int _gdbm_next_bucket_dir (GDBM_FILE dbf, int bucket_dir);
 /* cachetree.c */
 cache_tree *_gdbm_cache_tree_alloc (GDBM_FILE dbf);
 void _gdbm_cache_tree_destroy (cache_tree *tree);
-int _gdbm_cache_tree_delete (cache_tree *tree, cache_elem *elem);
-void _gdbm_rbt_remove_node (cache_tree *tree, struct cache_node *n);
+void _gdbm_cache_tree_delete (cache_tree *tree, struct cache_node *n);
 
 /* Return codes for _gdbm_cache_tree_lookup. */
 enum
