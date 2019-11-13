@@ -29,8 +29,6 @@ int _gdbm_cache_init   (GDBM_FILE, size_t);
 void _gdbm_cache_free  (GDBM_FILE dbf);
 int _gdbm_cache_flush  (GDBM_FILE dbf);
 
-cache_elem *_gdbm_cache_elem_new (GDBM_FILE dbf, off_t adr);
-
 /* From falloc.c */
 off_t _gdbm_alloc       (GDBM_FILE, int);
 int  _gdbm_free         (GDBM_FILE, off_t, int);
@@ -88,7 +86,7 @@ int _gdbm_dump (GDBM_FILE dbf, FILE *fp);
 int _gdbm_next_bucket_dir (GDBM_FILE dbf, int bucket_dir);
 
 /* cachetree.c */
-cache_tree *_gdbm_cache_tree_alloc (GDBM_FILE dbf);
+cache_tree *_gdbm_cache_tree_alloc (void);
 void _gdbm_cache_tree_destroy (cache_tree *tree);
 void _gdbm_cache_tree_delete (cache_tree *tree, struct cache_node *n);
 
@@ -100,7 +98,7 @@ enum
     node_failure  /* An error occurred. */
   };
 
-int _gdbm_cache_tree_lookup (cache_tree *tree, off_t adr, cache_elem **retval);
+int _gdbm_cache_tree_lookup (cache_tree *tree, off_t adr, cache_node **retval);
 
 /* I/O functions */
 static inline ssize_t

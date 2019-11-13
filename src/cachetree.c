@@ -23,19 +23,10 @@
 
 enum cache_node_color { RED, BLACK };
 
-typedef struct cache_node cache_node;
-struct cache_node
-{
-  cache_node *left, *right, *parent; 
-  enum cache_node_color color;
-  cache_elem *elem;
-};
-
 struct cache_tree
 {
   cache_node *root;   /* Root of the tree */
   cache_node *avail;  /* List of available nodes, linked by parent field */
-  GDBM_FILE dbf;      /* Database this tree belongs to */
 };
 
 /* Allocate and return a new node.  Pick the head item from the avail
@@ -178,6 +169,7 @@ _gdbm_cache_tree_delete (cache_tree *tree, cache_node *n)
       cache_node *p;
       for (p = n->left; p->right; p = p->right)
         ;
+      n->adr = p->adr;
       n->elem = p->elem;
       n->elem->ca_node = n;
       n = p;
@@ -319,7 +311,7 @@ rbt_delete_fixup (cache_tree *tree, cache_node *n)
 /* Insertion */
 static void rbt_insert_fixup (cache_tree *tree, cache_node *n);
 
-/* Look up the node with elem->ca_adr equal to ADR.
+/* Look up the node with the given ADR.
    If found, put it in *RETVAL and return node_found.
 
    Otherwise, if INSERT is TRUE, create a new node and insert it in the
@@ -329,9 +321,8 @@ static void rbt_insert_fixup (cache_tree *tree, cache_node *n);
 
    Otherwise, if INSERT is FALSE, store NULL in *RETVAL and return node_new.
 */
-static int
-cache_tree_lookup (cache_tree *tree, off_t adr, int insert,
-		   cache_node **retval)
+int
+_gdbm_cache_tree_lookup (cache_tree *tree, off_t adr, cache_node **retval)
 {
   int res;
   cache_node *node, *parent = NULL;
@@ -340,10 +331,10 @@ cache_tree_lookup (cache_tree *tree, off_t adr, int insert,
   nodeptr = &tree->root;
   while ((node = *nodeptr) != NULL)
     {
-      if (adr == node->elem->ca_adr)
+      if (adr == node->adr)
 	break;
       parent = node;
-      if (adr < node->elem->ca_adr)
+      if (adr < node->adr)
 	nodeptr = &node->left;
       else
 	nodeptr = &node->right;
@@ -355,22 +346,13 @@ cache_tree_lookup (cache_tree *tree, off_t adr, int insert,
     }
   else
     {
-      if (insert)
-	{
-	  node = rbt_node_alloc (tree);
-	  if (!node)
-	    return node_failure;
-	  node->elem = _gdbm_cache_elem_new (tree->dbf, adr);
-	  if (!node->elem)
-	    {
-	      rbt_node_dealloc (tree, node);
-	      return node_failure;
-	    }
-	  node->elem->ca_node = node;
-	  *nodeptr = node;
-	  node->parent = parent;
-	  rbt_insert_fixup (tree, node);
-	}
+      node = rbt_node_alloc (tree);
+      if (!node)
+	return node_failure;
+      *nodeptr = node;
+      node->adr = adr;
+      node->parent = parent;
+      rbt_insert_fixup (tree, node);
       res = node_new;
     }
   *retval = node;
@@ -458,14 +440,13 @@ rbt_insert_fixup (cache_tree *tree, cache_node *n)
 
 /* Create a cache tree structure for the database file DBF. */
 cache_tree *
-_gdbm_cache_tree_alloc (GDBM_FILE dbf)
+_gdbm_cache_tree_alloc (void)
 {
   cache_tree *t = malloc (sizeof (*t));
   if (t)
     {
       t->root = NULL;
       t->avail = NULL;
-      t->dbf = dbf;
     }
   return t;
 }
@@ -485,17 +466,8 @@ _gdbm_cache_tree_destroy (cache_tree *tree)
   free (tree);
 }
 
-/* Look up the node with elem->ca_adr equal to ADR.
-   If found, store its pointer in *RETVAL and return node_found.
-   Otherwise, return node_new and don't touch RETVAL.
-*/
-int
-_gdbm_cache_tree_lookup (cache_tree *tree, off_t adr, cache_elem **retval)
+void
+_gdbm_node_set_elem (cache_node *node, cache_elem *elem)
 {
-  cache_node *n;
-  int rc = cache_tree_lookup (tree, adr, TRUE, &n);
-  if (rc != node_failure)
-    *retval = n->elem;
-  return rc;
+  node->elem = elem;
 }
-

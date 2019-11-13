@@ -116,8 +116,8 @@ lru_unlink_elem (GDBM_FILE dbf, cache_elem *elem)
    but not linked to the LRU list.
    Return NULL on error.
 */
-cache_elem *
-_gdbm_cache_elem_new (GDBM_FILE dbf, off_t adr)
+static cache_elem *
+cache_elem_new (GDBM_FILE dbf, off_t adr)
 {
   cache_elem *elem;
 
@@ -170,18 +170,29 @@ static int
 cache_lookup (GDBM_FILE dbf, off_t adr, cache_elem *ref, cache_elem **ret_elem)
 {
   int rc;
+  cache_node *node;
   cache_elem *elem;
 
   dbf->cache_access_count++;
-  rc = _gdbm_cache_tree_lookup (dbf->cache_tree, adr, &elem);
+  rc = _gdbm_cache_tree_lookup (dbf->cache_tree, adr, &node);
   switch (rc)
     {
     case node_found:
+      elem = node->elem;
       elem->ca_hits++;
       lru_unlink_elem (dbf, elem);
       break;
 
     case node_new:
+      elem = cache_elem_new (dbf, adr);
+      if (!elem)
+	{
+	  _gdbm_cache_tree_delete (dbf->cache_tree, node);
+	  return node_failure;
+	}
+      elem->ca_node = node;
+      node->elem = elem;
+      
       if (dbf->cache_num > dbf->cache_size)
 	{
 	  cache_elem *last = dbf->cache_lru;

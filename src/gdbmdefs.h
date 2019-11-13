@@ -157,9 +157,18 @@ typedef struct
   int     elem_loc;
 } data_cache_elem;
 
-typedef struct cache_elem_s cache_elem;
+typedef struct cache_elem cache_elem;
+typedef struct cache_node cache_node;
 
-struct cache_elem_s
+struct cache_node
+{
+  cache_node *left, *right, *parent; 
+  int color;
+  off_t adr;
+  cache_elem *elem;
+};
+
+struct cache_elem
 {
   hash_bucket *   ca_bucket;
   off_t           ca_adr;

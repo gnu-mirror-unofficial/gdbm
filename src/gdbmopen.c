@@ -271,7 +271,7 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
   dbf->header = NULL;
 
   /* Initialize cache */
-  dbf->cache_tree = _gdbm_cache_tree_alloc (dbf);
+  dbf->cache_tree = _gdbm_cache_tree_alloc ();
   _gdbm_cache_init (dbf, DEFAULT_CACHESIZE);
   
   dbf->memory_mapping = FALSE;
