@@ -128,17 +128,13 @@ cache_elem_new (GDBM_FILE dbf, off_t adr)
     }
   else
     {
-      elem = calloc (1, sizeof (*elem));
+      elem = calloc (1,
+		     sizeof (*elem) -
+		     sizeof (elem->ca_bucket[0]) +
+		     dbf->header->bucket_size);
 
       if (!elem)
 	return NULL;
-
-      elem->ca_bucket = malloc (dbf->header->bucket_size);
-      if (!elem->ca_bucket)
-	{
-	  free (elem);
-	  return NULL;
-	}
     }
 
   elem->ca_adr = adr;
@@ -590,7 +586,6 @@ _gdbm_cache_free (GDBM_FILE dbf)
     {
       dbf->cache_avail = elem->ca_next;
       free (elem->ca_data.dptr);
-      free (elem->ca_bucket);
       free (elem);
     }
 }
