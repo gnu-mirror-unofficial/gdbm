@@ -1,7 +1,7 @@
 /* cachetree.c - Implementation of the red-black tree for cache lookups. */
 
 /* This file is part of GDBM, the GNU data base manager.
-   Copyright (C) 2019 Free Software Foundation, Inc.
+   Copyright (C) 2019-2020 Free Software Foundation, Inc.
 
    GDBM is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by

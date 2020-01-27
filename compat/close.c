@@ -1,7 +1,7 @@
 /* close.c - Close the "original" style database. */
 
 /* This file is part of GDBM, the GNU data base manager.
-   Copyright (C) 1993, 2007, 2011, 2017-2019 Free Software Foundation,
+   Copyright (C) 1993, 2007, 2011, 2017-2020 Free Software Foundation,
    Inc.
 
    GDBM is free software; you can redistribute it and/or modify
