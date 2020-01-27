@@ -2,7 +2,7 @@
    NDBM interface for dbm use. */
 
 /* This file is part of GDBM, the GNU data base manager.
-   Copyright (C) 1990-1991, 1993, 2007, 2011, 2016-2019 Free Software
+   Copyright (C) 1990-1991, 1993, 2007, 2011, 2016-2020 Free Software
    Foundation, Inc.
 
    GDBM is free software; you can redistribute it and/or modify

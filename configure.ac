@@ -1,5 +1,5 @@
 # This file is part of GDBM.                                   -*- autoconf -*-
-# Copyright (C) 2007, 2009, 2011, 2013-2014, 2016-2019 Free Software
+# Copyright (C) 2007, 2009, 2011, 2013-2014, 2016-2020 Free Software
 # Foundation, Inc.
 #
 # GDBM is free software; you can redistribute it and/or modify
@@ -17,7 +17,7 @@
 
 m4_define([_GDBM_VERSION_MAJOR], 1)
 m4_define([_GDBM_VERSION_MINOR], 18)
-m4_define([_GDBM_VERSION_PATCH], 1)
+m4_define([_GDBM_VERSION_PATCH], 90)
 
 AC_INIT([gdbm],
         _GDBM_VERSION_MAJOR._GDBM_VERSION_MINOR[]m4_ifdef([_GDBM_VERSION_PATCH],._GDBM_VERSION_PATCH),
