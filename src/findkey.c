@@ -102,10 +102,10 @@ _gdbm_read_entry (GDBM_FILE dbf, int elem_loc)
 	  return NULL;
 	}
     }
-#if 1
+
   /* Read into the cache. */
   file_pos = gdbm_file_seek (dbf, dbf->bucket->h_table[elem_loc].data_pointer,
-                     SEEK_SET);
+                             SEEK_SET);
   if (file_pos != dbf->bucket->h_table[elem_loc].data_pointer)
     {
       GDBM_SET_ERRNO2 (dbf, GDBM_FILE_SEEK_ERROR, TRUE, GDBM_DEBUG_LOOKUP);
@@ -123,11 +123,7 @@ _gdbm_read_entry (GDBM_FILE dbf, int elem_loc)
       _gdbm_fatal (dbf, gdbm_db_strerror (dbf));
       return NULL;
     }
-#else
-  if (_gdbm_fetch_data (dbf, dbf->bucket->h_table[elem_loc].data_pointer,
-			key_size + data_size, data_ca->dptr))
-    return NULL;
-#endif  
+
   return data_ca->dptr;
 }
 

@@ -465,9 +465,3 @@ _gdbm_cache_tree_destroy (cache_tree *tree)
     }
   free (tree);
 }
-
-void
-_gdbm_node_set_elem (cache_node *node, cache_elem *elem)
-{
-  node->elem = elem;
-}
