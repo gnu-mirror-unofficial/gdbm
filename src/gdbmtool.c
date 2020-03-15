@@ -788,17 +788,11 @@ print_dir_begin (struct handler_param *param GDBM_ARG_UNUSED, size_t *exp_count)
 static size_t
 bucket_count (void)
 {
-  int i;
-  off_t last = 0;
   size_t count = 0;
-  
-  for (i = 0; i < GDBM_DIR_COUNT (gdbm_file); i++)
+
+  if (gdbm_bucket_count (gdbm_file, &count))
     {
-      if (gdbm_file->dir[i] != last)
-	{
-	  ++count;
-	  last = gdbm_file->dir[i];
-	}
+      terror ("gdbm_bucket_count: %s", gdbm_strerror (gdbm_errno));
     }
   return count;
 }

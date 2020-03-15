@@ -232,6 +232,7 @@ int gdbm_export_to_file (GDBM_FILE dbf, FILE *fp);
 int gdbm_import (GDBM_FILE, const char *, int);
 int gdbm_import_from_file (GDBM_FILE dbf, FILE *fp, int flag);
 int gdbm_count (GDBM_FILE dbf, gdbm_count_t *pcount);
+int gdbm_bucket_count (GDBM_FILE dbf, size_t *pcount);
 int gdbm_version_cmp (int const a[], int const b[]);
 @end example
 
@@ -389,6 +390,14 @@ describing the error and returns -1.
 @deftypefn {gdbm interface} int gdbm_count (GDBM_FILE @var{dbf}, @
   gdbm_count_t *@var{pcount})
 Counts number of records in the database @var{dbf}.  On success,
+stores it in the memory location pointed to by @var{pcount} and return
+0.  On error, sets @code{gdbm_errno} (if relevant, also @code{errno})
+and returns -1.
+@end deftypefn
+
+@deftypefn {gdbm interface} int gdbm_bucket_count (GDBM_FILE @var{dbf}, @
+  size_t *@var{pcount})
+Counts number of buckets in the database @var{dbf}.  On success,
 stores it in the memory location pointed to by @var{pcount} and return
 0.  On error, sets @code{gdbm_errno} (if relevant, also @code{errno})
 and returns -1.
