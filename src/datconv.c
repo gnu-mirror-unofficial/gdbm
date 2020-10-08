@@ -321,7 +321,7 @@ datum_scan_notag (datum *dat, struct dsegm *ds, struct kvpair *kv)
   
   memset (&xd, 0, sizeof (xd));
   
-  for (; err == 0 && ds && kv; ds = ds->next, kv = kv->next)
+  for (; err == 0 && ds && kv; ds = ds->next)
     {
       if (kv->key)
 	{
@@ -340,7 +340,7 @@ datum_scan_notag (datum *dat, struct dsegm *ds, struct kvpair *kv)
 	  if (kv->type == KV_STRING && ds->v.field.dim > 1)
 	    {
 	      /* If a char[] value was supplied as a quoted string.
-	         convert it it list for further processing */
+	         convert it to list for further processing */
 	      if (ds->v.field.type->size == 1)
 		{
 		  struct slist *head = slist_new_l (kv->val.s, 1);
@@ -380,7 +380,8 @@ datum_scan_notag (datum *dat, struct dsegm *ds, struct kvpair *kv)
 		  lerror (&kv->loc, "surplus initializers ignored");
 		  err = 1;
 		}
-	    }				      
+	    }
+	  kv = kv->next;
 	  break;
 
 	case FDEF_OFF:

@@ -2641,8 +2641,8 @@ define content @{
 
 @noindent
 This defines a structure consisting of three members: an integer
-@code{status}, an array of 8 bytes @code{id}, and a null-terminated
-string @code{name}.  Notice the @code{pad} statement: it allows to
+@code{status}, an array of 3 bytes @code{id}, and an array of
+bytes @code{name}.  Notice the @code{pad} statement: it allows to
 introduce padding between structure members.  Another useful statement
 is @code{offset}: it specifies that the member following it begins at
 the given offset in the structure.  Assuming the size of @code{int} is
