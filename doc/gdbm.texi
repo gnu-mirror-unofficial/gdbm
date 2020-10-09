@@ -2674,11 +2674,35 @@ status=2,id=@{ a, u, x @},name="quux"
 @end example
 
 To supply a structured datum as an argument to a @command{gdbmtool}
-command, use the same notation, but without field names, e.g.:
+command, use the same notation, e.g.:
 
 @example
-gdbmtool> hash @{ 2, @{a,u,x@}, "quux" @}
-hash value = 13089969.
+gdbmtool> store newkey @{ status=2, id=@{a,u,x@}, name="quux" @}
+@end example
+
+The order in which the fields are listed is not significant.  The
+above command can as well be written as:
+
+@example
+gdbmtool> store newkey @{ id=@{a,u,x@}, status=2, name="quux" @}
+@end example
+
+You are not required to supply all defined fields.  Any number of them
+can be omitted, provided that at least one remains.  The omitted
+fields are filled with 0:
+
+@example
+gdbmtool> store newkey @{ name="bar" @}
+gdbmtool> fetch newkey
+status=0,id=@{ ,, @},name=bar
+@end example
+
+Yet another way to supply structured data to a command is by listing
+the value for each field in the order they are defined, without field
+names:
+
+@example
+gdbmtool> store newkey @{ 2, @{a,u,x@}, "quux" @}
 @end example
 
 @node startup files

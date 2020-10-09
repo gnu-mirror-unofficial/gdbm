@@ -1673,7 +1673,7 @@ kvpair_list (struct locus *loc, struct slist *s)
   return p;
 }  
 
-static void
+void
 kvlist_free (struct kvpair *kvp)
 {
   while (kvp)
@@ -1693,6 +1693,15 @@ kvlist_free (struct kvpair *kvp)
       free (kvp);
       kvp = next;
     }
+}
+
+struct kvpair *
+kvlist_find (struct kvpair *kv, char const *tag)
+{
+  for (; kv; kv = kv->next)
+    if (kv->key && strcmp (kv->key, tag) == 0)
+      break;
+  return kv;
 }
 
 int
