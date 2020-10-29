@@ -547,11 +547,8 @@ _gdbm_write_bucket (GDBM_FILE dbf, cache_elem *ca_entry)
 int
 _gdbm_cache_init (GDBM_FILE dbf, size_t size)
 {
-  if (size < 3)
-    {
-      errno = EINVAL;
-      return -1;
-    }
+  if (size == 0)
+    size = 1;
   
   if (size == dbf->cache_size)
     return 0;

@@ -314,12 +314,11 @@ static void rbt_insert_fixup (cache_tree *tree, cache_node *n);
 /* Look up the node with the given ADR.
    If found, put it in *RETVAL and return node_found.
 
-   Otherwise, if INSERT is TRUE, create a new node and insert it in the
-   appropriate place in the tree.  Store the address of the newly created
-   node in *RETVAL and return node_new.  If a new node cannot be created
-   (memory exhausted), return node_failure.
+   Otherwise, create a new node and insert it at the appropriate place in
+   the tree.  Store the address of the newly created node in *RETVAL and
+   return node_new.
 
-   Otherwise, if INSERT is FALSE, store NULL in *RETVAL and return node_new.
+   If a new node cannot be created (memory exhausted), return node_failure.
 */
 int
 _gdbm_cache_tree_lookup (cache_tree *tree, off_t adr, cache_node **retval)
@@ -456,8 +455,28 @@ void
 _gdbm_cache_tree_destroy (cache_tree *tree)
 {
   cache_node *n;
+  
+  /* Free the allocated tree nodes.  Traverse the tree as if it were
+     a simple binary tree: there's no use preserving RBT properties now.
+  */
   while ((n = tree->root) != NULL)
-    _gdbm_cache_tree_delete (tree, n);
+    {
+      if (!n->left)
+	tree->root = n->right;
+      else if (!n->right)
+	tree->root = n->left;
+      else
+	{
+	  cache_node *p;
+	  for (p = n->left; p->right; p = p->right)
+	    ;
+	  p->right = n->right;
+	  tree->root = n->left;
+	}
+      free (n);
+    }
+  
+  /* Free the avail list */
   while ((n = tree->avail) != NULL)
     {
       tree->avail = n->parent;
