@@ -162,14 +162,30 @@ cache_elem_free (GDBM_FILE dbf, cache_elem *elem)
   dbf->cache_num--;
 }
 
+/* Free the least recently used cache entry. */
+static inline int
+cache_lru_free (GDBM_FILE dbf)
+{
+  cache_elem *last = dbf->cache_lru;
+  if (last->ca_changed)
+    {
+      if (_gdbm_write_bucket (dbf, last))
+	return -1;
+    }
+  cache_elem_free (dbf, last);
+  return 0;
+}
+  
 static int
 cache_lookup (GDBM_FILE dbf, off_t adr, cache_elem *ref, cache_elem **ret_elem)
 {
   int rc;
   cache_node *node;
   cache_elem *elem;
-
+  int retrying = 0;
+  
   dbf->cache_access_count++;
+ retry:
   rc = _gdbm_cache_tree_lookup (dbf->cache_tree, adr, &node);
   switch (rc)
     {
@@ -178,7 +194,7 @@ cache_lookup (GDBM_FILE dbf, off_t adr, cache_elem *ref, cache_elem **ret_elem)
       elem->ca_hits++;
       lru_unlink_elem (dbf, elem);
       break;
-
+      
     case node_new:
       elem = cache_elem_new (dbf, adr);
       if (!elem)
@@ -189,24 +205,28 @@ cache_lookup (GDBM_FILE dbf, off_t adr, cache_elem *ref, cache_elem **ret_elem)
       elem->ca_node = node;
       node->elem = elem;
       
-      if (dbf->cache_num > dbf->cache_size)
+      if (dbf->cache_num > dbf->cache_size && cache_lru_free (dbf))
 	{
-	  cache_elem *last = dbf->cache_lru;
-	  if (last->ca_changed)
-	    {
-	      if (_gdbm_write_bucket (dbf, last))
-		{
-		  cache_elem_free (dbf, elem);
-		  return node_failure;
-		}
-	    }
-	  cache_elem_free (dbf, last);
+	  cache_elem_free (dbf, elem);
+	  return node_failure;
 	}
       break;
-
-    default:
-      return rc;
+      
+    case node_failure:
+      if (!retrying)
+	{
+	  if (errno == ENOMEM)
+	    {
+	      /* Release the last recently used element and retry. */
+	      if (cache_lru_free (dbf))
+		return node_failure;
+	      retrying = 1;
+	      goto retry;
+	    }
+	}
+      return node_failure;
     }
+  
   lru_link_elem (dbf, elem, ref);
   *ret_elem = elem;
   return rc;
