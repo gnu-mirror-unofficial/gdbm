@@ -22,7 +22,8 @@ gdbm_TEXINFOS=\
 
 dist_man_MANS   = gdbm.3 gdbm_dump.1 gdbm_load.1 gdbmtool.1
 
-GENDOCS=$(srcdir)/gendocs.sh --no-copy-images --html '--init-file=$(abs_srcdir)/html.init'
+GENDOCS = perl gendocs.pl
+EXTRA_DIST = gendocs.pl webdoc.init
 
 TEXI2DVI=texi2dvi -t '@set $(RENDITION)'
 
@@ -30,10 +31,13 @@ TEXI2DVI=texi2dvi -t '@set $(RENDITION)'
 # TEXINPUTS=/usr/share/texmf/pdftex/plain/misc/ is ok for most distributions
 .PHONY: manual
 manual:
+	rm -rf manual
 	TEXINPUTS=$(srcdir):$(top_srcdir)/build-aux:$(TEXINPUTS) \
-	 MAKEINFO="$(MAKEINFO) $(MAKEINFOFLAGS)" \
+	 MAKEINFO="$(MAKEINFO) $(AM_MAKEINFOFLAGS) $(MAKEINFOFLAGS)" \
 	 TEXI2DVI="$(TEXI2DVI) -t @finalout" \
-	 $(GENDOCS) --no-copy-images $(PACKAGE) '$(PACKAGE_NAME) manual'
+	 $(GENDOCS) -C manual -o otherdoc.texi $(PACKAGE) otherdoc.texi.in
+	$(MAKEINFO) $(AM_MAKEINFOFLAGS) $(MAKEINFOFLAGS) -DWEBDOC \
+	   --html --init-file=webdoc.init $(info_TEXINFOS) -o manual
 
 # Checking
 check-tabs:
