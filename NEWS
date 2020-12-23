@@ -4,7 +4,7 @@ See the end of file for copying conditions.
 
 Please send gdbm bug reports to <bug-gdbm@gnu.org>.
 
-Version 1.18.90 (git)
+Version 1.19 - 2020-12-23
 
 * Pre-read the memory mapped regions on systems that support it.
 
