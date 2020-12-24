@@ -19,8 +19,8 @@
 # include "gdbmapp.h"
 # include "gdbmdefs.h"
 
-char *parseopt_program_doc = "dump a GDBM database to a file";
-char *parseopt_program_args = "DB_FILE [FILE]";
+char *parseopt_program_doc = N_("dump a GDBM database to a file");
+char *parseopt_program_args = N_("DB_FILE [FILE]");
 struct gdbm_option optab[] = {
   { 'H', "format", "binary|ascii|0|1", N_("select dump format") },
   { 0 }

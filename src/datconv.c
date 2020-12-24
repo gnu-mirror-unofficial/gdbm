@@ -202,7 +202,7 @@ dsegm_new_field (struct datadef *type, char *id, int dim)
 }
 
 void
-dsegm_free_list (struct dsegm *dp)
+dsegm_list_free (struct dsegm *dp)
 {
   while (dp)
     {
@@ -210,6 +210,16 @@ dsegm_free_list (struct dsegm *dp)
       free (dp);
       dp = next;
     }
+}
+
+struct dsegm *
+dsegm_list_find (struct dsegm *dp, char const *name)
+{
+  for (; dp; dp = dp->next)
+    if (dp->type == FDEF_FLD && dp->v.field.name &&
+	strcmp (dp->v.field.name, name) == 0)
+      break;
+  return dp;
 }
 
 void
@@ -312,16 +322,68 @@ xd_store (struct xdatum *xd, void *val, size_t size)
 } 
 
 static int
+dsconv (struct xdatum *xd, struct dsegm *ds, struct kvpair *kv)
+{
+  int i;
+  int err = 0;
+  struct slist *s;
+  
+  if (!ds->v.field.type->scan)
+    abort ();
+  
+  if (kv->type == KV_STRING && ds->v.field.dim > 1)
+    {
+      /* If a char[] value was supplied as a quoted string.
+	 convert it to list for further processing */
+      if (ds->v.field.type->size == 1)
+	{
+	  struct slist *head = slist_new_l (kv->val.s, 1);
+	  struct slist *tail = head;
+	  char *s;
+	  for (s = kv->val.s + 1; *s; s++)
+	    slist_insert (&tail, slist_new_l (s, 1));
+	  free (kv->val.s);
+	  kv->val.l = head;
+	  kv->type = KV_LIST;
+	}
+    }
+	  
+  switch (kv->type)
+    {
+    case KV_STRING:
+      err = ds->v.field.type->scan (xd, kv->val.s);
+      if (err)
+	lerror (&kv->loc, _("cannot convert"));
+      break;
+	      
+    case KV_LIST:
+      for (i = 0, s = kv->val.l; i < ds->v.field.dim && s; i++, s = s->next)
+	{
+	  err = ds->v.field.type->scan (xd, s->str);
+	  if (err)
+	    {
+	      lerror (&kv->loc, _("cannot convert value #%d: %s"), i, s->str);
+	      break;
+	    }
+	}
+      if (s)
+	{
+	  lerror (&kv->loc, "surplus initializers ignored");
+	  err = 1;
+	}
+    }
+  return err;
+}
+  
+static int
 datum_scan_notag (datum *dat, struct dsegm *ds, struct kvpair *kv)
 {
   struct xdatum xd;
-  int i;
-  struct slist *s;
   int err = 0;
   
   memset (&xd, 0, sizeof (xd));
   
-  for (; err == 0 && ds && kv; ds = ds->next, kv = kv->next)
+  for (; err == 0 && ds && kv; ds = ds->next)
     {
       if (kv->key)
 	{
@@ -334,53 +396,8 @@ datum_scan_notag (datum *dat, struct dsegm *ds, struct kvpair *kv)
       switch (ds->type)
 	{
 	case FDEF_FLD:
-	  if (!ds->v.field.type->scan)
-	    abort ();
-
-	  if (kv->type == KV_STRING && ds->v.field.dim > 1)
-	    {
-	      /* If a char[] value was supplied as a quoted string.
-	         convert it it list for further processing */
-	      if (ds->v.field.type->size == 1)
-		{
-		  struct slist *head = slist_new_l (kv->val.s, 1);
-		  struct slist *tail = head;
-		  char *s;
-		  for (s = kv->val.s + 1; *s; s++)
-		    slist_insert (&tail, slist_new_l (s, 1));
-		  free (kv->val.s);
-		  kv->val.l = head;
-		  kv->type = KV_LIST;
-		}
-	    }
-	  
-	  switch (kv->type)
-	    {
-	    case KV_STRING:
-	      err = ds->v.field.type->scan (&xd, kv->val.s);
-	      if (err)
-		lerror (&kv->loc, _("cannot convert"));
-	      break;
-	      
-	    case KV_LIST:
-	      for (i = 0, s = kv->val.l; i < ds->v.field.dim && s;
-		   i++, s = s->next)
-		{
-		  err = ds->v.field.type->scan (&xd, s->str);
-		  if (err)
-		    {
-		      lerror (&kv->loc,
-				   _("cannot convert value #%d: %s"),
-				   i, s->str);
-		      break;
-		    }
-		}
-	      if (s)
-		{
-		  lerror (&kv->loc, "surplus initializers ignored");
-		  err = 1;
-		}
-	    }				      
+	  err = dsconv (&xd, ds, kv);
+	  kv = kv->next;
 	  break;
 
 	case FDEF_OFF:
@@ -408,10 +425,69 @@ datum_scan_notag (datum *dat, struct dsegm *ds, struct kvpair *kv)
 }
 
 static int
-datum_scan_tag (datum *dat, struct dsegm *ds, struct kvpair *kv)
+datum_scan_tag (datum *dat, struct dsegm *ds, struct kvpair *kvlist)
 {
-  lerror (&kv->loc, "tagged values are not yet supported");
-  return 1;
+  struct xdatum xd;
+  int err = 0;
+  struct kvpair *kv;
+
+  /* Check keywords for consistency */
+  for (kv = kvlist; kv; kv = kv->next)
+    {
+      if (!kv->key)
+	{
+	  lerror (&kv->loc,
+		  _("mixing tagged and untagged values is not allowed"));
+	  return 1;
+	}
+      if (!dsegm_list_find (ds, kv->key))
+	{
+	  lerror (&kv->loc, _("%s: no such field in datum"), kv->key);
+	  return 1;
+	}
+    }
+
+  /* Initialize datum */
+  memset (&xd, 0, sizeof (xd));
+
+  for (; err == 0 && ds; ds = ds->next)
+    {
+      switch (ds->type)
+	{
+	case FDEF_FLD:
+	  kv = kvlist_find (kvlist, ds->v.field.name);
+	  if (kv)
+	    err = dsconv (&xd, ds, kv);
+	  else
+	    {
+	      size_t sz = ds->v.field.type->size * ds->v.field.dim;
+	      xd_expand (&xd, xd.off + sz);
+	      xd.off += sz;
+	    }
+	  break;
+
+	case FDEF_OFF:
+	  xd_expand (&xd, ds->v.n);
+	  xd.off = ds->v.n;
+	  break;
+	  
+	case FDEF_PAD:
+	  xd_expand (&xd, xd.off + ds->v.n);
+	  xd.off += ds->v.n;
+	  break;
+	}
+    }
+
+  if (err)
+    {
+      free (xd.dptr);
+      return 1;
+    }
+
+  dat->dptr  = xd.dptr;
+  dat->dsize = xd.dsize;
+      
+  return 0;
 }
 
 int

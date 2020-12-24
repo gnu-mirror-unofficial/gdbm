@@ -1,8 +1,25 @@
-GNU dbm NEWS -- history of user-visible changes. 2018-10-27
+GNU dbm NEWS -- history of user-visible changes. 2020-12-24
 Copyright (C) 1990-2020 Free Software Foundation, Inc.
 See the end of file for copying conditions.
 
 Please send gdbm bug reports to <bug-gdbm@gnu.org>.
+
+Version 1.19 - 2020-12-23
+
+* Pre-read the memory mapped regions on systems that support it.
+
+This speeds up operations on big databases.
+
+* gdbmtool: tagged initialization of structured data
+
+Initializers for structured data can be given in tagged form, e.g.:
+
+   store somekey { status=2, id={a,u,x}, name="foo" }
+
+* Bugfixes:
+
+** Preserve locking type during database reorganization
+
 
 Version 1.18.1 - 2018-10-27
 
