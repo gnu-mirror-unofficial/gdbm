@@ -133,6 +133,7 @@ const char * const gdbm_errlist[_GDBM_MAX_ERRNO+1] = {
   [GDBM_DIR_OVERFLOW]           = N_("Bucket directory overflow"),
   [GDBM_BAD_BUCKET]             = N_("Malformed bucket header"),
   [GDBM_BAD_HEADER]             = N_("Malformed database file header"),
+  /* TRANSLATORS: avail_block is a field name. Don't translate it. */
   [GDBM_BAD_AVAIL]              = N_("Malformed avail_block"),
   [GDBM_BAD_HASH_TABLE]         = N_("Malformed hash table"),
   [GDBM_BAD_DIR_ENTRY]          = N_("Invalid directory entry"),
