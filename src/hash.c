@@ -33,11 +33,11 @@ _gdbm_hash (datum key)
   int   index;		/* Used to cycle through random values. */
 
   /* Set the initial value from key. */
-  value = 0x238F13AF * key.dsize;
+  value = 0x238F13AFu * key.dsize;
   for (index = 0; index < key.dsize; index++)
-    value = (value + (key.dptr[index] << (index*5 % 24))) & 0x7FFFFFFF;
+    value = (value + (key.dptr[index] << ((unsigned) index * 5 % 24))) & 0x7FFFFFFF;
 
-  value = (1103515243 * value + 12345) & 0x7FFFFFFF;  
+  value = (1103515243u * value + 12345) & 0x7FFFFFFF;  
 
   /* Return the value. */
   return((int) value);

@@ -127,6 +127,7 @@ gdbm_file_sync (GDBM_FILE dbf)
       GDBM_SET_ERRNO (dbf, GDBM_FILE_SYNC_ERROR, TRUE);
       return 1;
     }
+  return 0;
 #else
   sync ();
   sync ();
