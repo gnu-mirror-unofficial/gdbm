@@ -311,7 +311,7 @@ _gdbm_print_avail_list (FILE *fp, GDBM_FILE dbf)
       if (gdbm_avail_block_validate (dbf, av_stk) == 0)
 	av_table_display (av_stk->av_table, av_stk->count, fp);
       else
-	terror (_("invalid avail_block"));
+	terror ("%s", gdbm_strerror (GDBM_BAD_AVAIL));
       temp = av_stk->next_block;
     }
   free (av_stk);
@@ -1228,7 +1228,7 @@ struct command command_tab[] = {
       { NULL } },
     FALSE,
     REPEAT_NOARG,
-    N_("nextkey") },
+    N_("continue iteration: get next key and datum") },
   { S(store), T_CMD,
     checkdb_begin, store_handler, NULL,
     { { N_("KEY"), GDBM_ARG_DATUM, DS_KEY },
@@ -1242,7 +1242,7 @@ struct command command_tab[] = {
     { { NULL } },
     FALSE,
     REPEAT_NEVER,
-    N_("firstkey") },
+    N_("begin iteration: get first key and datum") },
   { S(reorganize), T_CMD,
     checkdb_begin, reorganize_handler, NULL,
     { { NULL } },

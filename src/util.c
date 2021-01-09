@@ -95,6 +95,7 @@ vgetyn (const char *prompt, va_list ap)
 		case 'N':
 		  return 0;
 		default:
+		  /* TRANSLATORS: Please, don't translate 'y' and 'n'. */
 		  fprintf (stdout, "%s\n", _("Please, reply 'y' or 'n'"));
 		}
 	      /* fall through */

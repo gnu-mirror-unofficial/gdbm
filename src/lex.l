@@ -136,11 +136,11 @@ input_context_pop (void)
   cp = context_tos->parent;
   free (context_tos);
   context_tos = cp;
+  yy_delete_buffer (YY_CURRENT_BUFFER);
   if (!cp)
     return 1;
-
+  
   yylloc = cp->locus;
-  yy_delete_buffer (YY_CURRENT_BUFFER);
   yy_switch_to_buffer (cp->buf);
 
   return 0;
