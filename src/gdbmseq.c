@@ -21,6 +21,22 @@
 
 #include "gdbmdefs.h"
 
+static inline int
+gdbm_valid_key_p (GDBM_FILE dbf, char *key_ptr, int key_size, int elem_loc)
+{
+  datum key;
+  int hash, bucket, offset;
+
+  key.dptr = key_ptr;
+  key.dsize = key_size;
+  _gdbm_hash_key (dbf, key, &hash, &bucket, &offset);
+  if (hash == dbf->bucket->h_table[elem_loc].hash_value &&
+      dbf->dir[bucket] == dbf->dir[dbf->bucket_dir])
+    return 1;
+  GDBM_SET_ERRNO (dbf, GDBM_BAD_HASH_ENTRY, TRUE);
+  return 0;
+}
+
 /* Find and read the next entry in the hash structure for DBF starting
    at ELEM_LOC of the current bucket and using RETURN_VAL as the place to
    put the data that is found.
@@ -74,6 +90,11 @@ get_next_key (GDBM_FILE dbf, int elem_loc, datum *return_val)
   /* Found the next key, read it into return_val. */
   find_data = _gdbm_read_entry (dbf, elem_loc);
   if (!find_data)
+    return;
+  /* Verify if computed hash and bucket address for the key match the
+     actual ones.  Bail out if not. */
+  if (!gdbm_valid_key_p (dbf, find_data,
+			 dbf->bucket->h_table[elem_loc].key_size, elem_loc))
     return;
   return_val->dsize = dbf->bucket->h_table[elem_loc].key_size;
   if (return_val->dsize == 0)
