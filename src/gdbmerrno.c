@@ -139,7 +139,8 @@ const char * const gdbm_errlist[_GDBM_MAX_ERRNO+1] = {
   [GDBM_BAD_DIR_ENTRY]          = N_("Invalid directory entry"),
   [GDBM_FILE_CLOSE_ERROR]       = N_("Error closing file"),
   [GDBM_FILE_SYNC_ERROR]        = N_("Error synchronizing file"),
-  [GDBM_FILE_TRUNCATE_ERROR]    = N_("Error truncating file")
+  [GDBM_FILE_TRUNCATE_ERROR]    = N_("Error truncating file"),
+  [GDBM_BAD_HASH_ENTRY]         = N_("Malformed bucket hash entry")
 };
 
 const char *
