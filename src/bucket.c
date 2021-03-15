@@ -116,7 +116,7 @@ _gdbm_get_bucket (GDBM_FILE dbf, int dir_index)
 	{
 	  GDBM_SET_ERRNO (dbf, GDBM_FILE_SEEK_ERROR, TRUE);
 	  _gdbm_fatal (dbf, _("lseek error"));
-	  return -1;
+	  goto err;
 	}
       
       /* Flush and drop the last recently used cache entry */
@@ -124,7 +124,7 @@ _gdbm_get_bucket (GDBM_FILE dbf, int dir_index)
       if (dbf->bucket_cache[lru].ca_changed)
 	{
 	  if (_gdbm_write_bucket (dbf, &dbf->bucket_cache[lru]))
-	    return -1;
+	    goto err;
 	}
       _gdbm_cache_entry_invalidate (dbf, lru);
       
@@ -138,7 +138,7 @@ _gdbm_get_bucket (GDBM_FILE dbf, int dir_index)
 		      dbf->name, gdbm_db_strerror (dbf));
 	  dbf->need_recovery = TRUE;
 	  _gdbm_fatal (dbf, gdbm_db_strerror (dbf));
-	  return -1;
+	  goto err;
 	}
       /* Validate the bucket */
       bucket = dbf->bucket_cache[lru].ca_bucket;
@@ -148,11 +148,11 @@ _gdbm_get_bucket (GDBM_FILE dbf, int dir_index)
 	    && bucket->bucket_bits <= dbf->header->dir_bits))
 	{
 	  GDBM_SET_ERRNO (dbf, GDBM_BAD_BUCKET, TRUE);
-	  return -1;
+	  goto err;
 	}
       /* Validate bucket_avail table */
       if (gdbm_bucket_avail_table_validate (dbf, bucket))
-	return -1;
+	goto err;
 
       /* Finally, store it in cache */
       dbf->last_read = lru;
@@ -163,6 +163,9 @@ _gdbm_get_bucket (GDBM_FILE dbf, int dir_index)
       dbf->cache_entry->ca_changed = FALSE;
     }
   return 0;
+ err:
+  dbf->bucket = NULL;
+  return -1;
 }
 
 int
