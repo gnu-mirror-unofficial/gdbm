@@ -144,6 +144,7 @@ _gdbm_finish_transfer (GDBM_FILE dbf, GDBM_FILE new_dbf,
   free (dbf->dir);
 
   _gdbm_cache_flush (dbf);
+  _gdbm_cache_free (dbf);
 
   dbf->lock_type         = new_dbf->lock_type;
   dbf->desc              = new_dbf->desc;
