@@ -285,6 +285,8 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
   dbf->bucket_cache = NULL;
   dbf->cache_size = 0;
 
+  dbf->file_size = -1;
+  
   dbf->memory_mapping = FALSE;
   dbf->mapped_size_max = SIZE_T_MAX;
   dbf->mapped_region = NULL;
@@ -761,4 +763,21 @@ _gdbm_cache_entry_invalidate (GDBM_FILE dbf, int index)
   dbf->bucket_cache[index].ca_changed = FALSE;
   dbf->bucket_cache[index].ca_data.hash_val = -1;
   dbf->bucket_cache[index].ca_data.elem_loc = -1;
+}
+
+int
+_gdbm_file_size (GDBM_FILE dbf, off_t *psize)
+{
+  if (dbf->file_size == -1)
+    {
+      struct stat sb;
+      if (fstat (dbf->desc, &sb))
+	{
+	  GDBM_SET_ERRNO (dbf, GDBM_FILE_STAT_ERROR, FALSE);
+	  return -1;
+	}
+      dbf->file_size = sb.st_size;
+    }
+  *psize = dbf->file_size;
+  return 0;
 }

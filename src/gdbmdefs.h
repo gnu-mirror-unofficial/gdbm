@@ -111,8 +111,6 @@ typedef struct
   int   data_size;        /* Size of associated data in the file. */
 } bucket_element;
 
-extern int gdbm_bucket_element_valid_p (GDBM_FILE dbf, int elem_loc);
-
 /* A bucket is a small hash table.  This one consists of a number of
    bucket elements plus some bookkeeping fields.  The number of elements
    depends on the optimum blocksize for the storage device and on a
@@ -243,6 +241,9 @@ struct gdbm_file_info
   unsigned bucket_changed :1;
   unsigned second_changed :1;
 
+  off_t file_size;       /* Cached value of the current disk file size.
+			    If -1, fstat will be used to retrieve it. */
+  
   /* Mmap info */
   size_t mapped_size_max;/* Max. allowed value for mapped_size */
   void  *mapped_region;  /* Mapped region */
