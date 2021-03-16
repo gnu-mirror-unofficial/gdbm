@@ -31,6 +31,23 @@ static int push_avail_block (GDBM_FILE);
 static int pop_avail_block (GDBM_FILE);
 static int adjust_bucket_avail (GDBM_FILE);
 
+int
+_gdbm_avail_block_read (GDBM_FILE dbf, avail_block *avblk, size_t size)
+{
+  int rc;
+  
+  rc = _gdbm_full_read (dbf, avblk, size);
+  if (rc)
+    {
+      GDBM_DEBUG (GDBM_DEBUG_ERR|GDBM_DEBUG_OPEN,
+		  "%s: error reading av_table: %s",
+		  dbf->name, gdbm_db_strerror (dbf));
+    }
+  else
+    rc = gdbm_avail_block_validate (dbf, avblk, size);
+  return rc;
+}
+
 /* Allocate space in the file DBF for a block NUM_BYTES in length.  Return
    the file address of the start of the block.  
 
@@ -159,7 +176,6 @@ _gdbm_free (GDBM_FILE dbf, off_t file_adr, int num_bytes)
 static int
 pop_avail_block (GDBM_FILE dbf)
 {
-  int rc;
   off_t file_pos;		/* For use with the lseek system call. */
   avail_elem new_el;
   avail_block *new_blk;
@@ -197,15 +213,7 @@ pop_avail_block (GDBM_FILE dbf)
       return -1;
     }
 
-  rc = _gdbm_full_read (dbf, new_blk, new_el.av_size);
-  if (rc)
-    {
-      free (new_blk);
-      _gdbm_fatal (dbf, gdbm_db_strerror (dbf));
-      return -1;
-    }
-
-  if (gdbm_avail_block_validate (dbf, new_blk))
+  if (_gdbm_avail_block_read (dbf, new_blk, new_el.av_size))
     {
       free (new_blk);
       _gdbm_fatal (dbf, gdbm_db_strerror (dbf));

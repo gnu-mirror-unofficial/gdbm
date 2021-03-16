@@ -286,7 +286,7 @@ _gdbm_print_avail_list (FILE *fp, GDBM_FILE dbf)
 
   /* Initialize the variables for a pass throught the avail stack. */
   temp = dbf->header->avail.next_block;
-  size = (dbf->header->avail.size * sizeof (avail_elem))
+  size = ((dbf->header->avail.size - 1) * sizeof (avail_elem))
 	  + sizeof (avail_block);
   av_stk = emalloc (size);
 
@@ -299,7 +299,7 @@ _gdbm_print_avail_list (FILE *fp, GDBM_FILE dbf)
 	  break;
 	}
       
-      if (_gdbm_full_read (dbf, av_stk, size))
+      if (_gdbm_avail_block_read (dbf, av_stk, size))
 	{
           terror ("read: %s", gdbm_db_strerror (dbf));
 	  break;
@@ -308,10 +308,8 @@ _gdbm_print_avail_list (FILE *fp, GDBM_FILE dbf)
       /* Print the block! */
       fprintf (fp, _("\nblock = %d\nsize  = %d\ncount = %d\n"), temp,
 	       av_stk->size, av_stk->count);
-      if (gdbm_avail_block_validate (dbf, av_stk) == 0)
-	av_table_display (av_stk->av_table, av_stk->count, fp);
-      else
-	terror ("%s", gdbm_strerror (GDBM_BAD_AVAIL));
+      av_table_display (av_stk->av_table, av_stk->count, fp);
+
       temp = av_stk->next_block;
     }
   free (av_stk);
