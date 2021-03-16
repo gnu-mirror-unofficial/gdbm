@@ -54,6 +54,8 @@ int gdbm_bucket_avail_table_validate (GDBM_FILE dbf, hash_bucket *bucket);
 
 int _gdbm_validate_header (GDBM_FILE dbf);
 
+int _gdbm_file_size (GDBM_FILE dbf, off_t *psize);
+
 /* From mmap.c */
 int _gdbm_mapped_init	(GDBM_FILE);
 void _gdbm_mapped_unmap	(GDBM_FILE);

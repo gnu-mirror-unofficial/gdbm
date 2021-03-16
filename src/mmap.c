@@ -61,21 +61,6 @@ SUM_FILE_SIZE (GDBM_FILE dbf, off_t delta)
   return -1;
 }
 
-/* Store the size of the GDBM file DBF in *PSIZE.
-   Return 0 on success and -1 on failure. */
-int
-_gdbm_file_size (GDBM_FILE dbf, off_t *psize)
-{
-  struct stat sb;
-  if (fstat (dbf->desc, &sb))
-    {
-      GDBM_SET_ERRNO (dbf, GDBM_FILE_STAT_ERROR, FALSE);
-      return -1;
-    }
-  *psize = sb.st_size;
-  return 0;
-}
-
 /* Unmap the region. Reset all mapped fields to initial values. */
 void
 _gdbm_mapped_unmap (GDBM_FILE dbf)

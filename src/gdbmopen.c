@@ -286,7 +286,8 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
   /* Initialize cache */
   dbf->cache_tree = _gdbm_cache_tree_alloc ();
   _gdbm_cache_init (dbf, DEFAULT_CACHESIZE);
-  
+
+  dbf->file_size = -1;
   dbf->memory_mapping = FALSE;
   dbf->mapped_size_max = SIZE_T_MAX;
   dbf->mapped_region = NULL;
@@ -719,3 +720,19 @@ gdbm_open (const char *file, int block_size, int flags, int mode,
 		       fatal_func);
 }
 
+int
+_gdbm_file_size (GDBM_FILE dbf, off_t *psize)
+{
+  if (dbf->file_size == -1)
+    {
+      struct stat sb;
+      if (fstat (dbf->desc, &sb))
+	{
+	  GDBM_SET_ERRNO (dbf, GDBM_FILE_STAT_ERROR, FALSE);
+	  return -1;
+	}
+      dbf->file_size = sb.st_size;
+    }
+  *psize = dbf->file_size;
+  return 0;
+}

@@ -21,11 +21,24 @@
 
 #include "gdbmdefs.h"
 
-int
+/* Return true if OFF is a valid offset for GDBM_FILE */
+static inline int
+gdbm_offset_ok (GDBM_FILE dbf, off_t off)
+{
+  off_t filesize;
+
+  if (_gdbm_file_size (dbf, &filesize))
+    return 0;
+  return off <= filesize;
+}
+
+/* Return true if the element of hash table at index ELEM_LOC is a valid
+   hash element and represents a key/data pair that can be retrieved from
+   DBF. */
+static inline int
 gdbm_bucket_element_valid_p (GDBM_FILE dbf, int elem_loc)
 {
-  return
-    elem_loc < dbf->header->bucket_elems
+  return elem_loc < dbf->header->bucket_elems
     && dbf->bucket->h_table[elem_loc].hash_value != -1
     && dbf->bucket->h_table[elem_loc].key_size >= 0
     && off_t_sum_ok (dbf->bucket->h_table[elem_loc].data_pointer,
@@ -33,7 +46,11 @@ gdbm_bucket_element_valid_p (GDBM_FILE dbf, int elem_loc)
     && dbf->bucket->h_table[elem_loc].data_size >= 0
     && off_t_sum_ok (dbf->bucket->h_table[elem_loc].data_pointer
 		     + dbf->bucket->h_table[elem_loc].key_size,
-		     dbf->bucket->h_table[elem_loc].data_size);
+		     dbf->bucket->h_table[elem_loc].data_size)
+    && gdbm_offset_ok (dbf,
+		       dbf->bucket->h_table[elem_loc].data_pointer
+		       + dbf->bucket->h_table[elem_loc].key_size
+		       + dbf->bucket->h_table[elem_loc].data_size);
 }
   
 /* Read the data found in bucket entry ELEM_LOC in file DBF and
@@ -65,12 +82,8 @@ _gdbm_read_entry (GDBM_FILE dbf, int elem_loc)
   dsize = key_size + data_size;
   data_ca = &dbf->cache_entry->ca_data;
 
-  /* Set up the cache. */
-  data_ca->key_size = key_size;
-  data_ca->data_size = data_size;
-  data_ca->elem_loc = elem_loc;
-  data_ca->hash_val = dbf->bucket->h_table[elem_loc].hash_value;
-
+  /* Make sure data_ca has sufficient space to accomodate both
+     key and content. */
   if (dsize <= data_ca->dsize)
     {
       if (data_ca->dsize == 0)
@@ -122,6 +135,12 @@ _gdbm_read_entry (GDBM_FILE dbf, int elem_loc)
       _gdbm_fatal (dbf, gdbm_db_strerror (dbf));
       return NULL;
     }
+  
+  /* Set up the cache. */
+  data_ca->key_size = key_size;
+  data_ca->data_size = data_size;
+  data_ca->elem_loc = elem_loc;
+  data_ca->hash_val = dbf->bucket->h_table[elem_loc].hash_value;
 
   return data_ca->dptr;
 }

@@ -53,6 +53,9 @@ int
 _gdbm_full_write (GDBM_FILE dbf, void *buffer, size_t size)
 {
   char *ptr = buffer;
+
+  /* Invalidate file_size */
+  dbf->file_size = -1;
   while (size)
     {
       ssize_t wrbytes = gdbm_file_write (dbf, ptr, size);
@@ -103,6 +106,9 @@ _gdbm_file_extend (GDBM_FILE dbf, off_t size)
 	  return -1;
 	}
 
+      /* Invalidate file_size */
+      dbf->file_size = -1;
+      
       while (size)
 	{
 	  ssize_t n = write (dbf->desc, buf,
