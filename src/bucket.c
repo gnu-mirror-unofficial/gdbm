@@ -55,7 +55,35 @@ gdbm_dir_entry_valid_p (GDBM_FILE dbf, int dir_index)
          && dir_index < GDBM_DIR_COUNT (dbf)
          && dbf->dir[dir_index] >= dbf->header->block_size;
 }
-    
+
+static int
+bucket_read (GDBM_FILE dbf, hash_bucket *bucket)
+{
+  /* Read the bucket. */
+  if (_gdbm_full_read (dbf, bucket, dbf->header->bucket_size))
+    {
+      GDBM_DEBUG (GDBM_DEBUG_ERR,
+		  "%s: error reading bucket: %s",
+		  dbf->name, gdbm_db_strerror (dbf));
+      dbf->need_recovery = TRUE;
+      _gdbm_fatal (dbf, gdbm_db_strerror (dbf));
+      return -1;
+    }
+  
+  /* Validate the bucket */
+  if (!(bucket->count >= 0
+	&& bucket->count <= dbf->header->bucket_elems
+	&& bucket->bucket_bits >= 0
+	&& bucket->bucket_bits <= dbf->header->dir_bits))
+    {
+      GDBM_SET_ERRNO (dbf, GDBM_BAD_BUCKET, TRUE);
+      return -1;
+    }
+  
+  /* Validate bucket_avail table */
+  return gdbm_bucket_avail_table_validate (dbf, bucket);
+}
+
 /* Find a bucket for DBF that is pointed to by the bucket directory from
    location DIR_INDEX.   The bucket cache is first checked to see if it
    is already in memory.  If not, a bucket may be tossed to read the new
@@ -66,7 +94,6 @@ gdbm_dir_entry_valid_p (GDBM_FILE dbf, int dir_index)
 int
 _gdbm_get_bucket (GDBM_FILE dbf, int dir_index)
 {
-  int rc;
   off_t bucket_adr;	/* The address of the correct hash bucket.  */
   off_t	file_pos;	/* The return address for lseek. */
   int   index;		/* Loop index. */
@@ -95,7 +122,6 @@ _gdbm_get_bucket (GDBM_FILE dbf, int dir_index)
   if (dbf->cache_entry->ca_adr != bucket_adr)
     {
       size_t lru;
-      hash_bucket *bucket;
       
       /* Look in the cache. */
       for (index = 0; index < dbf->cache_size; index++)
@@ -116,7 +142,7 @@ _gdbm_get_bucket (GDBM_FILE dbf, int dir_index)
 	{
 	  GDBM_SET_ERRNO (dbf, GDBM_FILE_SEEK_ERROR, TRUE);
 	  _gdbm_fatal (dbf, _("lseek error"));
-	  goto err;
+	  return -1;
 	}
       
       /* Flush and drop the last recently used cache entry */
@@ -124,35 +150,17 @@ _gdbm_get_bucket (GDBM_FILE dbf, int dir_index)
       if (dbf->bucket_cache[lru].ca_changed)
 	{
 	  if (_gdbm_write_bucket (dbf, &dbf->bucket_cache[lru]))
-	    goto err;
+	    return -1;
 	}
       _gdbm_cache_entry_invalidate (dbf, lru);
-      
-      /* Read the bucket. */
-      rc = _gdbm_full_read (dbf, dbf->bucket_cache[lru].ca_bucket,
-			    dbf->header->bucket_size);
-      if (rc)
+
+      if (bucket_read (dbf, dbf->bucket_cache[lru].ca_bucket))
 	{
-	  GDBM_DEBUG (GDBM_DEBUG_ERR,
-		      "%s: error reading bucket: %s",
-		      dbf->name, gdbm_db_strerror (dbf));
-	  dbf->need_recovery = TRUE;
-	  _gdbm_fatal (dbf, gdbm_db_strerror (dbf));
-	  goto err;
+	  /* Invalidate the bucket */
+	  memset (dbf->bucket_cache[lru].ca_bucket, 0,
+		  dbf->header->bucket_size);
+	  return -1;
 	}
-      /* Validate the bucket */
-      bucket = dbf->bucket_cache[lru].ca_bucket;
-      if (!(bucket->count >= 0
-	    && bucket->count <= dbf->header->bucket_elems
-	    && bucket->bucket_bits >= 0
-	    && bucket->bucket_bits <= dbf->header->dir_bits))
-	{
-	  GDBM_SET_ERRNO (dbf, GDBM_BAD_BUCKET, TRUE);
-	  goto err;
-	}
-      /* Validate bucket_avail table */
-      if (gdbm_bucket_avail_table_validate (dbf, bucket))
-	goto err;
 
       /* Finally, store it in cache */
       dbf->last_read = lru;
@@ -163,9 +171,6 @@ _gdbm_get_bucket (GDBM_FILE dbf, int dir_index)
       dbf->cache_entry->ca_changed = FALSE;
     }
   return 0;
- err:
-  dbf->bucket = NULL;
-  return -1;
 }
 
 int
