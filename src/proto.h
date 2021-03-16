@@ -32,6 +32,7 @@ int _gdbm_cache_flush  (GDBM_FILE dbf);
 off_t _gdbm_alloc       (GDBM_FILE, int);
 int  _gdbm_free         (GDBM_FILE, off_t, int);
 void _gdbm_put_av_elem  (avail_elem, avail_elem [], int *, int);
+int _gdbm_avail_block_read (GDBM_FILE dbf, avail_block *avblk, size_t size);
 
 /* From findkey.c */
 char *_gdbm_read_entry  (GDBM_FILE, int);
@@ -48,7 +49,7 @@ int _gdbm_end_update   (GDBM_FILE);
 void _gdbm_fatal	(GDBM_FILE, const char *);
 
 /* From gdbmopen.c */
-int gdbm_avail_block_validate (GDBM_FILE dbf, avail_block *avblk);
+int gdbm_avail_block_validate (GDBM_FILE dbf, avail_block *avblk, size_t size);
 int gdbm_bucket_avail_table_validate (GDBM_FILE dbf, hash_bucket *bucket);
 
 int _gdbm_validate_header (GDBM_FILE dbf);

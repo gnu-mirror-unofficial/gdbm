@@ -45,7 +45,7 @@ off_t_sum_ok (off_t a, off_t b)
 
 /* The available file space is stored in an "avail" table.  The one with
    most activity is contained in the file header. (See below.)  When that
-   one filles up, it is split in half and half is pushed on an "avail
+   one fills up, it is split in half and half is pushed on an "avail
    stack."  When the active avail table is empty and the "avail stack" is
    not empty, the top of the stack is popped into the active avail table. */
 
@@ -94,7 +94,6 @@ typedef struct
                           array in avail.  This avail grows to fill
                           the entire block. */
 } gdbm_file_header;
-
 
 /* The dbm hash bucket element contains the full 31 bit hash value, the
    "pointer" to the key and data (stored together) with their sizes.  It also
