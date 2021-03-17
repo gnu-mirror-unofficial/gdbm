@@ -108,8 +108,9 @@ gdbm_avail_table_valid_p (GDBM_FILE dbf, avail_elem *av, int count)
 int
 gdbm_avail_block_validate (GDBM_FILE dbf, avail_block *avblk, size_t size)
 {
-  if (!(((size - sizeof (avail_block)) / sizeof (avail_elem) + 1) >= avblk->count
-	&& gdbm_avail_block_valid_p (avblk)
+  if (!(size > sizeof (avail_block)
+	&& (avblk->size > 1 && avblk->count >= 0 && avblk->count <= avblk->size)
+	&& ((size - sizeof (avail_block)) / sizeof (avail_elem) + 1) >= avblk->count
 	&& gdbm_avail_table_valid_p (dbf, avblk->av_table, avblk->count)))
     {
       GDBM_SET_ERRNO (dbf, GDBM_BAD_AVAIL, TRUE);
@@ -198,17 +199,15 @@ validate_header (gdbm_file_header const *hdr, struct stat const *st)
   if (hdr->bucket_elems != bucket_element_count (hdr->bucket_size))
     return GDBM_BAD_HEADER;
 
+  if (((hdr->block_size - sizeof (gdbm_file_header)) / sizeof(avail_elem) + 1)
+      != hdr->avail.size)
+    return GDBM_BAD_HEADER;
+
   return result;
 }
 
-/*
- * GDBM file header is read in two chunks: first, all fields up to avail,
- * then the avail block.  PARTIAL_HEADER_SIZE is the size of the first
- * chunk, and HEADER_AVAIL_SIZE(dbf) gives the size of the second one.
- */
-#define PARTIAL_HEADER_SIZE (offsetof (gdbm_file_header, avail))
 #define HEADER_AVAIL_SIZE(dbf) \
-  ((dbf)->header->block_size - PARTIAL_HEADER_SIZE)
+  ((dbf)->header->block_size - offsetof (gdbm_file_header, avail))
 
 int
 _gdbm_validate_header (GDBM_FILE dbf)
@@ -540,7 +539,7 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
       int rc;
       
       /* Read the partial file header. */
-      if (_gdbm_full_read (dbf, &partial_header, PARTIAL_HEADER_SIZE))
+      if (_gdbm_full_read (dbf, &partial_header, sizeof (partial_header)))
 	{
 	  GDBM_DEBUG (GDBM_DEBUG_ERR|GDBM_DEBUG_OPEN,
 		      "%s: error reading partial header: %s",
@@ -577,9 +576,9 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
 	  return NULL;
 	}
       
-      memcpy (dbf->header, &partial_header, PARTIAL_HEADER_SIZE);
-      if (_gdbm_avail_block_read (dbf, &dbf->header->avail,
-				  HEADER_AVAIL_SIZE (dbf)))
+      memcpy (dbf->header, &partial_header, sizeof (partial_header));
+      if (_gdbm_full_read (dbf, &dbf->header->avail.av_table[1],
+			   dbf->header->block_size - sizeof (gdbm_file_header)))
 	{
 	  if (!(flags & GDBM_CLOERROR))
 	    dbf->desc = -1;
@@ -587,6 +586,15 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
 	  return NULL;
 	}
 
+      if (gdbm_avail_block_validate (dbf, &dbf->header->avail,
+				     HEADER_AVAIL_SIZE (dbf)))
+	{
+	  if (!(flags & GDBM_CLOERROR))
+	    dbf->desc = -1;
+	  SAVE_ERRNO (gdbm_close (dbf));
+	  return NULL;
+	}
+      
       /* Allocate space for the hash table directory.  */
       dbf->dir = malloc (dbf->header->dir_size);
       if (dbf->dir == NULL)

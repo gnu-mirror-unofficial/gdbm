@@ -240,19 +240,17 @@ _gdbm_avail_list_size (GDBM_FILE dbf, size_t min_size)
 	  terror ("lseek: %s", strerror (errno));
 	  break;
 	}
-      
-      if (_gdbm_full_read (dbf, av_stk, size))
+
+      if (_gdbm_avail_block_read (dbf, av_stk, size))
 	{
 	  terror ("read: %s", gdbm_db_strerror (dbf));
 	  break;
 	}
 
-      if (gdbm_avail_block_valid_p (av_stk))
-	{
-	  lines += av_stk->count;
-	  if (lines > min_size)
-	    break;
-	}
+      lines += av_stk->count;
+      if (lines > min_size)
+	break;
+
       temp = av_stk->next_block;
     }
   free (av_stk);
@@ -276,7 +274,7 @@ void
 _gdbm_print_avail_list (FILE *fp, GDBM_FILE dbf)
 {
   int             temp;
-  int             size;
+  size_t          size;
   avail_block    *av_stk;
   
   /* Print the the header avail block.  */
@@ -286,8 +284,8 @@ _gdbm_print_avail_list (FILE *fp, GDBM_FILE dbf)
 
   /* Initialize the variables for a pass throught the avail stack. */
   temp = dbf->header->avail.next_block;
-  size = ((dbf->header->avail.size - 1) * sizeof (avail_elem))
-	  + sizeof (avail_block);
+  size = (((size_t)dbf->header->avail.size - 1) * sizeof (avail_elem))
+          + sizeof (avail_block);
   av_stk = emalloc (size);
 
   /* Print the stack. */
