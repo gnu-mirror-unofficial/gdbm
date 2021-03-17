@@ -19,6 +19,7 @@
 /* Include all system headers first. */
 #include <sys/types.h>
 #include <stdio.h>
+#include <stddef.h>
 #if HAVE_SYS_FILE_H
 # include <sys/file.h>
 #endif

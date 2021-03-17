@@ -215,47 +215,29 @@ print_bucket (FILE *fp, hash_bucket *bucket, const char *mesg, ...)
 	     bucket->bucket_avail[index].av_size);
 }
 
+struct avail_list_counter
+{
+  size_t min_size;
+  size_t lines;
+};
+
+static int
+avail_list_count (avail_block *avblk, off_t off, void *data)
+{
+  struct avail_list_counter *ctr = data;
+
+  ctr->lines += avblk->count;
+  return ctr->lines > ctr->min_size;
+} 
+  
 size_t
 _gdbm_avail_list_size (GDBM_FILE dbf, size_t min_size)
 {
-  int             temp;
-  int             size;
-  avail_block    *av_stk;
-  size_t          lines;
-  
-  lines = 4 + dbf->header->avail.count;
-  if (lines > min_size)
-    return lines;
-  /* Initialize the variables for a pass throught the avail stack. */
-  temp = dbf->header->avail.next_block;
-  size = (((dbf->header->avail.size * sizeof (avail_elem)) >> 1)
-	  + sizeof (avail_block));
-  av_stk = emalloc (size);
-
-  /* Traverse the stack. */
-  while (temp)
-    {
-      if (gdbm_file_seek (dbf, temp, SEEK_SET) != temp)
-	{
-	  terror ("lseek: %s", strerror (errno));
-	  break;
-	}
-
-      if (_gdbm_avail_block_read (dbf, av_stk, size))
-	{
-	  terror ("read: %s", gdbm_db_strerror (dbf));
-	  break;
-	}
-
-      lines += av_stk->count;
-      if (lines > min_size)
-	break;
-
-      temp = av_stk->next_block;
-    }
-  free (av_stk);
-
-  return lines;
+  struct avail_list_counter ctr;
+  ctr.min_size = 0;
+  ctr.lines = 0;
+  gdbm_avail_traverse (dbf, avail_list_count, &ctr);
+  return ctr.lines;
 }
 
 static void
@@ -270,47 +252,25 @@ av_table_display (avail_elem *av_table, int count, FILE *fp)
     }
 }
 
+static int
+avail_list_print (avail_block *avblk, off_t n, void *data)
+{
+  FILE *fp = data;
+  fprintf (fp, _("\nblock = %lu\nsize  = %d\ncount = %d\n"),
+	   (unsigned long) n, avblk->size, avblk->count);
+  av_table_display (avblk->av_table, avblk->count, fp);
+  return 0;
+}
+
 void
 _gdbm_print_avail_list (FILE *fp, GDBM_FILE dbf)
 {
-  int             temp;
-  size_t          size;
-  avail_block    *av_stk;
-  
   /* Print the the header avail block.  */
   fprintf (fp, _("\nheader block\nsize  = %d\ncount = %d\n"),
 	   dbf->header->avail.size, dbf->header->avail.count);
   av_table_display (dbf->header->avail.av_table, dbf->header->avail.count, fp);
-
-  /* Initialize the variables for a pass throught the avail stack. */
-  temp = dbf->header->avail.next_block;
-  size = (((size_t)dbf->header->avail.size - 1) * sizeof (avail_elem))
-          + sizeof (avail_block);
-  av_stk = emalloc (size);
-
-  /* Print the stack. */
-  while (temp)
-    {
-      if (gdbm_file_seek (dbf, temp, SEEK_SET) != temp)
-	{
-	  terror ("lseek: %s", strerror (errno));
-	  break;
-	}
-      
-      if (_gdbm_avail_block_read (dbf, av_stk, size))
-	{
-          terror ("read: %s", gdbm_db_strerror (dbf));
-	  break;
-	}
-
-      /* Print the block! */
-      fprintf (fp, _("\nblock = %d\nsize  = %d\ncount = %d\n"), temp,
-	       av_stk->size, av_stk->count);
-      av_table_display (av_stk->av_table, av_stk->count, fp);
-
-      temp = av_stk->next_block;
-    }
-  free (av_stk);
+  if (gdbm_avail_traverse (dbf, avail_list_print, fp))
+    terror ("%s", gdbm_strerror (gdbm_errno));
 }
 
 void

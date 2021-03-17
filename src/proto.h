@@ -49,9 +49,6 @@ int _gdbm_end_update   (GDBM_FILE);
 void _gdbm_fatal	(GDBM_FILE, const char *);
 
 /* From gdbmopen.c */
-int gdbm_avail_block_validate (GDBM_FILE dbf, avail_block *avblk, size_t size);
-int gdbm_bucket_avail_table_validate (GDBM_FILE dbf, hash_bucket *bucket);
-
 int _gdbm_validate_header (GDBM_FILE dbf);
 
 int _gdbm_file_size (GDBM_FILE dbf, off_t *psize);
@@ -91,6 +88,14 @@ int _gdbm_next_bucket_dir (GDBM_FILE dbf, int bucket_dir);
 cache_tree *_gdbm_cache_tree_alloc (void);
 void _gdbm_cache_tree_destroy (cache_tree *tree);
 void _gdbm_cache_tree_delete (cache_tree *tree, struct cache_node *n);
+
+/* avail.c */
+int gdbm_avail_block_validate (GDBM_FILE dbf, avail_block *avblk, size_t size);
+int gdbm_bucket_avail_table_validate (GDBM_FILE dbf, hash_bucket *bucket);
+int gdbm_avail_traverse (GDBM_FILE dbf,
+			 int (*cb) (avail_block *, off_t, void *),
+			 void *data);
+
 
 /* Return codes for _gdbm_cache_tree_lookup. */
 enum
