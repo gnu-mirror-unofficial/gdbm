@@ -164,6 +164,8 @@ _gdbm_finish_transfer (GDBM_FILE dbf, GDBM_FILE new_dbf,
   dbf->directory_changed = new_dbf->directory_changed;
   dbf->bucket_changed    = new_dbf->bucket_changed;
   dbf->second_changed    = new_dbf->second_changed;
+
+  dbf->file_size = -1;
   
   free (new_dbf->name);
   free (new_dbf);

@@ -66,13 +66,6 @@ typedef struct
   avail_elem av_table[1]; /* The table.  Make it look like an array.  */
 } avail_block;
 
-/* Return true if avail_block is valid */
-static int inline
-gdbm_avail_block_valid_p (avail_block const *av)
-{
-  return (av->size > 1 && av->count >= 0 && av->count <= av->size);
-}
-
 /* Return true if both AV and the size of AV->av_table are valid.
    See comment to this function in gdbmopen.c */
 extern int gdbm_avail_table_valid_p (GDBM_FILE dbf, avail_elem *av, int count);
