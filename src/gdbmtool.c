@@ -482,6 +482,7 @@ nextkey_handler (struct handler_param *param)
   return_data = gdbm_nextkey (gdbm_file, key_data);
   if (return_data.dptr != NULL)
     {
+      free (key_data.dptr);
       key_data = return_data;
       datum_format (param->fp, &key_data, dsdef[DS_KEY]);
       fputc ('\n', param->fp);
