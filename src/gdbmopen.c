@@ -56,84 +56,6 @@ bucket_element_count (size_t bucket_size)
 }
 
 static int
-avail_comp (void const *a, void const *b)
-{
-  avail_elem const *ava = a;
-  avail_elem const *avb = b;
-  return ava->av_size - avb->av_size;
-}
-
-/* Returns true if the avail array AV[0]@COUNT is valid.
-
-   As a side effect, ensures the array is sorted by element size
-   in increasing order and restores the ordering if necessary.
-
-   The proper ordering could have been clobbered in versions of GDBM<=1.15,
-   by a call to _gdbm_put_av_elem with the can_merge parameter set to
-   TRUE. This happened in two cases: either because the GDBM_COALESCEBLKS
-   was set, and (quite unfortunately) when _gdbm_put_av_elem was called
-   from pop_avail_block in falloc.c. The latter case is quite common,
-   which means that there can be lots of existing databases with broken
-   ordering of avail arrays. Thus, restoring of the proper ordering
-   is essential for people to be able to use their existing databases.
-*/
-int
-gdbm_avail_table_valid_p (GDBM_FILE dbf, avail_elem *av, int count)
-{
-  off_t prev = 0;
-  int i;
-  int needs_sorting = 0;
-  avail_elem *p = av;
-  
-  prev = 0;
-  for (i = 0; i < count; i++, p++)
-    {
-      if (!(p->av_adr >= dbf->header->bucket_size
-	    && p->av_adr + p->av_size <= dbf->header->next_block))
-	return 0;
-      if (p->av_size < prev)
-	needs_sorting = 1;
-      prev = p->av_size;
-    }
-
-  if (needs_sorting && dbf->read_write)
-    {
-      GDBM_DEBUG (GDBM_DEBUG_ERR, "%s", "restoring sort order");
-      qsort (av, count, sizeof av[0], avail_comp);
-    }
-  
-  return 1;
-}
-
-int
-gdbm_avail_block_validate (GDBM_FILE dbf, avail_block *avblk, size_t size)
-{
-  if (!(size > sizeof (avail_block)
-	&& (avblk->size > 1 && avblk->count >= 0 && avblk->count <= avblk->size)
-	&& ((size - sizeof (avail_block)) / sizeof (avail_elem) + 1) >= avblk->count
-	&& gdbm_avail_table_valid_p (dbf, avblk->av_table, avblk->count)))
-    {
-      GDBM_SET_ERRNO (dbf, GDBM_BAD_AVAIL, TRUE);
-      return -1;
-    }
-  return 0;
-}
-
-int
-gdbm_bucket_avail_table_validate (GDBM_FILE dbf, hash_bucket *bucket)
-{
-  if (!(bucket->av_count >= 0
-	&& bucket->av_count <= BUCKET_AVAIL
-	&& gdbm_avail_table_valid_p (dbf, bucket->bucket_avail,
-				     bucket->av_count)))
-    {
-      GDBM_SET_ERRNO (dbf, GDBM_BAD_AVAIL, TRUE);
-      return -1;
-    }
-  return 0;
-}
-
-static int
 validate_header (gdbm_file_header const *hdr, struct stat const *st)
 {
   int dir_size, dir_bits;
@@ -206,9 +128,6 @@ validate_header (gdbm_file_header const *hdr, struct stat const *st)
   return result;
 }
 
-#define HEADER_AVAIL_SIZE(dbf) \
-  ((dbf)->header->block_size - offsetof (gdbm_file_header, avail))
-
 int
 _gdbm_validate_header (GDBM_FILE dbf)
 {
@@ -222,7 +141,7 @@ _gdbm_validate_header (GDBM_FILE dbf)
   if (rc == 0)
     {
       if (gdbm_avail_block_validate (dbf, &dbf->header->avail,
-				     HEADER_AVAIL_SIZE (dbf)))
+				     GDBM_HEADER_AVAIL_SIZE (dbf)))
 	rc = GDBM_BAD_AVAIL;
     }
   return rc;
@@ -587,7 +506,7 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
 	}
 
       if (gdbm_avail_block_validate (dbf, &dbf->header->avail,
-				     HEADER_AVAIL_SIZE (dbf)))
+				     GDBM_HEADER_AVAIL_SIZE (dbf)))
 	{
 	  if (!(flags & GDBM_CLOERROR))
 	    dbf->desc = -1;

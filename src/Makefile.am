@@ -58,6 +58,7 @@ libgdbm_la_SOURCES = \
  gdbmsetopt.c\
  gdbmstore.c\
  gdbmsync.c\
+ avail.c\
  base64.c\
  bucket.c\
  falloc.c\

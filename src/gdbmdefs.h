@@ -66,10 +66,6 @@ typedef struct
   avail_elem av_table[1]; /* The table.  Make it look like an array.  */
 } avail_block;
 
-/* Return true if both AV and the size of AV->av_table are valid.
-   See comment to this function in gdbmopen.c */
-extern int gdbm_avail_table_valid_p (GDBM_FILE dbf, avail_elem *av, int count);
-
 /* The dbm file header keeps track of the current location of the hash
    directory and the free space in the file.  */
 
@@ -247,6 +243,9 @@ struct gdbm_file_info
 };
 
 #define GDBM_DIR_COUNT(db) ((db)->header->dir_size / sizeof (off_t))
+
+#define GDBM_HEADER_AVAIL_SIZE(dbf) \
+  ((dbf)->header->block_size - offsetof (gdbm_file_header, avail))
 
 /* Execute CODE without clobbering errno */
 #define SAVE_ERRNO(code)                        \

@@ -132,6 +132,8 @@ extern int gdbm_import (GDBM_FILE, const char *, int);
 extern int gdbm_import_from_file (GDBM_FILE dbf, FILE *fp, int flag);
 
 extern int gdbm_count (GDBM_FILE dbf, gdbm_count_t *pcount);
+
+extern int gdbm_avail_verify (GDBM_FILE dbf);
 
 typedef struct gdbm_recovery_s
 {

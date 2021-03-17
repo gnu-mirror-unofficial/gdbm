@@ -88,6 +88,13 @@ int _gdbm_dump (GDBM_FILE dbf, FILE *fp);
 /* From recover.c */
 int _gdbm_next_bucket_dir (GDBM_FILE dbf, int bucket_dir);
 
+/* avail.c */
+int gdbm_avail_block_validate (GDBM_FILE dbf, avail_block *avblk, size_t size);
+int gdbm_bucket_avail_table_validate (GDBM_FILE dbf, hash_bucket *bucket);
+int gdbm_avail_traverse (GDBM_FILE dbf,
+                         int (*cb) (avail_block *, off_t, void *),
+                         void *data);
+
 /* I/O functions */
 static inline ssize_t
 gdbm_file_read (GDBM_FILE dbf, void *buf, size_t size)
