@@ -250,8 +250,9 @@ struct gdbm_file_info
   /* The directory entry used to get the current hash bucket. */
   int bucket_dir;
 
-  /* Number of cache accesses */
-  size_t cache_access_count;
+  /* Cache statistics */
+  size_t cache_access_count; /* Number of cache accesses */
+  size_t cache_hits;         /* Number of cache hits */
   
   /* Bookkeeping of things that need to be written back at the
      end of an update. */

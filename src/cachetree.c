@@ -18,8 +18,6 @@
 
 #include "autoconf.h"
 #include "gdbmdefs.h"
-#define NDEBUG
-#include "assert.h"
 
 enum cache_node_color { RED, BLACK };
 
@@ -111,7 +109,7 @@ node_color (cache_node *n)
 
 /* Replace the OLDN with NEWN.
    Does not modify OLDN. */
-static void
+static inline void
 replace_node (cache_tree *tree, cache_node *oldn, cache_node *newn)
 {
   if (oldn->parent == NULL)
@@ -126,7 +124,7 @@ replace_node (cache_tree *tree, cache_node *oldn, cache_node *newn)
 }
 
 /* Rotate the TREE left over the node N. */
-static void
+static inline void
 rotate_left (cache_tree *tree, cache_node *n)
 {
   cache_node *right = n->right;
@@ -139,7 +137,7 @@ rotate_left (cache_tree *tree, cache_node *n)
 }
 
 /* Rotate the TREE right over the node N. */
-static void
+static inline void
 rotate_right (cache_tree *tree, cache_node *n)
 {
   cache_node *left = n->left;
@@ -152,45 +150,7 @@ rotate_right (cache_tree *tree, cache_node *n)
 }
 
 /* Node deletion */
-static void rbt_delete_fixup (cache_tree *tree, cache_node *n);
-
-/* Remove N from the TREE. */
-void
-_gdbm_cache_tree_delete (cache_tree *tree, cache_node *n)
-{
-  cache_node *child;
-
-  /* If N has both left and right children, reduce the problem to
-     the node with only one child.  To do so, find the in-order
-     predecessor of N, copy its value (elem) to N and then delete
-     the predecessor. */
-  if (n->left != NULL && n->right != NULL)
-    {
-      cache_node *p;
-      for (p = n->left; p->right; p = p->right)
-        ;
-      n->adr = p->adr;
-      n->elem = p->elem;
-      n->elem->ca_node = n;
-      n = p;
-    }
-
-  /* N has only one child. Select it. */
-  child = n->left ? n->left : n->right;
-  if (node_color (n) == BLACK)
-    {
-      n->color = node_color (child);
-      rbt_delete_fixup (tree, n);
-    }
-  replace_node (tree, n, child);
-  if (n->parent == NULL && child != NULL)	/* root should be black */
-    child->color = BLACK;
-
-  /* Return N to the avail pool */
-  rbt_node_dealloc (tree, n);
-}
-
-static void
+static inline void
 rbt_delete_fixup (cache_tree *tree, cache_node *n)
 {
   while (1)
@@ -307,58 +267,45 @@ rbt_delete_fixup (cache_tree *tree, cache_node *n)
       break;
     }
 }
+
+/* Remove N from the TREE. */
+void
+_gdbm_cache_tree_delete (cache_tree *tree, cache_node *n)
+{
+  cache_node *child;
+
+  /* If N has both left and right children, reduce the problem to
+     the node with only one child.  To do so, find the in-order
+     predecessor of N, copy its value (elem) to N and then delete
+     the predecessor. */
+  if (n->left != NULL && n->right != NULL)
+    {
+      cache_node *p;
+      for (p = n->left; p->right; p = p->right)
+        ;
+      n->adr = p->adr;
+      n->elem = p->elem;
+      n->elem->ca_node = n;
+      n = p;
+    }
+
+  /* N has only one child. Select it. */
+  child = n->left ? n->left : n->right;
+  if (node_color (n) == BLACK)
+    {
+      n->color = node_color (child);
+      rbt_delete_fixup (tree, n);
+    }
+  replace_node (tree, n, child);
+  if (n->parent == NULL && child != NULL)	/* root should be black */
+    child->color = BLACK;
+
+  /* Return N to the avail pool */
+  rbt_node_dealloc (tree, n);
+}
 
 /* Insertion */
-static void rbt_insert_fixup (cache_tree *tree, cache_node *n);
-
-/* Look up the node with the given ADR.
-   If found, put it in *RETVAL and return node_found.
-
-   Otherwise, create a new node and insert it at the appropriate place in
-   the tree.  Store the address of the newly created node in *RETVAL and
-   return node_new.
-
-   If a new node cannot be created (memory exhausted), return node_failure.
-*/
-int
-_gdbm_cache_tree_lookup (cache_tree *tree, off_t adr, cache_node **retval)
-{
-  int res;
-  cache_node *node, *parent = NULL;
-  cache_node **nodeptr;
-
-  nodeptr = &tree->root;
-  while ((node = *nodeptr) != NULL)
-    {
-      if (adr == node->adr)
-	break;
-      parent = node;
-      if (adr < node->adr)
-	nodeptr = &node->left;
-      else
-	nodeptr = &node->right;
-    }
-  
-  if (node)
-    {
-      res = node_found;
-    }
-  else
-    {
-      node = rbt_node_alloc (tree);
-      if (!node)
-	return node_failure;
-      *nodeptr = node;
-      node->adr = adr;
-      node->parent = parent;
-      rbt_insert_fixup (tree, node);
-      res = node_new;
-    }
-  *retval = node;
-  return res;
-}
-
-static void
+static inline void
 rbt_insert_fixup (cache_tree *tree, cache_node *n)
 {
   while (1)
@@ -433,6 +380,57 @@ rbt_insert_fixup (cache_tree *tree, cache_node *n)
 	}
       break;
     }
+}
+
+/* Look up the node with the given ADR.
+   If found, put it in *RETVAL and return node_found.
+
+   Otherwise, create a new node and insert it at the appropriate place in
+   the tree.  Store the address of the newly created node in *RETVAL and
+   return node_new.
+
+   If a new node cannot be created (memory exhausted), return node_failure.
+*/
+int
+_gdbm_cache_tree_lookup (cache_tree *tree, off_t adr, cache_node **retval)
+{
+  int res;
+  cache_node *node, *parent = NULL;
+
+  node = tree->root;
+  while (node)
+    {
+      if (adr == node->adr)
+	break;
+      parent = node;
+      if (adr < node->adr)
+	node = node->left;
+      else
+	node = node->right;
+    }
+  
+  if (node)
+    {
+      res = node_found;
+    }
+  else
+    {
+      node = rbt_node_alloc (tree);
+      if (!node)
+	return node_failure;
+      if (!parent)
+	tree->root = node;
+      else if (adr < parent->adr)
+	parent->left = node;
+      else
+	parent->right = node;
+      node->adr = adr;
+      node->parent = parent;
+      rbt_insert_fixup (tree, node);
+      res = node_new;
+    }
+  *retval = node;
+  return res;
 }
 
 /* Interface functions */

@@ -291,6 +291,7 @@ struct gdbm_cache_stat
 
 void gdbm_get_cache_stats (GDBM_FILE dbf,
 			   size_t *access_count,
+			   size_t *cache_hits,
 			   size_t *cache_count,
 			   struct gdbm_cache_stat *bstat,
 			   size_t nstat);

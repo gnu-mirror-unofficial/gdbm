@@ -48,7 +48,7 @@ _gdbm_new_bucket (GDBM_FILE dbf, hash_bucket *bucket, int bits)
    a valid bucket or data block at that offset. All this implies is that
    it is safe to use the offset for look up in the bucket cache and to
    attempt to read a block at that offset. */
-int
+static inline int
 gdbm_dir_entry_valid_p (GDBM_FILE dbf, int dir_index)
 {
   return dir_index >= 0
@@ -191,6 +191,7 @@ cache_lookup (GDBM_FILE dbf, off_t adr, cache_elem *ref, cache_elem **ret_elem)
     case node_found:
       elem = node->elem;
       elem->ca_hits++;
+      dbf->cache_hits++;
       lru_unlink_elem (dbf, elem);
       break;
       
@@ -224,6 +225,9 @@ cache_lookup (GDBM_FILE dbf, off_t adr, cache_elem *ref, cache_elem **ret_elem)
 	    }
 	}
       return node_failure;
+
+    default:
+      abort ();
     }
   
   lru_link_elem (dbf, elem, ref);
@@ -258,6 +262,9 @@ _gdbm_get_bucket (GDBM_FILE dbf, int dir_index)
   dbf->bucket_dir = dir_index;
   bucket_adr = dbf->dir[dir_index];
 
+  if (dbf->cache_entry && dbf->cache_entry->ca_adr == bucket_adr)
+    return 0;
+  
   switch (cache_lookup (dbf, bucket_adr, NULL, &elem))
     {
     case node_found:
@@ -688,12 +695,15 @@ _gdbm_fetch_data (GDBM_FILE dbf, off_t off, size_t size, void *buf)
 void
 gdbm_get_cache_stats (GDBM_FILE dbf,
 		      size_t *access_count,
+		      size_t *cache_hits,
 		      size_t *cache_count,
 		      struct gdbm_cache_stat *bstat,
 		      size_t nstat)
 {
   if (access_count)
     *access_count = dbf->cache_access_count;
+  if (cache_hits)
+    *cache_hits = dbf->cache_hits;
   if (cache_count)
     *cache_count = dbf->cache_num;
   if (bstat)
