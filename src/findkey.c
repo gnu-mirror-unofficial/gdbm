@@ -60,10 +60,10 @@ char *
 _gdbm_read_entry (GDBM_FILE dbf, int elem_loc)
 {
   int rc;
+  off_t file_pos;
   int key_size;
   int data_size;
   size_t dsize;
-  off_t file_pos;
   data_cache_elem *data_ca;
 
   /* Is it already in the cache? */
@@ -116,21 +116,21 @@ _gdbm_read_entry (GDBM_FILE dbf, int elem_loc)
     }
 
   /* Read into the cache. */
-  file_pos = gdbm_file_seek (dbf, dbf->bucket->h_table[elem_loc].data_pointer, 
-		      SEEK_SET);
+  file_pos = gdbm_file_seek (dbf, dbf->bucket->h_table[elem_loc].data_pointer,
+                             SEEK_SET);
   if (file_pos != dbf->bucket->h_table[elem_loc].data_pointer)
     {
       GDBM_SET_ERRNO2 (dbf, GDBM_FILE_SEEK_ERROR, TRUE, GDBM_DEBUG_LOOKUP);
       _gdbm_fatal (dbf, _("lseek error"));
       return NULL;
     }
-  
+
   rc = _gdbm_full_read (dbf, data_ca->dptr, key_size+data_size);
   if (rc)
     {
       GDBM_DEBUG (GDBM_DEBUG_ERR|GDBM_DEBUG_LOOKUP|GDBM_DEBUG_READ,
-		  "%s: error reading entry: %s",
-		  dbf->name, gdbm_db_strerror (dbf));
+                 "%s: error reading entry: %s",
+                 dbf->name, gdbm_db_strerror (dbf));
       dbf->need_recovery = TRUE;
       _gdbm_fatal (dbf, gdbm_db_strerror (dbf));
       return NULL;

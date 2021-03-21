@@ -142,13 +142,35 @@ typedef struct
   int     elem_loc;
 } data_cache_elem;
 
-typedef struct
+typedef struct cache_elem cache_elem;
+typedef struct cache_node cache_node;
+
+struct cache_node
 {
-  hash_bucket *   ca_bucket;
+  cache_node *left, *right, *parent; 
+  int color;
+  off_t adr;
+  cache_elem *elem;
+};
+
+struct cache_elem
+{
   off_t           ca_adr;
-  char            ca_changed;   /* Data in the bucket changed. */
-  data_cache_elem ca_data;
-} cache_elem;
+  char            ca_changed;  /* Data in the bucket changed. */
+  data_cache_elem ca_data;     /* Cached datum */
+  cache_elem      *ca_prev,    /* Previous element in LRU list. */
+                  *ca_next;    /* Next elements in LRU list.
+				  If the item is in cache_avail list, only
+				  ca_next is used.  It points to the next
+			          available element. */
+  size_t          ca_hits;     /* Number of times this element was requested */
+  cache_node      *ca_node;    /* Points back to the RBT node for this
+				  element. */
+  hash_bucket     ca_bucket[1];/* Associated  bucket (dbf->header->bucket_size
+				  bytes). */
+};
+
+typedef struct cache_tree cache_tree;
 
 /* This final structure contains all main memory based information for
    a gdbm file.  This allows multiple gdbm files to be opened at the same
@@ -184,7 +206,7 @@ struct gdbm_file_info
 
   /* Last error was fatal, the database needs recovery */
   unsigned need_recovery :1;
-  
+
   /* Last GDBM error number */
   gdbm_error last_error;
   /* Last system error number */
@@ -210,19 +232,28 @@ struct gdbm_file_info
   off_t *dir;
 
   /* The bucket cache. */
-  cache_elem *bucket_cache;
-  size_t cache_size;
-  size_t last_read;
-
+  size_t cache_size;       /* Cache capacity */
+  size_t cache_num;        /* Actual number of elements in cache */
+  /* Cache elements form a binary search tree. */
+  cache_tree *cache_tree;  
+  /* Cache elements are linked in a list sorted by relative access time */
+  cache_elem *cache_mru;   /* Most recently used element - head of the list */
+  cache_elem *cache_lru;   /* Last recently used element - tail of the list */ 
+  cache_elem *cache_avail; /* Pool of available elements (linked by prev, next)
+			    */
+  /* Pointer to the current bucket's cache entry. */
+  cache_elem *cache_entry;
+  
   /* Points to the current hash bucket in the cache. */
   hash_bucket *bucket;
-
+  
   /* The directory entry used to get the current hash bucket. */
   int bucket_dir;
 
-  /* Pointer to the current bucket's cache entry. */
-  cache_elem *cache_entry;
-
+  /* Cache statistics */
+  size_t cache_access_count; /* Number of cache accesses */
+  size_t cache_hits;         /* Number of cache hits */
+  
   /* Bookkeeping of things that need to be written back at the
      end of an update. */
   unsigned header_changed :1;

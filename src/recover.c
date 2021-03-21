@@ -91,8 +91,6 @@ static int
 _gdbm_finish_transfer (GDBM_FILE dbf, GDBM_FILE new_dbf,
 		       gdbm_recovery *rcvr, int flags)
 {
-  int i;
-  
   /* Write everything. */
   if (_gdbm_end_update (new_dbf))
     {
@@ -145,15 +143,8 @@ _gdbm_finish_transfer (GDBM_FILE dbf, GDBM_FILE new_dbf,
   free (dbf->header);
   free (dbf->dir);
 
-  if (dbf->bucket_cache != NULL)
-    {
-      for (i = 0; i < dbf->cache_size; i++)
-	 {
-	   free (dbf->bucket_cache[i].ca_bucket);
-	   free (dbf->bucket_cache[i].ca_data.dptr);
-	 }
-      free (dbf->bucket_cache);
-   }
+  _gdbm_cache_flush (dbf);
+  _gdbm_cache_free (dbf);
 
   dbf->lock_type         = new_dbf->lock_type;
   dbf->desc              = new_dbf->desc;
@@ -161,9 +152,14 @@ _gdbm_finish_transfer (GDBM_FILE dbf, GDBM_FILE new_dbf,
   dbf->dir               = new_dbf->dir;
   dbf->bucket            = new_dbf->bucket;
   dbf->bucket_dir        = new_dbf->bucket_dir;
-  dbf->last_read         = new_dbf->last_read;
-  dbf->bucket_cache      = new_dbf->bucket_cache;
-  dbf->cache_size        = new_dbf->cache_size;
+
+  dbf->cache_size        = new_dbf->cache_size;  
+  dbf->cache_num         = new_dbf->cache_num;   
+  dbf->cache_tree        = new_dbf->cache_tree;   
+  dbf->cache_entry       = new_dbf->cache_entry;  
+  dbf->cache_lru         = new_dbf->cache_lru;   
+  dbf->cache_avail       = new_dbf->cache_avail;
+  
   dbf->header_changed    = new_dbf->header_changed;
   dbf->directory_changed = new_dbf->directory_changed;
   dbf->bucket_changed    = new_dbf->bucket_changed;
@@ -184,7 +180,6 @@ _gdbm_finish_transfer (GDBM_FILE dbf, GDBM_FILE new_dbf,
   gdbm_file_sync (dbf);
   
   /* Force the right stuff for a correct bucket cache. */
-  dbf->cache_entry    = &dbf->bucket_cache[0];
   return _gdbm_get_bucket (dbf, 0);
 }
 

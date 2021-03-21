@@ -200,11 +200,13 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
   dbf->dir  = NULL;
   dbf->bucket = NULL;
   dbf->header = NULL;
-  dbf->bucket_cache = NULL;
-  dbf->cache_size = 0;
+
+  /* Initialize cache */
+  dbf->cache_tree = _gdbm_cache_tree_alloc ();
+  _gdbm_cache_init (dbf, DEFAULT_CACHESIZE);
 
   dbf->file_size = -1;
-  
+
   dbf->memory_mapping = FALSE;
   dbf->mapped_size_max = SIZE_T_MAX;
   dbf->mapped_region = NULL;
@@ -570,15 +572,18 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
 #endif
 
   /* Finish initializing dbf. */
-  dbf->last_read = -1;
   dbf->bucket = NULL;
   dbf->bucket_dir = 0;
-  dbf->cache_entry = NULL;
   dbf->header_changed = FALSE;
   dbf->directory_changed = FALSE;
   dbf->bucket_changed = FALSE;
   dbf->second_changed = FALSE;
 
+  if (flags & GDBM_XVERIFY)
+    {
+      gdbm_avail_verify (dbf);
+    }
+  
   GDBM_DEBUG (GDBM_DEBUG_ALL, "%s: opened %s", dbf->name,
 	      dbf->need_recovery ? "for recovery" : "successfully");
 
@@ -646,50 +651,6 @@ gdbm_open (const char *file, int block_size, int flags, int mode,
     }
   return gdbm_fd_open (fd, file, block_size, flags | GDBM_CLOERROR,
 		       fatal_func);
-}
-
-/* Initialize the bucket cache. */
-int
-_gdbm_init_cache (GDBM_FILE dbf, size_t size)
-{
-  int index;
-
-  if (dbf->bucket_cache == NULL)
-    {
-      dbf->bucket_cache = calloc (size, sizeof(cache_elem));
-      if (dbf->bucket_cache == NULL)
-        {
-          GDBM_SET_ERRNO (dbf, GDBM_MALLOC_ERROR, TRUE);
-          return -1;
-        }
-      dbf->cache_size = size;
-
-      for (index = 0; index < size; index++)
-        {
-	  (dbf->bucket_cache[index]).ca_bucket =
-	    malloc (dbf->header->bucket_size);
-          if ((dbf->bucket_cache[index]).ca_bucket == NULL)
-	    {
-              GDBM_SET_ERRNO (dbf, GDBM_MALLOC_ERROR, TRUE);
-	      return -1;
-            }
-	  dbf->bucket_cache[index].ca_data.dptr = NULL;
-	  dbf->bucket_cache[index].ca_data.dsize = 0;
-	  _gdbm_cache_entry_invalidate (dbf, index);
-        }
-      dbf->bucket = dbf->bucket_cache[0].ca_bucket;
-      dbf->cache_entry = &dbf->bucket_cache[0];
-    }
-  return 0;
-}
-
-void
-_gdbm_cache_entry_invalidate (GDBM_FILE dbf, int index)
-{
-  dbf->bucket_cache[index].ca_adr = 0;
-  dbf->bucket_cache[index].ca_changed = FALSE;
-  dbf->bucket_cache[index].ca_data.hash_val = -1;
-  dbf->bucket_cache[index].ca_data.elem_loc = -1;
 }
 
 int

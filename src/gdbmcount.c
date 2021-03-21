@@ -39,3 +39,19 @@ gdbm_count (GDBM_FILE dbf, gdbm_count_t *pcount)
   *pcount = count;
   return 0;
 }
+
+int
+gdbm_bucket_count (GDBM_FILE dbf, size_t *pcount)
+{
+  int i;
+  size_t count = 0;
+  
+  GDBM_ASSERT_CONSISTENCY (dbf, -1);
+
+  for (i = 0; i < GDBM_DIR_COUNT (dbf); i = _gdbm_next_bucket_dir (dbf, i))
+    {
+      ++count;
+    }
+  *pcount = count;
+  return 0;
+}

@@ -276,26 +276,25 @@ _gdbm_print_avail_list (FILE *fp, GDBM_FILE dbf)
 void
 _gdbm_print_bucket_cache (FILE *fp, GDBM_FILE dbf)
 {
-  int             index;
-  char            changed;
-
-  if (dbf->bucket_cache != NULL)
+  if (dbf->cache_num)
     {
+      int i;
+      cache_elem *elem;
+  
       fprintf (fp,
-	_("Bucket Cache (size %zu):\n  Index:         Address  Changed  Data_Hash \n"),
-	 dbf->cache_size);
-      for (index = 0; index < dbf->cache_size; index++)
+	_("Bucket Cache (size %zu/%zu):\n  Index:         Address  Changed  Data_Hash \n"),
+	       dbf->cache_num, dbf->cache_size);
+      for (elem = dbf->cache_entry, i = 0; elem; elem = elem->ca_next, i++)
 	{
-	  changed = dbf->bucket_cache[index].ca_changed;
 	  fprintf (fp, "  %5d:  %15lu %7s  %x\n",
-		   index,
-		   (unsigned long) dbf->bucket_cache[index].ca_adr,
-		   (changed ? _("True") : _("False")),
-		   dbf->bucket_cache[index].ca_data.hash_val);
+		   i,
+		   (unsigned long) elem->ca_adr,
+		   (elem->ca_changed ? _("True") : _("False")),
+		   elem->ca_data.hash_val);
 	}
     }
   else
-    fprintf (fp, _("Bucket cache has not been initialized.\n"));
+    fprintf (fp, _("Bucket cache is empty.\n"));
 }
 
 int
@@ -745,17 +744,11 @@ print_dir_begin (struct handler_param *param GDBM_ARG_UNUSED, size_t *exp_count)
 static size_t
 bucket_count (void)
 {
-  int i;
-  off_t last = 0;
   size_t count = 0;
-  
-  for (i = 0; i < GDBM_DIR_COUNT (gdbm_file); i++)
+
+  if (gdbm_bucket_count (gdbm_file, &count))
     {
-      if (gdbm_file->dir[i] != last)
-	{
-	  ++count;
-	  last = gdbm_file->dir[i];
-	}
+      terror ("gdbm_bucket_count: %s", gdbm_strerror (gdbm_errno));
     }
   return count;
 }
@@ -835,7 +828,7 @@ print_cache_begin (struct handler_param *param GDBM_ARG_UNUSED, size_t *exp_coun
   if (checkdb ())
     return 1;
   if (exp_count)
-    *exp_count = gdbm_file->bucket_cache ? gdbm_file->cache_size + 1 : 1;
+    *exp_count = gdbm_file->cache_num + 1;
   return 0;
 }
 
