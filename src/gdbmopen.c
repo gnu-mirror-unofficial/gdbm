@@ -578,6 +578,11 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
   dbf->bucket_changed = FALSE;
   dbf->second_changed = FALSE;
 
+  if (flags & GDBM_XVERIFY)
+    {
+      gdbm_avail_verify (dbf);
+    }
+  
   GDBM_DEBUG (GDBM_DEBUG_ALL, "%s: opened %s", dbf->name,
 	      dbf->need_recovery ? "for recovery" : "successfully");
 

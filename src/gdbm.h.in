@@ -53,7 +53,8 @@ extern "C" {
 				   GDBM_BLOCK_SIZE_ERROR error if unable to
 				   set it. */  
 # define GDBM_CLOERROR  0x400   /* Only for gdbm_fd_open: close fd on error. */
-  
+# define GDBM_XVERIFY   0x800   /* Additional consistency checks. */
+
 /* Parameters to gdbm_store for simple insertion or replacement in the
    case that the key is already in the database. */
 # define GDBM_INSERT	0	/* Never replace old data with new. */
@@ -84,6 +85,8 @@ extern "C" {
 # define GDBM_GETDBNAME       15 /* Return database file name */
 # define GDBM_GETBLOCKSIZE    16 /* Return block size */
 
+# define GDBM_CACHE_AUTO      0
+  
 typedef @GDBM_COUNT_T@ gdbm_count_t;
   
 /* The data and key structure. */
@@ -92,7 +95,6 @@ typedef struct
   char *dptr;
   int   dsize;
 } datum;
-
 
 /* A pointer to the GDBM file. */
 typedef struct gdbm_file_info *GDBM_FILE;
@@ -191,49 +193,52 @@ extern int gdbm_load_from_file (GDBM_FILE *, FILE *, int replace,
 
 extern int gdbm_copy_meta (GDBM_FILE dst, GDBM_FILE src);
 
-# define GDBM_NO_ERROR		         0
-# define GDBM_MALLOC_ERROR	         1
-# define GDBM_BLOCK_SIZE_ERROR	         2
-# define GDBM_FILE_OPEN_ERROR	         3
-# define GDBM_FILE_WRITE_ERROR	         4
-# define GDBM_FILE_SEEK_ERROR	         5
-# define GDBM_FILE_READ_ERROR	         6
-# define GDBM_BAD_MAGIC_NUMBER	         7
-# define GDBM_EMPTY_DATABASE	         8
-# define GDBM_CANT_BE_READER	         9
-# define GDBM_CANT_BE_WRITER	        10
-# define GDBM_READER_CANT_DELETE	11
-# define GDBM_READER_CANT_STORE	        12
-# define GDBM_READER_CANT_REORGANIZE	13
-# define GDBM_UNKNOWN_ERROR	        14
-# define GDBM_ITEM_NOT_FOUND	        15
-# define GDBM_REORGANIZE_FAILED	        16
-# define GDBM_CANNOT_REPLACE	        17
-# define GDBM_ILLEGAL_DATA	        18
-# define GDBM_OPT_ALREADY_SET	        19
-# define GDBM_OPT_ILLEGAL           	20
-# define GDBM_BYTE_SWAPPED	        21
-# define GDBM_BAD_FILE_OFFSET	        22
-# define GDBM_BAD_OPEN_FLAGS	        23
-# define GDBM_FILE_STAT_ERROR           24
-# define GDBM_FILE_EOF                  25
-# define GDBM_NO_DBNAME                 26
-# define GDBM_ERR_FILE_OWNER            27
-# define GDBM_ERR_FILE_MODE             28
-# define GDBM_NEED_RECOVERY             29
-# define GDBM_BACKUP_FAILED             30
-# define GDBM_DIR_OVERFLOW              31
-# define GDBM_BAD_BUCKET                32
-# define GDBM_BAD_HEADER                33
-# define GDBM_BAD_AVAIL                 34
-# define GDBM_BAD_HASH_TABLE            35
-# define GDBM_BAD_DIR_ENTRY             36
-# define GDBM_FILE_CLOSE_ERROR          37  
-# define GDBM_FILE_SYNC_ERROR           38
-# define GDBM_FILE_TRUNCATE_ERROR       39
-# define GDBM_BUCKET_CACHE_CORRUPTED    40
-# define GDBM_BAD_HASH_ENTRY            40
-
+enum
+  {
+    GDBM_NO_ERROR		 = 0,
+    GDBM_MALLOC_ERROR	         = 1,
+    GDBM_BLOCK_SIZE_ERROR	 = 2,
+    GDBM_FILE_OPEN_ERROR	 = 3,
+    GDBM_FILE_WRITE_ERROR	 = 4,
+    GDBM_FILE_SEEK_ERROR	 = 5,
+    GDBM_FILE_READ_ERROR	 = 6,
+    GDBM_BAD_MAGIC_NUMBER	 = 7,
+    GDBM_EMPTY_DATABASE	         = 8,
+    GDBM_CANT_BE_READER	         = 9,
+    GDBM_CANT_BE_WRITER	         = 10, 
+    GDBM_READER_CANT_DELETE	 = 11,
+    GDBM_READER_CANT_STORE	 = 12,
+    GDBM_READER_CANT_REORGANIZE	 = 13,
+    GDBM_UNKNOWN_ERROR	         = 14,
+    GDBM_ITEM_NOT_FOUND	         = 15,
+    GDBM_REORGANIZE_FAILED	 = 16,
+    GDBM_CANNOT_REPLACE	         = 17,
+    GDBM_ILLEGAL_DATA	         = 18,
+    GDBM_OPT_ALREADY_SET	 = 19,
+    GDBM_OPT_ILLEGAL           	 = 20,
+    GDBM_BYTE_SWAPPED	         = 21,
+    GDBM_BAD_FILE_OFFSET	 = 22,
+    GDBM_BAD_OPEN_FLAGS	         = 23,
+    GDBM_FILE_STAT_ERROR         = 24,
+    GDBM_FILE_EOF                = 25,
+    GDBM_NO_DBNAME               = 26,
+    GDBM_ERR_FILE_OWNER          = 27,
+    GDBM_ERR_FILE_MODE           = 28,
+    GDBM_NEED_RECOVERY           = 29,
+    GDBM_BACKUP_FAILED           = 30,
+    GDBM_DIR_OVERFLOW            = 31,
+    GDBM_BAD_BUCKET              = 32,
+    GDBM_BAD_HEADER              = 33,
+    GDBM_BAD_AVAIL               = 34,
+    GDBM_BAD_HASH_TABLE          = 35,
+    GDBM_BAD_DIR_ENTRY           = 36,
+    GDBM_FILE_CLOSE_ERROR        = 37, 
+    GDBM_FILE_SYNC_ERROR         = 38,
+    GDBM_FILE_TRUNCATE_ERROR     = 39,
+    GDBM_BUCKET_CACHE_CORRUPTED  = 40,
+    GDBM_BAD_HASH_ENTRY          = 41,
+  };
+  
 # define _GDBM_MIN_ERRNO	0
 # define _GDBM_MAX_ERRNO	GDBM_BAD_HASH_ENTRY
 

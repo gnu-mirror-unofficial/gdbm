@@ -22,8 +22,7 @@
 #include "gdbmdefs.h"
 
 /* Close the dbm file and free all memory associated with the file DBF.
-   Before freeing members of DBF, check and make sure that they were
-   allocated.  */
+ */
 
 int
 gdbm_close (GDBM_FILE dbf)

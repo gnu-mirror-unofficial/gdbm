@@ -206,7 +206,7 @@ struct gdbm_file_info
 
   /* Last error was fatal, the database needs recovery */
   unsigned need_recovery :1;
-  
+
   /* Last GDBM error number */
   gdbm_error last_error;
   /* Last system error number */

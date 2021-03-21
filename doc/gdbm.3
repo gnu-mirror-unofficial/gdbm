@@ -13,7 +13,7 @@
 .\"
 .\" You should have received a copy of the GNU General Public License
 .\" along with GDBM. If not, see <http://www.gnu.org/licenses/>. */
-.TH GDBM 3 "January 27, 2020" "GDBM" "GDBM User Reference"
+.TH GDBM 3 "March 21, 2021" "GDBM" "GDBM User Reference"
 .SH NAME
 GDBM \- The GNU database manager.  Includes \fBdbm\fR and \fBndbm\fR
 compatibility.
@@ -33,28 +33,35 @@ compatibility.
 .br
 .BI "int gdbm_close (GDBM_FILE " dbf ");"
 .br
-.BI "int gdbm_store (GDBM_FILE " dbf ", datum " key ", datum " content ", int " flag );
+.BI "int gdbm_store (GDBM_FILE " dbf ", datum " key ", datum " content ", int " flag ");"
 .br
-.BI "datum gdbm_fetch (GDBM_FILE " dbf ", datum " key );
+.BI "datum gdbm_fetch (GDBM_FILE " dbf ", datum " key ");"
 .br
-.BI "int gdbm_delete (GDBM_FILE " dbf ", datum " key );
+.BI "int gdbm_delete (GDBM_FILE " dbf ", datum " key ");"
 .br
 .BI "datum gdbm_firstkey (GDBM_FILE " dbf ");"
 .br
-.BI "datum gdbm_nextkey (GDBM_FILE " dbf ", datum " key );
+.BI "datum gdbm_nextkey (GDBM_FILE " dbf ", datum " key ");"
+.br
+.BI "int gdbm_recover (GDBM_FILE " dbf ", gdbm_recovery *" rcvr ", int" flags ");"
 .br
 .BI "int gdbm_reorganize (GDBM_FILE " dbf ");"
 .br
 .BI "int gdbm_sync (GDBM_FILE " dbf ");"
 .br
-.BI "int gdbm_exists (GDBM_FILE " dbf ", datum " key );
+.BI "int gdbm_exists (GDBM_FILE " dbf ", datum " key ");"
 .br
-.BI "const char *gdbm_strerror (gdbm_error " errno );
+.BI "const char *gdbm_strerror (gdbm_error " errno ");"
 .br
 .BI "int gdbm_setopt (GDBM_FILE " dbf ", int " option ", int " value ", int " size );
 .br
 .BI "int gdbm_fdesc (GDBM_FILE " dbf );
 .br
+.BI "int gdbm_count (GDBM_FILE " dbf ", gdbm_count_t *" pcount ");"
+.br
+.BI "int gdbm_bucket_count (GDBM_FILE " dbf ", size_t *" pcount ");"
+.br
+.BI "int gdbm_avail_verify (GDBM_FILE " dbf ");"
 .PP
 .SS DBM Compatibility routines:
 .PP
@@ -161,6 +168,15 @@ Causes all database operations to be synchronized to the disk,
 .TP
 .B GDBM_NOLOCK
 Prevents the library from performing any locking on the database file.
+.TP
+.B GDBM_CLOEXEC
+Set the close-on-exec flag on the database file descriptor.
+.TP
+.B GDBM_XVERIFY
+Enable additional consistency checks.  With this flag, eventual
+corruptions of the database are discovered when opening it, instead of
+when a corrupted structure is read during normal operation.  However,
+on large databases, it can slow down the opening process.
 .PP
 The option
 .B GDBM_FAST
@@ -327,9 +343,13 @@ and \fIoption\fR specifies which option to set.  The valid options are
 currently:
 .TP
 .B GDBM_CACHESIZE
-Set the size of the internal bucket cache. This option may only be set once
-on each \fIGDBM_FILE\fR descriptor, and is set automatically to 100 upon the
-first access to the database.
+Set the size of the internal bucket cache.  By default, the cache size
+is selected to provide for the optimal performance.  Use this option,
+if you wish to limit the memory usage at the expense of performance.
+.sp
+Use the
+.B GDBM_CACHE_AUTO
+constant to return to the default.
 .TP
 .B GDBM_FASTMODE
  Set \fBfast mode\fR to either on or off.  This allows \fBfast mode\fR to

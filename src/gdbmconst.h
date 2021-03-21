@@ -51,7 +51,7 @@
 #define BUCKET_AVAIL 6
 
 /* The size of the bucket cache. */
-#define DEFAULT_CACHESIZE  100
+#define DEFAULT_CACHESIZE  GDBM_CACHE_AUTO
 
 #ifndef SIZE_T_MAX
 /* Maximum size representable by a size_t variable */

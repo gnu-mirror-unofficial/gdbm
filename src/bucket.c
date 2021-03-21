@@ -205,7 +205,9 @@ cache_lookup (GDBM_FILE dbf, off_t adr, cache_elem *ref, cache_elem **ret_elem)
       elem->ca_node = node;
       node->elem = elem;
       
-      if (dbf->cache_num > dbf->cache_size && cache_lru_free (dbf))
+      if (dbf->cache_size != GDBM_CACHE_AUTO
+	  && dbf->cache_num > dbf->cache_size
+	  && cache_lru_free (dbf))
 	{
 	  cache_elem_free (dbf, elem);
 	  return node_failure;
@@ -573,24 +575,24 @@ _gdbm_write_bucket (GDBM_FILE dbf, cache_elem *ca_entry)
 int
 _gdbm_cache_init (GDBM_FILE dbf, size_t size)
 {
-  if (size == 0)
-    size = 1;
-  
   if (size == dbf->cache_size)
     return 0;
 
-  while (size < dbf->cache_num)
+  if (size != GDBM_CACHE_AUTO)
     {
-      /* Flush the least recently used element */
-      cache_elem *elem = dbf->cache_lru;
-      if (elem->ca_changed)
+      while (size < dbf->cache_num)
 	{
-	  if (_gdbm_write_bucket (dbf, elem))
-	    return -1;
+	  /* Flush the least recently used element */
+	  cache_elem *elem = dbf->cache_lru;
+	  if (elem->ca_changed)
+	    {
+	      if (_gdbm_write_bucket (dbf, elem))
+		return -1;
+	    }
+	  cache_elem_free (dbf, elem);
 	}
-      cache_elem_free (dbf, elem);
     }
-
+  
   dbf->cache_size = size;
 
   return 0;
