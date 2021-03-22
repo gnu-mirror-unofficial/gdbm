@@ -219,13 +219,20 @@ optcomma  : /* empty */
 defid     : T_IDENT
             {
 	      if (strcmp ($1, "key") == 0)
-		$$ = DS_KEY;
+		{
+		  $$ = DS_KEY;
+		  free ($1);
+		}
 	      else if (strcmp ($1, "content") == 0)
-		$$ = DS_CONTENT;
+		{
+		  $$ = DS_CONTENT;
+		  free ($1);
+		}
 	      else
 		{
 		  terror (_("expected \"key\" or \"content\", "
 			    "but found \"%s\""), $1);
+		  free ($1);
 		  YYERROR;
 		}
 	    }

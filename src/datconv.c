@@ -206,6 +206,8 @@ dsegm_list_free (struct dsegm *dp)
   while (dp)
     {
       struct dsegm *next = dp->next;
+      if (dp->type == FDEF_FLD)
+	free (dp->v.field.name);
       free (dp);
       dp = next;
     }
