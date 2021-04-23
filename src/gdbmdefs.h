@@ -34,11 +34,12 @@
 /* Maximum value for off_t */
 #define OFF_T_MAX SIGNED_TYPE_MAXIMUM (off_t)
 
-/* Return true if A can be added to B without integer overflow */
-static inline off_t
+/* Return true if both A and B are non-negative offsets and A can be added
+   to B without integer overflow */
+static inline int
 off_t_sum_ok (off_t a, off_t b)
 {
-  return OFF_T_MAX - a >= b;
+  return a >= 0 && b >= 0 && OFF_T_MAX - a >= b;
 }
 
 /* The type definitions are next.  */

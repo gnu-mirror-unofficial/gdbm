@@ -39,6 +39,8 @@ compute_directory_size (blksize_t block_size,
   int dir_size = 8 * sizeof (off_t);
   int dir_bits = 3;
 
+  if (block_size > INT_MAX / 2)
+    block_size = INT_MAX / 2;
   while (dir_size < block_size && dir_bits < GDBM_HASH_BITS - 3)
     {
       dir_size <<= 1;

@@ -24,7 +24,11 @@ avail_comp (void const *a, void const *b)
 {
   avail_elem const *ava = a;
   avail_elem const *avb = b;
-  return ava->av_size - avb->av_size;
+  if (ava->av_size < avb->av_size)
+    return -1;
+  else if (ava->av_size > avb->av_size)
+    return 1;
+  return 0;
 }
 
 /* Returns true if the avail array AV[0]@COUNT is valid.
@@ -53,6 +57,7 @@ gdbm_avail_table_valid_p (GDBM_FILE dbf, avail_elem *av, int count)
   for (i = 0; i < count; i++, p++)
     {
       if (!(p->av_adr >= dbf->header->bucket_size
+	    && off_t_sum_ok (p->av_adr, p->av_size)
 	    && p->av_adr + p->av_size <= dbf->header->next_block))
 	return 0;
       if (p->av_size < prev)

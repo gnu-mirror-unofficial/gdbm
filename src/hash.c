@@ -35,7 +35,7 @@ _gdbm_hash (datum key)
   /* Set the initial value from key. */
   value = 0x238F13AFu * key.dsize;
   for (index = 0; index < key.dsize; index++)
-    value = (value + (key.dptr[index] << ((unsigned) index * 5 % 24))) & 0x7FFFFFFF;
+    value = (value + (((unsigned)key.dptr[index]) << ((unsigned) index * 5 % 24))) & 0x7FFFFFFF;
 
   value = (1103515243u * value + 12345) & 0x7FFFFFFF;  
 
