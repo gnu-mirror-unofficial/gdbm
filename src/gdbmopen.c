@@ -556,6 +556,7 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
 #if HAVE_MMAP
   if (!(flags & GDBM_NOMMAP))
     {
+      dbf->mmap_preread = (flags & GDBM_PREREAD) != 0;
       if (_gdbm_mapped_init (dbf) == 0)
 	dbf->memory_mapping = TRUE;
       else

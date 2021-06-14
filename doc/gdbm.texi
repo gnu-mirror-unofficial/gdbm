@@ -411,6 +411,22 @@ locking separately.
 @item GDBM_NOMMAP
 Disable memory mapping mechanism.  This degrades performance.
 
+@kwindex GDBM_PREREAD
+@item GDBM_PREREAD
+When mapping GDBM file to memory, read its contents immediately,
+instead of when needed (@dfn{prefault reading}).  This can be
+advantageous if you open a @emph{read-only} database and are going to
+do a lot of look-ups on it.  In this case entire database will be
+pre-read and look-ups will operate on an in-memory copy.  In the
+contrast, @code{GDBM_PREREAD} should not be used if you open a
+database (even in read-only mode) only to do a couple of look-ups.
+Finally, never use @code{GDBM_PREREAD} when opening a database for
+updates, especially for inserts: this will degrade performance.
+
+This flag has no effect if @code{GDBM_NOMMAP} is given, or if the
+operating system does not support prefault reading.  It is known
+to work on Linux and FreeBSD kernels.
+
 @kwindex GDBM_BSEXACT
 @item GDBM_BSEXACT
 If this flag is set and the requested @var{block_size} cannot be used

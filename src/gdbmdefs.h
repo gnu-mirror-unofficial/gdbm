@@ -272,6 +272,7 @@ struct gdbm_file_info
   off_t  mapped_pos;     /* Current offset in the region */
   off_t  mapped_off;     /* Position in the file where the region
 			    begins */
+  int mmap_preread :1;   /* 1 if prefault reading is requested */
 };
 
 #define GDBM_DIR_COUNT(db) ((db)->header->dir_size / sizeof (off_t))

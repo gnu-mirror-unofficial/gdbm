@@ -260,6 +260,8 @@ setopt_gdbm_getflags (GDBM_FILE dbf, void *optval, int optlen)
 	flags |= GDBM_NOLOCK;
       if (!dbf->memory_mapping)
 	flags |= GDBM_NOMMAP;
+      else if (dbf->mmap_preread)
+	flags |= GDBM_PREREAD;
       *(int*) optval = flags;
     }
   return 0;
