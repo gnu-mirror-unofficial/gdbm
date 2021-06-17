@@ -1,10 +1,10 @@
-GNU dbm NEWS -- history of user-visible changes. 2021-06-14
+GNU dbm NEWS -- history of user-visible changes. 2021-06-17
 Copyright (C) 1990-2021 Free Software Foundation, Inc.
 See the end of file for copying conditions.
 
 Please send gdbm bug reports to <bug-gdbm@gnu.org>.
 
-Version 1.19.90 (git)
+Version 1.20, 2021-06-17
 
 * New bucket cache
 
@@ -22,6 +22,7 @@ to gdbm_open: GDBM_PREREAD.  When given, it enables pre-reading of
 memory mapped regions.
 
 See https://github.com/Perl/perl5/issues/18884 for details.
+
 
 Version 1.19 - 2020-12-23
 

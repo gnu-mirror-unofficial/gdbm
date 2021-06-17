@@ -54,7 +54,7 @@ extern "C" {
 				   set it. */  
 # define GDBM_CLOERROR  0x0400  /* Only for gdbm_fd_open: close fd on error. */
 # define GDBM_XVERIFY   0x0800  /* Additional consistency checks. */
-# define GDBM_PREREAD   0x1000
+# define GDBM_PREREAD   0x1000  /* Enable pre-fault reading of mmapped regions. */
 
 /* Parameters to gdbm_store for simple insertion or replacement in the
    case that the key is already in the database. */
