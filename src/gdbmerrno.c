@@ -141,7 +141,10 @@ const char * const gdbm_errlist[_GDBM_MAX_ERRNO+1] = {
   [GDBM_FILE_SYNC_ERROR]        = N_("Error synchronizing file"),
   [GDBM_FILE_TRUNCATE_ERROR]    = N_("Error truncating file"),
   [GDBM_BUCKET_CACHE_CORRUPTED] = N_("Bucket cache corrupted"),
-  [GDBM_BAD_HASH_ENTRY]         = N_("Malformed bucket hash entry")
+  [GDBM_BAD_HASH_ENTRY]         = N_("Malformed bucket hash entry"),
+  [GDBM_ERR_SNAPSHOT_CLONE]     = N_("Reflink failed"),
+  [GDBM_ERR_REALPATH]           = N_("Failed to resolve real path name"),
+  [GDBM_ERR_USAGE]              = N_("Function usage error"),
 };
 
 const char *
@@ -186,7 +189,10 @@ int const gdbm_syserr[_GDBM_MAX_ERRNO+1] = {
   [GDBM_BACKUP_FAILED]          = 1,
   [GDBM_FILE_CLOSE_ERROR]       = 1,
   [GDBM_FILE_SYNC_ERROR]        = 1,
-  [GDBM_FILE_TRUNCATE_ERROR]    = 1
+  [GDBM_FILE_TRUNCATE_ERROR]    = 1,
+  [GDBM_ERR_SNAPSHOT_CLONE]     = 1,
+  [GDBM_ERR_REALPATH]           = 1,
+  [GDBM_ERR_USAGE]              = 1
 };
 
 /* Returns true if system errno value is meaningful for GDBM error

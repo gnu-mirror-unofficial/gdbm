@@ -273,6 +273,16 @@ struct gdbm_file_info
   off_t  mapped_off;     /* Position in the file where the region
 			    begins */
   int mmap_preread :1;   /* 1 if prefault reading is requested */
+
+#ifdef GDBM_FAILURE_ATOMIC
+
+  int eo;                /* even/odd state:  Chooses among two snapshot files,
+                            oscillates between 0 and 1. */
+  int snapfd[2];         /* Snapshot files.  Must be in same filesystem
+                            as GDBM data file, and this filesystem must
+                            support ioctl(FICLONE). */
+
+#endif /* GDBM_FAILURE_ATOMIC */
 };
 
 #define GDBM_DIR_COUNT(db) ((db)->header->dir_size / sizeof (off_t))

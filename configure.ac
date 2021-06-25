@@ -16,6 +16,7 @@
 
 m4_define([_GDBM_VERSION_MAJOR], 1)
 m4_define([_GDBM_VERSION_MINOR], 20)
+m4_define([_GDBM_VERSION_PATCH], 90)
 
 AC_INIT([gdbm],
         _GDBM_VERSION_MAJOR._GDBM_VERSION_MINOR[]m4_ifdef([_GDBM_VERSION_PATCH],._GDBM_VERSION_PATCH),
@@ -160,6 +161,30 @@ fi
 
 AM_CONDITIONAL([GDBM_COND_READLINE], [test "$status_readline" = "yes"])
 
+# CoW crash tolerance support
+AC_ARG_ENABLE([crash-tolerance],
+  AC_HELP_STRING(
+    [--enable-crash-tolerance],
+    [Enable crash tolerance, based on clone/copy-on-write (needs support for FICLONE)]),
+  [status_ficlone=$enableval],
+  [status_ficlone=probe])
+
+if test $status_ficlone = probe; then
+  AC_CHECK_HEADER([linux/fs.h],
+    [AC_MSG_CHECKING([for FICLONE ioctl support])
+       AC_COMPILE_IFELSE([AC_LANG_PROGRAM([
+         #include <linux/fs.h>
+         #include <sys/ioctl.h>],
+	 [ioctl(0, FICLONE, 1);])],
+       [status_ficlone=yes],
+       [status_ficlone=no])
+     AC_MSG_RESULT($status_ficlone)],
+     [status_ficlone=no])
+fi
+if test $status_ficlone = yes; then
+  AC_DEFINE([GDBM_FAILURE_ATOMIC], 1, [Define if support for atomic failures is enabled])
+fi
+
 # Additional debugging
 AC_ARG_ENABLE([debug],
               AC_HELP_STRING([--enable-debug],
@@ -205,6 +230,7 @@ Compatibility library ......................... $status_compat
 Memory mapped I/O ............................. $mapped_io
 GNU Readline .................................. $status_readline
 Debugging support ............................. $status_debug
+Reflink crash tolerance ....................... $status_ficlone
 *******************************************************************
 
 EOF
@@ -223,7 +249,8 @@ fi
 mapped_io=$mapped_io
 status_readline=$status_readline
 status_debug=$status_debug
-want_gdbmtool_debug=$want_gdbmtool_debug])
+want_gdbmtool_debug=$want_gdbmtool_debug
+status_ficlone=$status_ficlone])
 
 AC_CONFIG_FILES([Makefile
                  src/Makefile

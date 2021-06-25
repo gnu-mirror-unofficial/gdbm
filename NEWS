@@ -1,8 +1,20 @@
-GNU dbm NEWS -- history of user-visible changes. 2021-06-17
+GNU dbm NEWS -- history of user-visible changes.
 Copyright (C) 1990-2021 Free Software Foundation, Inc.
 See the end of file for copying conditions.
 
 Please send gdbm bug reports to <bug-gdbm@gnu.org>.
+
+Version 1.20.90 (git)
+
+* Crash tolerance
+
+By default it is possible for an abrupt crash (e.g., power failure,
+OS kernel panic, or application process crash) to corrupt the gdbm
+database file.  A new Linux-only mechanism enables applications to
+recover the database state corresponding to the most recent
+successful gdbm_sync() call before the crash.  See file
+"README_crash_tolerance.txt".
+
 
 Version 1.20, 2021-06-17
 

@@ -37,6 +37,8 @@ gdbm_close (GDBM_FILE dbf)
       if (dbf->read_write != GDBM_READER)
 	gdbm_file_sync (dbf);
 
+      _gdbmsync_done (dbf);
+      
       /* Close the file and free all malloced memory. */
 #if HAVE_MMAP
       _gdbm_mapped_unmap (dbf);

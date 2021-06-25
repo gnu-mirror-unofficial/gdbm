@@ -239,6 +239,8 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
   dbf->last_error = GDBM_NO_ERROR;
   dbf->last_syserror = 0;
   dbf->last_errstr = NULL;
+
+  _gdbmsync_init (dbf);
   
   /* GDBM_FAST used to determine whether or not we set fast_write. */
   if (flags & GDBM_SYNC)

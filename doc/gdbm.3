@@ -13,7 +13,7 @@
 .\"
 .\" You should have received a copy of the GNU General Public License
 .\" along with GDBM. If not, see <http://www.gnu.org/licenses/>. */
-.TH GDBM 3 "March 21, 2021" "GDBM" "GDBM User Reference"
+.TH GDBM 3 "June 25, 2021" "GDBM" "GDBM User Reference"
 .SH NAME
 GDBM \- The GNU database manager.  Includes \fBdbm\fR and \fBndbm\fR
 compatibility.
@@ -62,6 +62,12 @@ compatibility.
 .BI "int gdbm_bucket_count (GDBM_FILE " dbf ", size_t *" pcount ");"
 .br
 .BI "int gdbm_avail_verify (GDBM_FILE " dbf ");"
+.PP
+.SS Crash Tolerance (see below):
+.PP
+.BI "int gdbm_failure_atomic (GDBM_FILE " dbf ", const char *" even ", const char *" odd ");"
+.br
+.BI "int gdbm_latest_snapshot (const char *" even ", const char *" odd ", const char **" result ");"
 .PP
 .SS DBM Compatibility routines:
 .PP
@@ -425,6 +431,24 @@ All users in compatibility mode are assumed to be writers.  If the
 also try to open it as a reader.  All returned pointers in datum
 structures point to data that \fBgdbm\fR WILL free.  They should be
 treated as static pointers (as standard UNIX \fBdbm\fR does).
+
+.SH CRASH TOLERANCE
+
+By default \fBGNU dbm\fR does not protect the integrity of its
+databases from corruption or destruction due to failures such as
+power outages, operating system kernel panics, or application process
+crashes.  Such failures could damage or destroy the underlying
+database.
+
+Starting with release 1.21 \fBGNU dbm\fR includes a mechanism that,
+if used correctly, enables post-crash recovery to a consistent state
+of the underlying database.  This mechanism requires OS and
+filesystem support and must be requested when \fBgdbm\fR is compiled.
+The crash-tolerance mechanism is a "pure opt-in" feature, in the
+sense that it has no effects whatsoever except on those applications
+that explicitly request it.  See file "README_crash_tolerance.txt"
+in the distribution tarball for details.
+
 .SH LINKING
 This library is accessed by specifying \fI\-lgdbm\fR as the last
 parameter to the compile line, e.g.:
@@ -452,7 +476,8 @@ Send bug reports to <bug\-gdbm@gnu.org>.
 .BR gdbm_load (1),
 .BR gdbmtool (1).
 .SH AUTHORS
-by Philip A. Nelson, Jason Downs and Sergey Poznyakoff.
+by Philip A. Nelson, Jason Downs and Sergey Poznyakoff;
+crash tolerance by Terence Kelly.
 .SH COPYRIGHT
 Copyright \(co 1990 - 2021 Free Software Foundation, Inc.
 
@@ -487,6 +512,11 @@ You may contact the current maintainers by:
 .br
 and
    e-mail:  gray@gnu.org
+
+For questions and feedback regarding crash tolerance, you may contact
+Terence Kelly at:
+.br
+   e-mail:  tpkelly @ { acm.org, cs.princeton.edu, eecs.umich.edu }
 
 .\" Local variables:
 .\" eval: (add-hook 'write-file-hooks 'time-stamp)

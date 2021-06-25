@@ -125,6 +125,15 @@ extern datum gdbm_nextkey (GDBM_FILE, datum);
 extern int gdbm_reorganize (GDBM_FILE);
   
 extern int gdbm_sync (GDBM_FILE);
+extern int gdbm_failure_atomic (GDBM_FILE, const char *, const char *);
+
+enum gdbm_latest_status
+  {
+    GDBM_SNAPSHOT_OK,
+    GDBM_SNAPSHOT_ERR,
+    GDBM_SNAPSHOT_SAME
+  };
+extern int gdbm_latest_snapshot (const char *, const char *, const char **);
 extern int gdbm_exists (GDBM_FILE, datum);
 extern int gdbm_setopt (GDBM_FILE, int, void *, int);
 extern int gdbm_fdesc (GDBM_FILE);
@@ -238,10 +247,13 @@ enum
     GDBM_FILE_TRUNCATE_ERROR     = 39,
     GDBM_BUCKET_CACHE_CORRUPTED  = 40,
     GDBM_BAD_HASH_ENTRY          = 41,
+    GDBM_ERR_SNAPSHOT_CLONE      = 42,
+    GDBM_ERR_REALPATH            = 43,
+    GDBM_ERR_USAGE               = 44
   };
   
 # define _GDBM_MIN_ERRNO	0
-# define _GDBM_MAX_ERRNO	GDBM_BAD_HASH_ENTRY
+# define _GDBM_MAX_ERRNO	GDBM_ERR_USAGE
 
 /* This one was never used and will be removed in the future */
 # define GDBM_UNKNOWN_UPDATE GDBM_UNKNOWN_ERROR
