@@ -130,6 +130,7 @@ extern int gdbm_failure_atomic (GDBM_FILE, const char *, const char *);
 enum gdbm_latest_status
   {
     GDBM_SNAPSHOT_OK,
+    GDBM_SNAPSHOT_BAD,
     GDBM_SNAPSHOT_ERR,
     GDBM_SNAPSHOT_SAME
   };

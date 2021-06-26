@@ -38,23 +38,31 @@
 static int
 fsync_to_root (const char *f)
 {
-  char path[PATH_MAX], *p;
+  char path[PATH_MAX], *end;
   if (realpath (f, path) == NULL)
     return GDBM_ERR_REALPATH;
-  while ((p = strrchr (path, '/')) != NULL && (*p = 0, path[0] != 0))
+  end = path + strlen(path);
+  while (path < end)
     {
-      int fd;
-
-      fd = open (path, O_RDONLY);
-      if (fd == -1)
-	return GDBM_FILE_OPEN_ERROR;
-      if (fsync (fd))
+      if (end[-1] == '/')
 	{
-	  close (fd);
-	  return GDBM_FILE_SYNC_ERROR;
+	  int fd;
+
+	  *end = 0;
+	  fd = open (path, O_RDONLY);
+	  if (fd == -1)
+	    return GDBM_FILE_OPEN_ERROR;
+	  if (fsync (fd))
+	    {
+	      int ec = errno;
+	      close (fd);
+	      errno = ec;
+	      return GDBM_FILE_SYNC_ERROR;
+	    }
+	  if (close (fd))
+	    return GDBM_FILE_CLOSE_ERROR;
 	}
-      if (close (fd))
-	return GDBM_FILE_CLOSE_ERROR;
+      end--;
     }
   return GDBM_NO_ERROR;
 }
@@ -159,12 +167,12 @@ gdbm_failure_atomic (GDBM_FILE dbf, const char *even, const char *odd)
       _gdbmsync_init (dbf);
     }
 
-  dbf->snapfd[0] = open (even, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR);
+  dbf->snapfd[0] = open (even, O_WRONLY | O_CREAT | O_EXCL, S_IWUSR);
   if (dbf->snapfd[0] == -1) 
     GDBM_SET_ERRNO (dbf, GDBM_FILE_OPEN_ERROR, FALSE);
   else
     {
-      dbf->snapfd[1] = open (odd, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR);
+      dbf->snapfd[1] = open (odd, O_WRONLY | O_CREAT | O_EXCL, S_IWUSR);
       if (dbf->snapfd[1] == -1)
 	GDBM_SET_ERRNO (dbf, GDBM_FILE_OPEN_ERROR, FALSE);
       else if ((r = fsync_to_root (even)) != 0 ||
@@ -209,8 +217,13 @@ stat_snapshot (const char *f, struct stat *st)
     return -1;
   if (S_IXUSR & st->st_mode)	/* f is executable */
     return -1;
-  if ((S_IRUSR & st->st_mode) && (S_IWUSR & st->st_mode))
-    return -1;				/* f is both readable and writable */
+  if (S_IRUSR & st->st_mode)
+    {
+      if (S_IWUSR & st->st_mode)
+	return -1;	/* f is both readable and writable */
+    }
+  else if (!S_IWUSR & st->st_mode)
+    return -1;		/* f is neither readable nor writable */
   return 0;
 }
 
@@ -237,7 +250,7 @@ gdbm_latest_snapshot (const char *even, const char *odd, const char **ret)
     return GDBM_SNAPSHOT_ERR;
   if (stat_snapshot (odd, &st_odd))
     return GDBM_SNAPSHOT_ERR;
-  
+
   if (st_even.st_mode & S_IRUSR)
     {
       if (!(st_odd.st_mode & S_IRUSR))
@@ -245,21 +258,29 @@ gdbm_latest_snapshot (const char *even, const char *odd, const char **ret)
 	  *ret = even;
 	  return GDBM_SNAPSHOT_OK;
 	}
+      /* Both readable: check mtime */
     }
   else if (st_odd.st_mode & S_IRUSR)
     {
       *ret = odd;
       return GDBM_SNAPSHOT_OK;
     }
-  
+  else
+    {
+      /* neither readable: error */
+      return GDBM_SNAPSHOT_BAD;
+    }
+
+  /* Compare mtimes, select the newer snapshot, i.e. the one whose mtime
+     is greater than the other's */
   switch (timespec_cmp (&st_even.st_mtim, &st_odd.st_mtim))
     {
     case -1:
-      *ret = even;
+      *ret = odd;
       break;
 
     case 1:
-      *ret = odd;
+      *ret = even;
       break;
     
     case 0:
@@ -279,7 +300,7 @@ gdbm_failure_atomic (GDBM_FILE dbf, const char *even, const char *odd)
 }
 
 int
-gdbm_latest (const char *even, const char *odd, const char *ret)
+gdbm_latest_snapshot (const char *even, const char *odd, const char *ret)
 {
 	errno = ENOSYS;
 	return GDBM_SNAPSHOT_ERR;

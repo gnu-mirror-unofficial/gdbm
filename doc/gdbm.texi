@@ -1490,6 +1490,10 @@ switch (gdbm_latest_snapshot (even, odd, &recovery_file))
        */
       break;
 
+    case GDBM_SNAPSHOT_BAD:
+      fprintf (stderr, "Both snapshot files unusable\n");
+      exit (1);
+      
     case GDBM_SNAPSHOT_ERR:
       /* An error occurred.  Inspect @code{errno} for details. */
       perror ("gdbm_latest_snapshot")
@@ -1563,13 +1567,15 @@ Examine the system @code{errno} variable for details.
 @deftypefn {gdbm interface} int gdbm_latest_snapshot (const char *@var{even}, @
   const char *@var{odd}, const char **@var{retval})
 @kwindex GDBM_SNAPSHOT_OK
+@kwindex GDBM_SNAPSHOT_BAD
 @kwindex GDBM_SNAPSHOT_ERR
 @kwindex GDBM_SNAPSHOT_SAME
 Selects between two snapshots, @var{even} and @var{odd}, the one to be
 used for crash recovery.  On success, stores a pointer to the selected
 filename in the memory location pointed to by @var{retval} and returns
-@code{GDBM_SNAPSHOT_OK}.  If a system error occurs, returns
-@code{GDBM_SNAPSHOT_ERR} and sets @code{errno} to the error code
+@code{GDBM_SNAPSHOT_OK}.  If neither snapshot file is usable, the
+function returns @code{GDBM_SNAPSHOT_BAD}.  If a system error occurs, it
+returns @code{GDBM_SNAPSHOT_ERR} and sets @code{errno} to the error code
 describing the problem.  Finally, in the unlikely case that it cannot
 select between the two snapshots (this means they are both readable
 and have exactly the same @code{mtime} timestamp), the function returns
