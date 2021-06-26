@@ -489,7 +489,7 @@ chmod(2) man page},
 @end ifnothtml
 and
 @ifhtml
-@uref{http://www.manpagez.com/man/2/open, open(2)}),
+@uref{http://www.manpagez.com/man/2/open, open(2)}},
 @end ifhtml
 @ifnothtml
 @ref{open,,open a file,open(2), open(2) man page}.},
@@ -1562,6 +1562,9 @@ Examine the system @code{errno} variable for details.
 
 @deftypefn {gdbm interface} int gdbm_latest_snapshot (const char *@var{even}, @
   const char *@var{odd}, const char **@var{retval})
+@kwindex GDBM_SNAPSHOT_OK
+@kwindex GDBM_SNAPSHOT_ERR
+@kwindex GDBM_SNAPSHOT_SAME
 Selects between two snapshots, @var{even} and @var{odd}, the one to be
 used for crash recovery.  On success, stores a pointer to the selected
 filename in the memory location pointed to by @var{retval} and returns
@@ -1569,7 +1572,7 @@ filename in the memory location pointed to by @var{retval} and returns
 @code{GDBM_SNAPSHOT_ERR} and sets @code{errno} to the error code
 describing the problem.  Finally, in the unlikely case that it cannot
 select between the two snapshots (this means they are both readable
-and have exactly the same @code{mtime} timestamp), returns
+and have exactly the same @code{mtime} timestamp), the function returns
 @code{GDBM_SNAPSHOT_SAME}.
 
 If any value other than @code{GDBM_SNAPSHOT_OK} is returned, it is
@@ -1907,157 +1910,155 @@ needing recovery (@pxref{Recovery}) and return -1.
 This chapter summarizes error codes which can be set by the
 functions in @code{gdbm} library.
 
-@table @asis
-@kwindex GDBM_NO_ERROR
-@item GDBM_NO_ERROR
+@defvr {Error Code} GDBM_NO_ERROR
 No error occurred.
+@end defvr
 
-@kwindex GDBM_MALLOC_ERROR
-@item GDBM_MALLOC_ERROR
+@defvr {Error Code} GDBM_MALLOC_ERROR
 Memory allocation failed.  Not enough memory.
+@end defvr
 
-@kwindex GDBM_BLOCK_SIZE_ERROR
+@defvr {Error Code} GDBM_BLOCK_SIZE_ERROR
 @kwindex GDBM_BSEXACT
-@item GDBM_BLOCK_SIZE_ERROR
 This error is set by the @code{gdbm_open} function (@pxref{Open}), if
 the value of its @var{block_size} argument is incorrect and the
 @code{GDBM_BSEXACT} flag is set.
+@end defvr
 
-@kwindex GDBM_FILE_OPEN_ERROR
-@item GDBM_FILE_OPEN_ERROR
+@defvr {Error Code} GDBM_FILE_OPEN_ERROR
 The library was not able to open a disk file.  This can be set by
 @code{gdbm_open} (@pxref{Open}), @code{gdbm_export} and
 @code{gdbm_import} functions (@pxref{Flat files}).
 
 Inspect the value of the system @code{errno} variable to get more
 detailed diagnostics.
+@end defvr
 
-@kwindex GDBM_FILE_WRITE_ERROR
-@item GDBM_FILE_WRITE_ERROR
+@defvr {Error Code} GDBM_FILE_WRITE_ERROR
 Writing to a disk file failed.  This can be set by
 @code{gdbm_open} (@pxref{Open}), @code{gdbm_export} and
 @code{gdbm_import} functions.
 
 Inspect the value of the system @code{errno} variable to get more
 detailed diagnostics.
+@end defvr
 
-@kwindex GDBM_FILE_SEEK_ERROR
-@item GDBM_FILE_SEEK_ERROR
+@defvr {Error Code} GDBM_FILE_SEEK_ERROR
 Positioning in a disk file failed.  This can be set by
 @code{gdbm_open} (@pxref{Open}) function.
 
 Inspect the value of the system @code{errno} variable to get a more
 detailed diagnostics.
+@end defvr
 
-@kwindex GDBM_FILE_READ_ERROR
-@item GDBM_FILE_READ_ERROR
+@defvr {Error Code} GDBM_FILE_READ_ERROR
 Reading from a disk file failed.  This can be set by
 @code{gdbm_open} (@pxref{Open}), @code{gdbm_export} and
 @code{gdbm_import} functions.
 
 Inspect the value of the system @code{errno} variable to get a more
 detailed diagnostics.
+@end defvr
 
-@kwindex GDBM_BAD_MAGIC_NUMBER
-@item GDBM_BAD_MAGIC_NUMBER
+@defvr {Error Code} GDBM_BAD_MAGIC_NUMBER
 The file given as argument to @code{gdbm_open} function is not a valid
 @code{gdbm} file: it has a wrong magic number.
+@end defvr
 
-@kwindex GDBM_EMPTY_DATABASE
-@item GDBM_EMPTY_DATABASE
+@defvr {Error Code} GDBM_EMPTY_DATABASE
 The file given as argument to @code{gdbm_open} function is not a valid
 @code{gdbm} file: it has zero length.
+@end defvr
 
-@kwindex GDBM_CANT_BE_READER
-@item GDBM_CANT_BE_READER
+@defvr {Error Code} GDBM_CANT_BE_READER
 This error code is set by the @code{gdbm_open} function if it is not
 able to lock file when called in @code{GDBM_READER} mode (@pxref{Open,
 GDBM_READER}).
+@end defvr
 
-@kwindex GDBM_CANT_BE_WRITER
-@item GDBM_CANT_BE_WRITER       
+@defvr {Error Code} GDBM_CANT_BE_WRITER       
 This error code is set by the @code{gdbm_open} function if it is not
 able to lock file when called in writer mode (@pxref{Open}).
+@end defvr
 
-@kwindex GDBM_READER_CANT_DELETE
-@item GDBM_READER_CANT_DELETE
+@defvr {Error Code} GDBM_READER_CANT_DELETE
 Set by the @code{gdbm_delete} (@pxref{Delete}) if it attempted to
 operate on a database that is open in read-only mode (@pxref{Open,
 GDBM_READER}).
+@end defvr
 
-@kwindex GDBM_READER_CANT_STORE
-@item GDBM_READER_CANT_STORE    
+@defvr {Error Code} GDBM_READER_CANT_STORE    
 Set by the @code{gdbm_store} (@pxref{Store}) if it attempted to
 operate on a database that is open in read-only mode (@pxref{Open,
 GDBM_READER}).
+@end defvr
 
-@kwindex GDBM_READER_CANT_REORGANIZE
-@item GDBM_READER_CANT_REORGANIZE       
+@defvr {Error Code} GDBM_READER_CANT_REORGANIZE       
 Set by the @code{gdbm_reorganize} (@pxref{Reorganization}) if it attempted to
 operate on a database that is open in read-only mode (@pxref{Open,
 GDBM_READER}).
+@end defvr
 
-@kwindex GDBM_ITEM_NOT_FOUND
-@item GDBM_ITEM_NOT_FOUND
+@defvr {Error Code} GDBM_ITEM_NOT_FOUND
 Requested item was not found.  This error is set by @code{gdbm_delete}
 (@pxref{Delete}) and @code{gdbm_fetch} (@pxref{Fetch}) when the requested
 @var{key} value is not found in the database.
+@end defvr
 
-@kwindex GDBM_REORGANIZE_FAILED
-@item GDBM_REORGANIZE_FAILED
+@defvr {Error Code} GDBM_REORGANIZE_FAILED
 The @code{gdbm_reorganize} function is not
 able to create a temporary database.  @xref{Reorganization}.
+@end defvr
 
-@kwindex GDBM_CANNOT_REPLACE
-@item GDBM_CANNOT_REPLACE
+@defvr {Error Code} GDBM_CANNOT_REPLACE
 Cannot replace existing item.  This error is set by the
 @code{gdbm_store} if the requested @var{key} value is found in the
 database and the @var{flag} parameter is not @code{GDBM_REPLACE}.
 @xref{Store}, for a detailed discussion.
+@end defvr
 
-@kwindex GDBM_ILLEGAL_DATA
-@item GDBM_ILLEGAL_DATA
+@defvr {Error Code} GDBM_ILLEGAL_DATA
 Either @var{key} or @var{content} parameter was wrong in a call to
 to @code{gdbm_store} (@pxref{Store}).
+@end defvr
 
-@kwindex GDBM_OPT_ALREADY_SET
-@item GDBM_OPT_ALREADY_SET      
+@defvr {Error Code} GDBM_OPT_ALREADY_SET      
 Requested option can be set only once and was already set.  As of
 version @value{VERSION}, this error code is no longer used.  In prior
 versions it could have been returned by the @code{gdbm_setopt}
 function when setting the @code{GDBM_CACHESIZE} value.
+@end defvr
 
-@kwindex GDBM_OPT_ILLEGAL
-@item GDBM_OPT_ILLEGAL
+@defvr {Error Code} GDBM_OPT_ILLEGAL
 The @var{option} argument is not valid or the @var{value} argument
 points to an invalid value in a call to @code{gdbm_setopt} function.
 @xref{Options}.
+@end defvr
 
-@kwindex GDBM_BYTE_SWAPPED
-@item GDBM_BYTE_SWAPPED
+@defvr {Error Code} GDBM_BYTE_SWAPPED
 The @code{gdbm_open} function (@pxref{Open}) attempts to open a
 database which is created on a machine with different byte ordering.
+@end defvr
 
-@kwindex GDBM_BAD_FILE_OFFSET
-@item GDBM_BAD_FILE_OFFSET
+@defvr {Error Code} GDBM_BAD_FILE_OFFSET
 The @code{gdbm_open} function (@pxref{Open}) sets this error code if
 the file it tries to open has a wrong magic number.
+@end defvr
 
-@kwindex GDBM_BAD_OPEN_FLAGS
-@item GDBM_BAD_OPEN_FLAGS
+@defvr {Error Code} GDBM_BAD_OPEN_FLAGS
 Set by the @code{gdbm_export} function if supplied an invalid
 @var{flags} argument.  @xref{Flat files}.
+@end defvr
 
-@kwindex GDBM_FILE_STAT_ERROR
-@item GDBM_FILE_STAT_ERROR
+@defvr {Error Code} GDBM_FILE_STAT_ERROR
 Getting information about a disk file failed.  The system @code{errno}
 will give more details about the error.
 
 This error can be set by the following functions: @code{gdbm_open},
 @code{gdbm_reorganize}.
+@end defvr
 
-@kwindex GDBM_FILE_EOF
-@item GDBM_FILE_EOF
+@defvr {Error Code} GDBM_FILE_EOF
 End of file was encountered where more data was expected to be
 present.  This error can occur when fetching data from the database
 and usually means that the database is truncated or otherwise corrupted.
@@ -2067,58 +2068,58 @@ these functions are: @code{gdbm_delete}, @code{gdbm_exists},
 @code{gdbm_fetch}, @code{gdbm_export}, @code{gdbm_import},
 @code{gdbm_reorganize}, @code{gdbm_firstkey}, @code{gdbm_nextkey},
 @code{gdbm_store}. 
+@end defvr
 
-@kwindex GDBM_NO_DBNAME
-@item GDBM_NO_DBNAME
+@defvr {Error Code} GDBM_NO_DBNAME
 Output database name is not specified.  This error code is set by
 @code{gdbm_load} (@pxref{gdbm_load function,,gdbm_load}) if the first
 argument points to @code{NULL} and the input file does not specify the
 database name.
+@end defvr
 
-@kwindex GDBM_ERR_FILE_OWNER
-@item GDBM_ERR_FILE_OWNER
+@defvr {Error Code} GDBM_ERR_FILE_OWNER
 This error code is set by @code{gdbm_load} if it is unable to restore
 database file owner.  It is a mild error condition, meaning that the
 data have been restored successfully, only changing the target file
 owner failed.  Inspect the system @code{errno} variable to get a more
 detailed diagnostics.
+@end defvr
 
-@kwindex GDBM_ERR_FILE_MODE
-@item GDBM_ERR_FILE_MODE
+@defvr {Error Code} GDBM_ERR_FILE_MODE
 This error code is set by @code{gdbm_load} if it is unable to restore
 database file mode.  It is a mild error condition, meaning that the data
 have been restored successfully, only changing the target file owner
 failed.  Inspect the system @code{errno} variable to get a more
 detailed diagnostics.
+@end defvr
 
-@kwindex GDBM_NEED_RECOVERY
-@item GDBM_NEED_RECOVERY
+@defvr {Error Code} GDBM_NEED_RECOVERY
 Database is in inconsistent state and needs recovery.  Call
 @code{gdbm_recover} if you get this error.  @xref{Recovery}, for a
 detailed description of recovery functions.
+@end defvr
 
-@kwindex GDBM_BACKUP_FAILED
-@item GDBM_BACKUP_FAILED
+@defvr {Error Code} GDBM_BACKUP_FAILED
 The GDBM engine is unable to create backup copy of the file.
+@end defvr
 
-@kwindex GDBM_DIR_OVERFLOW
-@item GDBM_DIR_OVERFLOW
+@defvr {Error Code} GDBM_DIR_OVERFLOW
 Bucket directory would overflow the size limit during an attempt to split
 hash bucket.  This error can occur while storing a new key.
+@end defvr
 
-@kwindex GDBM_BAD_BUCKET
-@item GDBM_BAD_BUCKET
+@defvr {Error Code} GDBM_BAD_BUCKET
 Invalid index bucket is encountered in the database.  Database
 recovery is needed (@pxref{Recovery}).
+@end defvr
 
-@kwindex GDBM_BAD_HEADER
-@item GDBM_BAD_HEADER
+@defvr {Error Code} GDBM_BAD_HEADER
 This error is set by @code{gdbm_open} and @code{gdbm_fd_open}, if the
 first block read from the database file does not contain a valid GDBM
 header.
+@end defvr
 
-@kwindex GDBM_BAD_AVAIL
-@item GDBM_BAD_AVAIL
+@defvr {Error Code} GDBM_BAD_AVAIL
 The available space stack is invalid.  This error can be set by 
 @code{gdbm_open} and @code{gdbm_fd_open}, if the extended database
 verification was requested (@code{GDBM_XVERIFY}).  It is also set
@@ -2126,55 +2127,77 @@ by the @code{gdbm_avail_verify} function (@pxref{Additional
 functions}).
 
 Database recovery is needed (@pxref{Recovery}).
+@end defvr
 
-@kwindex GDBM_BAD_HASH_TABLE
-@item GDBM_BAD_HASH_TABLE
+@defvr {Error Code} GDBM_BAD_HASH_TABLE
 Hash table in a bucket is invalid.  This error can be set by the
 following functions: @code{gdbm_delete}, @code{gdbm_exists},
 @code{gdbm_fetch}, @code{gdbm_firstkey}, @code{gdbm_nextkey}, and
 @code{gdbm_store}.
 
 Database recovery is needed (@pxref{Recovery}).
+@end defvr
 
-@kwindex GDBM_BAD_DIR_ENTRY
-@item GDBM_BAD_DIR_ENTRY
+@defvr {Error Code} GDBM_BAD_DIR_ENTRY
 Bad directory entry found in the bucket.  The database recovery is
 needed (@pxref{Recovery}).
+@end defvr
 
-@kwindex GDBM_FILE_CLOSE_ERROR
-@item GDBM_FILE_CLOSE_ERROR
+@defvr {Error Code} GDBM_FILE_CLOSE_ERROR
 The @code{gdbm_close} function was unable to close the database file
 descriptor.  The system @code{errno} variable contains the
 corresponding error code.
+@end defvr
 
-@kwindex GDBM_FILE_SYNC_ERROR
-@item GDBM_FILE_SYNC_ERROR
+@defvr {Error Code} GDBM_FILE_SYNC_ERROR
 Cached content couldn't be synchronized to disk.  Examine the
 @code{errno} variable to get more info,
 
 Database recovery is needed (@pxref{Recovery}).
+@end defvr
 
-@kwindex GDBM_FILE_TRUNCATE_ERROR
-@item GDBM_FILE_TRUNCATE_ERROR
+@defvr {Error Code} GDBM_FILE_TRUNCATE_ERROR
 File cannot be truncated.  Examine the @code{errno} variable to get
 more info,
 
 This error is set by @code{gdbm_open} and @code{gdbm_fd_open} when
 called with the @code{GDBM_NEWDB} flag.
+@end defvr
 
-@kwindex GDBM_BUCKET_CACHE_CORRUPTED
-@item GDBM_BUCKET_CACHE_CORRUPTED
+@defvr {Error Code} GDBM_BUCKET_CACHE_CORRUPTED
 The bucket cache structure is corrupted.  Database recovery is needed
 (@pxref{Recovery}).
+@end defvr
 
-@kwindex GDBM_BAD_HASH_ENTRY
-@kwindex GDBM_BAD_HASH_ENTRY
+@defvr {Error Code} GDBM_BAD_HASH_ENTRY
 This error is set during sequential access (@pxref{Sequential}), if
 the next hash table entry does not contain the expected key.  This
 means that the bucket is malformed or corrupted and the database needs
 recovery (@pxref{Recovery}).
+@end defvr
 
-@end table
+@defvr {Error Code} GDBM_ERR_SNAPSHOT_CLONE
+Set by the @code{gdbm_failure_atomic} function if it was unable to
+clone the database file into a snapshot.  Inspect the system
+@code{errno} variable for the underlying cause of the error.  If
+@code{errno} is @code{EINVAL} or @code{ENOSYS}, crash tolerance
+settings will be removed from the database.
+
+@xref{Crash Tolerance API}.
+@end defvr
+
+@defvr {Error Code} GDBM_ERR_REALPATH
+Set by the @code{gdbm_failure_atomic} function if the call to
+@code{realpath} function failed.  @code{realpath} is used to
+determine actual path names of the snapshot files.  Examine the system
+@code{errno} variable for details.
+
+@xref{Crash Tolerance API}.
+@end defvr
+
+@defvr {Error Code} GDBM_ERR_USAGE
+Function usage error.  That includes invalid argument values, and the like.
+@end defvr
 
 @node Compatibility
 @chapter Compatibility with standard @command{dbm} and @command{ndbm}.
