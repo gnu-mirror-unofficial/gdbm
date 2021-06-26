@@ -93,8 +93,6 @@ texts written by Phil.
 @end ifnottex
 
 @menu
-Introduction:
-
 * Copying::                    Your rights.
 * Intro::                      Introduction to GNU dbm.
 
@@ -112,6 +110,7 @@ Functions:
 * Flat files::                 Export and import to Flat file format.
 * Errors::                     Error handling.
 * Recovery::                   Recovery from fatal errors.
+* Crash Tolerance::
 * Options::                    Setting internal options.
 * Locking::                    File locking.
 * Variables::                  Useful global variables.
@@ -138,6 +137,28 @@ Other topics:
 * This Manual in Other Formats::
 @end ifhtml
 @end ifset
+
+@detailmenu
+ --- The Detailed Node Listing ---
+
+Compatibility with standard @command{dbm} and @command{ndbm}.
+
+* ndbm::  NDBM interface functions.
+* dbm::   DBM interface functions.
+
+Examine and modify a GDBM database.
+
+* invocation::
+* shell::
+
+gdbmtool interactive mode
+
+* variables::      shell variables.
+* commands::       shell commands.
+* definitions::    how to define structured data.
+* startup files::
+
+@end detailmenu
 @end menu
 
 @node Copying
@@ -1314,6 +1335,246 @@ inconsistencies and attempts recovery only if some were found.
 The special flag bit @code{GDBM_RCVR_FORCE} instructs
 @code{gdbm_recovery} to omit this check and to perform database recovery
 unconditionally.
+
+@node Crash Tolerance
+@chapter Crash Tolerance
+
+Crash tolerance is a new (as of release 1.21) feature that can be
+enabled at compile time, and used in environments with appropriate
+support from the OS and the filesystem.  As of version
+@value{VERSION}, this means a Linux kernel 5.12.12 or later and
+a filesystem that supports reflink copying, such as XFS, BtrFS, or
+OCFS2.  If these prerequisites are met, crash tolerance code will
+be enabled automaticaly by the @command{configure} script when
+building the package.
+
+The crash-tolerance mechanism, when used correctly, guarantees that a
+consistent recent state of application data can be recovered followng
+a crash.  Specifically, it guarantees that the state of the database
+file corresponding to the most recent successful gdbm_sync() call can
+be recovered.  
+
+If the new mechanism is used correctly, crashes such as power
+outages, OS kernel panics, and (some) application process crashes
+will be tolerated.  Non-tolerated failures include physical
+destruction of storage devices and corruption due to bugs in
+application logic.  For example, the new mechanism won't help if a
+pointer bug in your application corrupts gdbm's private in-memory
+data which in turn corrupts the database file.
+
+To enable crash tolerance in your application, follow these steps.
+
+@heading Using Proper Filesystem
+
+Use a filesystem that supports reflink copying.  Currently XFS, BtrFS,
+and OCFS2 support reflink.  You can create such a filesystem if you
+don't have one already.  (Note that reflink support may require that
+special options be specified at the time of filesystem creation; this
+is true of XFS.)  The most conventional way to create a filesystem is
+on a dedicated storage device.  However it is also possible to create
+a filesystem within an ordinary file on some other filesystem.
+
+For example, the following commands, executed as root, will create a
+smallish XFS filesystem inside a file on another filesystem:
+
+@example
+mkdir XFS
+cd XFS
+truncate --size 512m XFSfile
+mkfs -t xfs -m crc=1 -m reflink=1 XFSfile
+mkdir XFSmountpoint
+mount -o loop XFSfile XFSmountpoint
+@end example
+
+The XFS filesystem is now available in directory
+@file{XFSmountpoint}.  Now, create a directory where your
+unprivileged user account may create and delete files:
+
+@example
+mkdir XFSmountpoint
+mkdir test
+chown @var{user}:@var{group} test
+@end example
+
+@noindent
+(where @var{user} and @var{group} are the user and group names of the
+unprivileged account the application uses).
+
+Reflink copying via @code{ioctl(FICLONE)} should work for files in and
+below this directory.  You can test reflink copying using the GNU
+@command{cp} program:
+
+@example
+cp --reflink=always file1 file2
+@end example
+
+@xref{cp invocation, reflink, reflink, coreutils, @sc{gnu} Coreutils}.
+
+Your GNU dbm database file and two @dfn{snapshot} files described below must
+all reside on the same reflink-capable filesystem.
+
+@heading Enabling crash tolerance
+
+Open a GNU dbm database with @code{gdbm_open}.  Unless you know what
+you are doing, do not specify the @code{GDBM_SYNC} flag when opening the
+database.  The reason is that you want your application to explicitly
+control when @code{gdbm_sync} is called; you don't want an implicit sync
+on every database operation.
+
+Request crash tolerance by invoking the following interface:
+
+@example
+int gdbm_failure_atomic (GDBM_FILE @var{dbf}, const char *@var{even},
+                         const char *@var{odd});
+@end example
+
+The @var{even} and @var{odd} arguments are the pathnames of two files that
+will be created and filled with @dfn{snapshots} of the database file.
+These two files must not exist when @code{gdbm_failure_atomic} is
+called and must reside on the same reflink-capable filesystem as the
+database file.
+
+After you call @code{gdbm_failure_atomic}, every call to
+@code{gdbm_sync} will make an efficient reflink snapshot of the
+database file in either the @var{even} or the @var{odd} snapshot file;
+consecutive @code{gdbm_sync} calls alternate between the two, hence
+the names.  The permission bits and @code{mtime} timestamps on the
+snapshot files determine which one contains the state of the database
+file corresponding to the most recent successful @code{gdbm_sync}.
+@xref{Crash recovery}, for discussion of crash recovery.
+
+@heading Synchronizing the Database
+
+When your application knows that the state of the database is
+consistent (i.e., all relevant application-level invariants hold), 
+you may call @code{gdbm_sync}.  For example, if your application
+manages bank accounts, transferring money from one account to another
+should maintain the invariant that the sum of the two accounts is the
+same before and after the transfer: It is correct to decrement account
+@samp{A} by $7, increment account @samp{B} by $7, and then call
+@code{gdbm_sync}.  However it is @emph{not} correct to call
+@code{gdbm_sync} @emph{between} the decrement of @samp{A} and the
+increment of @samp{B}, because a crash immediately after that call 
+would destroy money.  The general rule is simple, sensible, and
+memorable: Call @code{gdbm_sync} only when the database is in a state
+from which you are willing and able to recover following a crash.  (If
+you think about it you'll realize that there's never any other moment
+when you'd really want to call @code{gdbm_sync}, regardless of whether
+crash-tolerance is enabled.  Why on earth would you push the state of
+an inconsistent unrecoverable database down to durable media?).
+
+@heading Crash recovery
+@anchor{Crash recovery}
+If a crash occurs, the snapshot file (@var{even} or @var{odd})
+containing the database state reflecting the most recent successful
+@code{gdbm_sync} call is the snapshot file whose permission bits are
+read-only and whose last-modification timestamp is greatest.  If both
+snapshot files are readable, we choose the one with the most recent
+last-modification timestamp.  Following a crash, @emph{do not} do
+anything that could change the file permissions or last-mod timestamp on
+either snapshot file!
+
+The @code{gdbm_latest_snapshot} function is provided, that selects the
+right snapshot among the two.  Invoke it as:
+
+@example
+@group
+const char *recovery_file = NULL;
+
+switch (gdbm_latest_snapshot (even, odd, &recovery_file))
+  @{
+    case GDBM_SNAPSHOT_OK:
+      /*
+       * Success. @code{recovery_file} now points to the
+       * right filename.
+       */
+      break;
+
+    case GDBM_SNAPSHOT_ERR:
+      /* An error occurred.  Inspect @code{errno} for details. */
+      perror ("gdbm_latest_snapshot")
+      exit(1);
+
+    case GDBM_SNAPSHOT_SAME:
+      fprintf (stderr, "Both snapshots have the same date!\n);
+      exit (1);
+  @}
+@end group
+@end example
+
+@heading Performance
+
+The purpose of a parachute is not to hasten descent.  Crash tolerance
+is a safety mechanism, not a performance accelerator.  Reflink
+copying is designed to be as efficient as possible, but making
+snapshots of the GNU dbm database file on every @code{gdbm_sync} call
+entails overheads.  The performance impact of GDBM crash tolerance
+will depend on many factors including the type and configuration of
+the underlying storage system, how often the application calls
+@code{gdbm_sync}, and the extent of changes to the database file
+between consecutive calls to @code{gdbm_sync}.
+
+@heading Availability
+
+To ensure that application data can survive the failure of one or
+more storage devices, replicated storage (e.g., RAID) may be used
+beneath the reflink-capable filesystem.  Some cloud providers offer
+block storage services that mimic the interface of individual storage
+devices but that are implemented as high-availability fault-tolerant
+replicated distributed storage systems.  Installing a reflink-capable
+filesystem atop a high-availability storage system is a good starting
+point for a high-availability crash-tolerant GDBM.
+
+@node Crash Tolerance API
+@section Crash Tolerance API
+
+@deftypefn {gdbm interface} int gdbm_failure_atomic (GDBM_FILE @var{dbf}, @
+   const char *@var{even}, const char *@var{odd})
+Enables crash tolerance for the database file @var{dbf}.  The
+@var{even} and @var{odd} arguments are the pathnames of two files that
+will be created and filled with snapshots of the database file.
+These two files must not exist when @code{gdbm_failure_atomic} is
+called and must reside on the same reflink-capable filesystem as the
+database file.
+
+Returns 0 on success.  On failure, returns -1 and sets
+@code{gdbm_errno} to one of the following values:
+
+@table @code
+@item GDBM_ERR_USAGE
+Improper function usage.  Either @var{even} or @var{odd} is
+@code{NULL}, or they point to the same string.
+
+@item GDBM_NEED_RECOVERY
+The database needs recovery.  @xref{Recovery}.
+
+@item GDBM_ERR_SNAPSHOT_CLONE
+Failed to clone the database file into a snapshot.  Examine the system
+@code{errno} variable for details.
+
+@item GDBM_ERR_REALPATH
+Call to @code{realpath} function failed.  @code{realpath} is used to
+determine actual path names of the snapshot files.
+
+Examine the system @code{errno} variable for details.
+@end table
+@end deftypefn
+
+@deftypefn {gdbm interface} int gdbm_latest_snapshot (const char *@var{even}, @
+  const char *@var{odd}, const char **@var{retval})
+Selects between two snapshots, @var{even} and @var{odd}, the one to be
+used for crash recovery.  On success, stores a pointer to the selected
+filename in the memory location pointed to by @var{retval} and returns
+@code{GDBM_SNAPSHOT_OK}.  If a system error occurs, returns
+@code{GDBM_SNAPSHOT_ERR} and sets @code{errno} to the error code
+describing the problem.  Finally, in the unlikely case that it cannot
+select between the two snapshots (this means they are both readable
+and have exactly the same @code{mtime} timestamp), returns
+@code{GDBM_SNAPSHOT_SAME}.
+
+If any value other than @code{GDBM_SNAPSHOT_OK} is returned, it is
+guaranteed that the function don't touch @var{retval}.
+@end deftypefn
 
 @node Options
 @chapter Setting options

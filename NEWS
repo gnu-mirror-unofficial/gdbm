@@ -12,8 +12,8 @@ By default it is possible for an abrupt crash (e.g., power failure,
 OS kernel panic, or application process crash) to corrupt the gdbm
 database file.  A new Linux-only mechanism enables applications to
 recover the database state corresponding to the most recent
-successful gdbm_sync() call before the crash.  See file
-"README_crash_tolerance.txt".
+successful gdbm_sync() call before the crash.  See the chapter 15
+"Crash Tolerance" in the GDBM manual.
 
 
 Version 1.20, 2021-06-17
