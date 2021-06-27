@@ -222,7 +222,7 @@ stat_snapshot (const char *f, struct stat *st)
       if (S_IWUSR & st->st_mode)
 	return -1;	/* f is both readable and writable */
     }
-  else if (!S_IWUSR & st->st_mode)
+  else if (!(S_IWUSR & st->st_mode))
     return -1;		/* f is neither readable nor writable */
   return 0;
 }
