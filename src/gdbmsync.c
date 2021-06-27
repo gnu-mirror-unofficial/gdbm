@@ -38,31 +38,34 @@
 static int
 fsync_to_root (const char *f)
 {
+  int flags = O_WRONLY;
   char path[PATH_MAX], *end;
+  
   if (realpath (f, path) == NULL)
     return GDBM_ERR_REALPATH;
   end = path + strlen(path);
   while (path < end)
     {
-      if (end[-1] == '/')
-	{
-	  int fd;
+      int fd;
 
-	  *end = 0;
-	  fd = open (path, O_RDONLY);
-	  if (fd == -1)
-	    return GDBM_FILE_OPEN_ERROR;
-	  if (fsync (fd))
-	    {
-	      int ec = errno;
-	      close (fd);
-	      errno = ec;
-	      return GDBM_FILE_SYNC_ERROR;
-	    }
-	  if (close (fd))
-	    return GDBM_FILE_CLOSE_ERROR;
+      *end = 0;
+      fd = open (path, flags);
+      flags = O_RDONLY;
+      if (fd == -1)
+	return GDBM_FILE_OPEN_ERROR;
+      if (fsync (fd))
+	{
+	  int ec = errno;
+	  close (fd);
+	  errno = ec;
+	  return GDBM_FILE_SYNC_ERROR;
 	}
-      end--;
+      if (close (fd))
+	return GDBM_FILE_CLOSE_ERROR;
+
+      do
+	--end;
+      while (path < end && end[-1] != '/');
     }
   return GDBM_NO_ERROR;
 }
@@ -258,7 +261,26 @@ gdbm_latest_snapshot (const char *even, const char *odd, const char **ret)
 	  *ret = even;
 	  return GDBM_SNAPSHOT_OK;
 	}
-      /* Both readable: check mtime */
+
+      /*
+       * Both readable: check mtime.
+       * Select the newer snapshot, i.e. the one whose mtime
+       * is greater than the other's
+       */
+      switch (timespec_cmp (&st_even.st_mtim, &st_odd.st_mtim))
+	{
+	case -1:
+	  *ret = odd;
+	  break;
+	  
+	case 1:
+	  *ret = even;
+	  break;
+	  
+	case 0:
+	  /* Shouldn't happen */
+	  return GDBM_SNAPSHOT_SAME;
+	}
     }
   else if (st_odd.st_mode & S_IRUSR)
     {
@@ -266,26 +288,10 @@ gdbm_latest_snapshot (const char *even, const char *odd, const char **ret)
       return GDBM_SNAPSHOT_OK;
     }
   else
-    {
-      /* neither readable: error */
+    {      
+      /* neither readable: this means the crash occurred during
+	 gdbm_failure_atomic() */
       return GDBM_SNAPSHOT_BAD;
-    }
-
-  /* Compare mtimes, select the newer snapshot, i.e. the one whose mtime
-     is greater than the other's */
-  switch (timespec_cmp (&st_even.st_mtim, &st_odd.st_mtim))
-    {
-    case -1:
-      *ret = odd;
-      break;
-
-    case 1:
-      *ret = even;
-      break;
-    
-    case 0:
-      /* Shouldn't happen */
-      return GDBM_SNAPSHOT_SAME;
     }
 
   return GDBM_SNAPSHOT_OK;
@@ -300,7 +306,7 @@ gdbm_failure_atomic (GDBM_FILE dbf, const char *even, const char *odd)
 }
 
 int
-gdbm_latest_snapshot (const char *even, const char *odd, const char *ret)
+gdbm_latest_snapshot (const char *even, const char *odd, const char **ret)
 {
 	errno = ENOSYS;
 	return GDBM_SNAPSHOT_ERR;

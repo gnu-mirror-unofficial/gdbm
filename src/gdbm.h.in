@@ -127,7 +127,7 @@ extern int gdbm_reorganize (GDBM_FILE);
 extern int gdbm_sync (GDBM_FILE);
 extern int gdbm_failure_atomic (GDBM_FILE, const char *, const char *);
 
-enum gdbm_latest_status
+enum gdbm_latest_snapshot_status
   {
     GDBM_SNAPSHOT_OK,
     GDBM_SNAPSHOT_BAD,
