@@ -30,6 +30,7 @@
 # define _GDBM_H_
 
 # include <stdio.h>
+# include <sys/types.h>
 
 /* GDBM C++ support */
 # if defined(__cplusplus) || defined(c_plusplus)
