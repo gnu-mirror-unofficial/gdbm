@@ -211,7 +211,7 @@ gdbm_avail_traverse (GDBM_FILE dbf,
   size_t size;
   off_t n;
   struct off_map map = OFF_MAP_INITIALIZER;
-  int rc;
+  int rc = 0;
   
   GDBM_ASSERT_CONSISTENCY (dbf, -1);
   if (gdbm_avail_block_validate (dbf, &dbf->header->avail,
@@ -234,40 +234,42 @@ gdbm_avail_traverse (GDBM_FILE dbf,
       return -1;
     }
 
-  rc = 0;
-  n = dbf->header->avail.next_block;
-  while (n)
-    {
-      rc = off_map_lookup (&map, n);
-      if (rc != GDBM_NO_ERROR)
+  if (!(cb && cb (&dbf->header->avail, 0, data)))
+    {  
+      n = dbf->header->avail.next_block;
+      while (n)
 	{
-	  if (rc == GDBM_CANNOT_REPLACE)
-	    GDBM_SET_ERRNO (dbf, GDBM_BAD_AVAIL, TRUE);
-	  else
-	    GDBM_SET_ERRNO (dbf, rc, FALSE);
-	  rc = -1;
-	  break;
+	  rc = off_map_lookup (&map, n);
+	  if (rc != GDBM_NO_ERROR)
+	    {
+	      if (rc == GDBM_CANNOT_REPLACE)
+		GDBM_SET_ERRNO (dbf, GDBM_BAD_AVAIL, TRUE);
+	      else
+		GDBM_SET_ERRNO (dbf, rc, FALSE);
+	      rc = -1;
+	      break;
+	    }
+	  
+	  if (gdbm_file_seek (dbf, n, SEEK_SET) != n)
+	    {
+	      GDBM_SET_ERRNO (dbf, GDBM_FILE_SEEK_ERROR, FALSE);
+	      rc = -1;
+	      break;
+	    }
+
+	  if (_gdbm_avail_block_read (dbf, blk, size))
+	    {
+	      rc = -1;
+	      break;
+	    }
+	  
+	  if (cb && cb (blk, n, data))
+	    break;
+	  
+	  n = blk->next_block;
 	}
-
-      if (gdbm_file_seek (dbf, n, SEEK_SET) != n)
-	{
-	  GDBM_SET_ERRNO (dbf, GDBM_FILE_SEEK_ERROR, FALSE);
-	  rc = -1;
-	  break;
-	}
-
-      if (_gdbm_avail_block_read (dbf, blk, size))
-	{
-	  rc = -1;
-	  break;
-	}
-
-      if (cb && cb (blk, n, data))
-	break;
-
-      n = blk->next_block;
     }
-
+  
   free (blk);
   off_map_free (&map);
   

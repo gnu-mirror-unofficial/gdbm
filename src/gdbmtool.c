@@ -256,8 +256,14 @@ static int
 avail_list_print (avail_block *avblk, off_t n, void *data)
 {
   FILE *fp = data;
-  fprintf (fp, _("\nblock = %lu\nsize  = %d\ncount = %d\n"),
-	   (unsigned long) n, avblk->size, avblk->count);
+  
+  fputc ('\n', fp);
+  if (n == 0)//FIXME
+    fprintf (fp, "%s", _("header block"));
+  else
+    fprintf (fp, _("block = %lu"), (unsigned long) n);
+  fprintf (fp, _("\nsize  = %d\ncount = %d\n"),
+	   avblk->size, avblk->count);
   av_table_display (avblk->av_table, avblk->count, fp);
   return 0;
 }
@@ -265,10 +271,6 @@ avail_list_print (avail_block *avblk, off_t n, void *data)
 void
 _gdbm_print_avail_list (FILE *fp, GDBM_FILE dbf)
 {
-  /* Print the the header avail block.  */
-  fprintf (fp, _("\nheader block\nsize  = %d\ncount = %d\n"),
-	   dbf->header->avail.size, dbf->header->avail.count);
-  av_table_display (dbf->header->avail.av_table, dbf->header->avail.count, fp);
   if (gdbm_avail_traverse (dbf, avail_list_print, fp))
     terror ("%s", gdbm_strerror (gdbm_errno));
 }
