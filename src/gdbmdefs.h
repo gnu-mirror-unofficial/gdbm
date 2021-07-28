@@ -80,9 +80,12 @@ typedef struct
   int   bucket_size;   /* Size in bytes of a hash bucket struct. */
   int   bucket_elems;  /* Number of elements in a hash bucket. */
   off_t next_block;    /* The next unallocated block address. */
-  avail_block avail;   /* This must be last because of the pseudo
-                          array in avail.  This avail grows to fill
-                          the entire block. */
+  union
+  {
+    avail_block avail_tab;   /* This must be last because of the pseudo
+				array in avail.  This avail grows to fill
+				the entire block. */
+  } v;
 } gdbm_file_header;
 
 /* The dbm hash bucket element contains the full 31 bit hash value, the
@@ -227,6 +230,10 @@ struct gdbm_file_info
 
   /* The file header holds information about the database. */
   gdbm_file_header *header;
+
+  /* The table of available file space */
+  avail_block *avail;
+  size_t avail_size;
   
   /* The hash table directory from extendable hashing.  See Fagin et al, 
      ACM Trans on Database Systems, Vol 4, No 3. Sept 1979, 315-344 */
@@ -287,8 +294,7 @@ struct gdbm_file_info
 
 #define GDBM_DIR_COUNT(db) ((db)->header->dir_size / sizeof (off_t))
 
-#define GDBM_HEADER_AVAIL_SIZE(dbf) \
-  ((dbf)->header->block_size - offsetof (gdbm_file_header, avail))
+#define GDBM_HEADER_AVAIL_SIZE(db) ((db)->avail_size)
 
 /* Execute CODE without clobbering errno */
 #define SAVE_ERRNO(code)                        \

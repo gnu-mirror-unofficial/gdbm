@@ -214,17 +214,18 @@ gdbm_avail_traverse (GDBM_FILE dbf,
   int rc = 0;
   
   GDBM_ASSERT_CONSISTENCY (dbf, -1);
-  if (gdbm_avail_block_validate (dbf, &dbf->header->avail,
+  if (gdbm_avail_block_validate (dbf, dbf->avail,
 				 GDBM_HEADER_AVAIL_SIZE (dbf)))
     return -1;
 
-  if (off_map_lookup (&map, offsetof (gdbm_file_header, avail)))
+  // FIXME
+  if (off_map_lookup (&map, offsetof (gdbm_file_header, v.avail_tab)))
     {
       GDBM_SET_ERRNO (dbf, GDBM_MALLOC_ERROR, FALSE);
       return -1;
     }
       
-  size = ((((size_t)dbf->header->avail.size * sizeof (avail_elem)) >> 1)
+  size = ((((size_t)dbf->avail->size * sizeof (avail_elem)) >> 1)
 	  + sizeof (avail_block));
   blk = malloc (size);
   if (!blk)
@@ -234,9 +235,9 @@ gdbm_avail_traverse (GDBM_FILE dbf,
       return -1;
     }
 
-  if (!(cb && cb (&dbf->header->avail, 0, data)))
+  if (!(cb && cb (dbf->avail, 0, data)))
     {  
-      n = dbf->header->avail.next_block;
+      n = dbf->avail->next_block;
       while (n)
 	{
 	  rc = off_map_lookup (&map, n);

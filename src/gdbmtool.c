@@ -797,10 +797,11 @@ print_header_handler (struct handler_param *param)
   fprintf (fp, _("  header magic = %x\n"), gdbm_file->header->header_magic);
   fprintf (fp, _("  next block   = %lu\n"),
 	   (unsigned long) gdbm_file->header->next_block);
-  fprintf (fp, _("  avail size   = %d\n"), gdbm_file->header->avail.size);
-  fprintf (fp, _("  avail count  = %d\n"), gdbm_file->header->avail.count);
+  //FIXME
+  fprintf (fp, _("  avail size   = %d\n"), gdbm_file->header->v.avail_tab.size);
+  fprintf (fp, _("  avail count  = %d\n"), gdbm_file->header->v.avail_tab.count);
   fprintf (fp, _("  avail nx blk = %lu\n"),
-	   (unsigned long) gdbm_file->header->avail.next_block);
+	   (unsigned long) gdbm_file->header->v.avail_tab.next_block);
 }  
 
 /* hash KEY - hash the key */
