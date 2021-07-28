@@ -72,6 +72,12 @@ typedef struct
 
 typedef struct
 {
+  unsigned numsync;    /* Number of synchronizations */
+  avail_block avail_tab;
+} gdbm_ext_header;
+
+typedef struct
+{
   int   header_magic;  /* Version of file. */
   int   block_size;    /* The optimal i/o blocksize from stat. */
   off_t dir;           /* File address of hash directory table. */
@@ -82,9 +88,10 @@ typedef struct
   off_t next_block;    /* The next unallocated block address. */
   union
   {
-    avail_block avail_tab;   /* This must be last because of the pseudo
-				array in avail.  This avail grows to fill
-				the entire block. */
+    gdbm_ext_header ext;
+    avail_block avail_tab;  /* This must be last because of the pseudo
+			       array in avail.  This avail grows to fill
+			       the entire block. */
   } v;
 } gdbm_file_header;
 

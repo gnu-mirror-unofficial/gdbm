@@ -59,11 +59,31 @@ bucket_element_count (size_t bucket_size)
   return (bucket_size - sizeof (hash_bucket)) / sizeof (bucket_element) + 1;
 }
 
+static void
+gdbm_header_avail (gdbm_file_header const *hdr,
+		   avail_block **avail_ptr, size_t *avail_size)
+{
+  switch (hdr->header_magic)
+    { 
+    case GDBM_OMAGIC:
+    case GDBM_MAGIC: 
+      *avail_ptr = (avail_block *) &hdr->v.avail_tab;
+      *avail_size = (hdr->block_size - offsetof (gdbm_file_header, v.avail_tab));
+      break;
+      
+    case GDBM_NUMSYNC_MAGIC:
+      *avail_ptr = (avail_block *) &hdr->v.ext.avail_tab;
+      *avail_size = (hdr->block_size - offsetof (gdbm_file_header, v.ext.avail_tab));
+      break;
+    }
+}
+
 static int
 validate_header_std (gdbm_file_header const *hdr, struct stat const *st)
 {
   int result = GDBM_NO_ERROR;
-
+  int dir_size, dir_bits;
+  
   if (!(hdr->block_size > 0
 	&& hdr->block_size > sizeof (gdbm_file_header)
 	&& hdr->block_size - sizeof (gdbm_file_header) >=
@@ -95,13 +115,13 @@ validate_header_std (gdbm_file_header const *hdr, struct stat const *st)
   if (hdr->dir_bits != dir_bits)
     return GDBM_BAD_HEADER;
   
-  if (!(hdr->bucket_size > sizeof(hash_bucket)))
+  if (!(hdr->bucket_size > sizeof (hash_bucket)))
     return GDBM_BAD_HEADER;
 
   if (hdr->bucket_elems != bucket_element_count (hdr->bucket_size))
     return GDBM_BAD_HEADER;
 
-  if (((hdr->block_size - sizeof (gdbm_file_header)) / sizeof(avail_elem) + 1)
+  if (((hdr->block_size - sizeof (gdbm_file_header)) / sizeof (avail_elem) + 1)
       != hdr->v.avail_tab.size)
     return GDBM_BAD_HEADER;
 
@@ -112,9 +132,12 @@ static int
 validate_header_numsync (gdbm_file_header const *hdr, struct stat const *st)
 {
   int result = GDBM_NO_ERROR;
-
+  int dir_size, dir_bits;
+  
   if (!(hdr->block_size > 0
-	&& hdr->block_size > sizeof (gdbm_file_header))) //FIXME
+	&& hdr->block_size > sizeof (gdbm_file_header)
+	&& hdr->block_size - sizeof (gdbm_file_header) >=
+	sizeof(hdr->v.ext.avail_tab.av_table[0])))
     {
       return GDBM_BLOCK_SIZE_ERROR;
     }
@@ -142,21 +165,22 @@ validate_header_numsync (gdbm_file_header const *hdr, struct stat const *st)
   if (hdr->dir_bits != dir_bits)
     return GDBM_BAD_HEADER;
   
-  if (!(hdr->bucket_size > sizeof(hash_bucket)))
+  if (!(hdr->bucket_size > sizeof (hash_bucket)))
     return GDBM_BAD_HEADER;
 
   if (hdr->bucket_elems != bucket_element_count (hdr->bucket_size))
     return GDBM_BAD_HEADER;
 
-  //FIXME: Verify avail offset
+  if (((hdr->block_size - sizeof (gdbm_file_header)) / sizeof (avail_elem) + 1)
+      != hdr->v.ext.avail_tab.size)
+    return GDBM_BAD_HEADER;
+
   return result;
 }
 
 static int
 validate_header (gdbm_file_header const *hdr, struct stat const *st)
 {
-  int dir_size, dir_bits;
-  
   /* Is the magic number good? */
   switch (hdr->header_magic)
     {
@@ -201,7 +225,7 @@ _gdbm_validate_header (GDBM_FILE dbf)
   rc = validate_header (dbf->header, &file_stat);
   if (rc == 0)
     {
-      if (gdbm_avail_block_validate (dbf, &dbf->header->v.avail_tab,
+      if (gdbm_avail_block_validate (dbf, dbf->avail,
 				     GDBM_HEADER_AVAIL_SIZE (dbf)))
 	rc = GDBM_BAD_AVAIL;
     }
@@ -415,8 +439,16 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
 	}
 
       /* Set the magic number and the block_size. */
-      dbf->header->header_magic = GDBM_MAGIC;
+      if (flags & GDBM_NUMSYNC)
+	dbf->header->header_magic = GDBM_NUMSYNC_MAGIC;
+      else
+	dbf->header->header_magic = GDBM_MAGIC;
+
+      /*
+       * Set block size.  It must be initialized for gdbm_header_avail to work.
+       */
       dbf->header->block_size = block_size;
+      gdbm_header_avail (dbf->header, &dbf->avail, &dbf->avail_size);
       dbf->header->dir_size = dir_size;
       dbf->header->dir_bits = dir_bits;
 
@@ -454,11 +486,11 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
 	dbf->dir[index] = 2*dbf->header->block_size;
 
       /* Initialize the active avail block. */
-      dbf->header->v.avail_tab.size
-	= ( (dbf->header->block_size - sizeof (gdbm_file_header))
-	 / sizeof (avail_elem)) + 1;
-      dbf->header->v.avail_tab.count = 0;
-      dbf->header->v.avail_tab.next_block = 0;
+      dbf->avail->size = (dbf->avail_size - offsetof(avail_block, av_table))
+	                  / sizeof (avail_elem);
+      dbf->avail->count = 0;
+      dbf->avail->next_block = 0;
+      
       dbf->header->next_block  = 4*dbf->header->block_size;
 
       /* Write initial configuration to the file. */
@@ -561,7 +593,7 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
 	}
       
       memcpy (dbf->header, &partial_header, sizeof (partial_header));
-      if (_gdbm_full_read (dbf, &dbf->header->v.avail_tab.av_table[1],
+      if (_gdbm_full_read (dbf, dbf->header + 1,
 			   dbf->header->block_size - sizeof (gdbm_file_header)))
 	{
 	  if (!(flags & GDBM_CLOERROR))
@@ -569,8 +601,9 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
 	  SAVE_ERRNO (gdbm_close (dbf));
 	  return NULL;
 	}
-
-      if (gdbm_avail_block_validate (dbf, &dbf->header->v.avail_tab,
+      gdbm_header_avail (dbf->header, &dbf->avail, &dbf->avail_size);
+      
+      if (gdbm_avail_block_validate (dbf, dbf->avail,
 				     GDBM_HEADER_AVAIL_SIZE (dbf)))
 	{
 	  if (!(flags & GDBM_CLOERROR))
@@ -613,10 +646,6 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
 	}
 
     }
-
-  //FIXME  dbf->avail_off = offsetof (gdbm_file_header, avail_tab);
-  dbf->avail = &dbf->header->v.avail_tab;
-  dbf->avail_size = (dbf->header->block_size - offsetof (gdbm_file_header, v.avail_tab));
 
 #if HAVE_MMAP
   if (!(flags & GDBM_NOMMAP))
