@@ -353,7 +353,8 @@ gdbm_latest_snapshot (const char *even, const char *odd, const char **ret)
 	case 2:
 	  *ret = even;
 	  rc = GDBM_SNAPSHOT_SUSPICIOUS;
-
+	  break;
+	  
 	default:
 	  /*
 	   * Both readable: check mtime.
