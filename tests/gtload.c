@@ -25,7 +25,6 @@
 #include "progname.h"
 
 const char *progname;
-int verbose;
 
 void
 err_printer (void *data, char const *fmt, ...)

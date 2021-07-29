@@ -20,7 +20,7 @@
 # include "gdbmdefs.h"
 
 void
-ealloc_die ()
+ealloc_die (void)
 {
   error ("%s", strerror (ENOMEM));
   exit (EXIT_FATAL);

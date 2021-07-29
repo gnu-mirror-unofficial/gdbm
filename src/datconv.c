@@ -340,9 +340,9 @@ dsconv (struct xdatum *xd, struct dsegm *ds, struct kvpair *kv)
 	{
 	  struct slist *head = slist_new_l (kv->val.s, 1);
 	  struct slist *tail = head;
-	  char *s;
-	  for (s = kv->val.s + 1; *s; s++)
-	    slist_insert (&tail, slist_new_l (s, 1));
+	  char *p;
+	  for (p = kv->val.s + 1; *p; p++)
+	    slist_insert (&tail, slist_new_l (p, 1));
 	  free (kv->val.s);
 	  kv->val.l = head;
 	  kv->type = KV_LIST;

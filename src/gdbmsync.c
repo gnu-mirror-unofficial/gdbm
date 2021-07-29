@@ -309,7 +309,6 @@ gdbm_numsync_cmp (const char *a, const char *b)
 int
 gdbm_latest_snapshot (const char *even, const char *odd, const char **ret)
 {
-  int r, sum;
   struct stat st_even, st_odd;
   
   if (!ret || !even || !odd || strcmp (even, odd) == 0)

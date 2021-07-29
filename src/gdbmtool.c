@@ -1789,13 +1789,13 @@ struct handler_param param;
 size_t argmax;
 
 void
-param_free_argv (struct handler_param *param, int n)
+param_free_argv (struct handler_param *p, int n)
 {
   int i;
 
   for (i = 0; i < n; i++)
-    gdbmarg_destroy (&param->argv[i]);
-  param->argc = 0;
+    gdbmarg_destroy (&p->argv[i]);
+  p->argc = 0;
 }
 
 typedef struct gdbmarg *(*coerce_type_t) (struct gdbmarg *arg,
