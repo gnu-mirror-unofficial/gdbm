@@ -19,6 +19,18 @@
 #include "systems.h"
 #include "gdbmconst.h"
 #include "gdbm.h"
+
+/* Determine our native magic number and bail if we can't. */
+#if SIZEOF_OFF_T == 4
+# define GDBM_MAGIC	GDBM_MAGIC32
+# define GDBM_NUMSYNC_MAGIC GDBM_NUMSYNC_MAGIC32
+#elif SIZEOF_OFF_T == 8
+# define GDBM_MAGIC	GDBM_MAGIC64
+# define GDBM_NUMSYNC_MAGIC GDBM_NUMSYNC_MAGIC64
+#else
+# error "Unsupported off_t size, contact GDBM maintainer.  What crazy system is this?!?"
+#endif
+
 #define DEFAULT_TEXT_DOMAIN PACKAGE
 #include "gettext.h"
 
@@ -73,7 +85,6 @@ typedef struct
 typedef struct
 {
   unsigned numsync;    /* Number of synchronizations */
-  avail_block avail_tab;
 } gdbm_ext_header;
 
 typedef struct
@@ -86,14 +97,13 @@ typedef struct
   int   bucket_size;   /* Size in bytes of a hash bucket struct. */
   int   bucket_elems;  /* Number of elements in a hash bucket. */
   off_t next_block;    /* The next unallocated block address. */
-  union
-  {
-    gdbm_ext_header ext;
-    avail_block avail_tab;  /* This must be last because of the pseudo
-			       array in avail.  This avail grows to fill
-			       the entire block. */
-  } v;
+  /* In traditional GDBM database file, this header is followed by
+     avail_block with av_table occupying the rest of the disk block.
+     
+     In extended GDBM database file, it is followed by a gdbm_ext_header,
+     and then by avail_block. */
 } gdbm_file_header;
+
 
 /* The dbm hash bucket element contains the full 31 bit hash value, the
    "pointer" to the key and data (stored together) with their sizes.  It also
@@ -240,7 +250,10 @@ struct gdbm_file_info
 
   /* The table of available file space */
   avail_block *avail;
-  size_t avail_size;
+  size_t avail_size;  /* Size of avail, in bytes */
+
+  /* Extended header (or NULL) */
+  gdbm_ext_header *xheader;
   
   /* The hash table directory from extendable hashing.  See Fagin et al, 
      ACM Trans on Database Systems, Vol 4, No 3. Sept 1979, 315-344 */

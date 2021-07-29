@@ -785,8 +785,28 @@ void
 print_header_handler (struct handler_param *param)
 {
   FILE *fp = param->fp;
+  char const *type;
+
+  switch (gdbm_file->header->header_magic)
+    {
+    case GDBM_OMAGIC:
+      type = "Old GDBM";
+      break;
+
+    case GDBM_MAGIC:
+      type = "GDBM";
+      break;
+
+    case GDBM_NUMSYNC_MAGIC:
+      type = "GDBM numsync";
+      break;
+
+    default:
+      abort ();
+    }
   
   fprintf (fp, _("\nFile Header: \n\n"));
+  fprintf (fp, _("  type         = %s\n"), type);
   fprintf (fp, _("  table        = %lu\n"),
 	   (unsigned long) gdbm_file->header->dir);
   fprintf (fp, _("  table size   = %d\n"), gdbm_file->header->dir_size);
@@ -797,12 +817,37 @@ print_header_handler (struct handler_param *param)
   fprintf (fp, _("  header magic = %x\n"), gdbm_file->header->header_magic);
   fprintf (fp, _("  next block   = %lu\n"),
 	   (unsigned long) gdbm_file->header->next_block);
-  //FIXME
-  fprintf (fp, _("  avail size   = %d\n"), gdbm_file->header->v.avail_tab.size);
-  fprintf (fp, _("  avail count  = %d\n"), gdbm_file->header->v.avail_tab.count);
+
+  fprintf (fp, _("  avail size   = %d\n"), gdbm_file->avail->size);
+  fprintf (fp, _("  avail count  = %d\n"), gdbm_file->avail->count);
   fprintf (fp, _("  avail nx blk = %lu\n"),
-	   (unsigned long) gdbm_file->header->v.avail_tab.next_block);
-}  
+	   (unsigned long) gdbm_file->avail->next_block);
+
+  // FIXME
+  if (gdbm_file->xheader)
+    fprintf (fp, _("       numsync = %u\n"), gdbm_file->xheader->numsync);  
+}
+
+static void
+sync_handler (struct handler_param *param)
+{
+  if (gdbm_sync (gdbm_file))
+    terror ("%s", gdbm_db_strerror (gdbm_file));
+}
+
+static void
+upgrade_handler (struct handler_param *param)
+{
+  if (gdbm_convert (gdbm_file, GDBM_NUMSYNC))
+    terror ("%s", gdbm_db_strerror (gdbm_file));
+}
+
+static void
+downgrade_handler (struct handler_param *param)
+{
+  if (gdbm_convert (gdbm_file, 0))
+    terror ("%s", gdbm_db_strerror (gdbm_file));
+}
 
 /* hash KEY - hash the key */
 void
@@ -1272,6 +1317,24 @@ struct command command_tab[] = {
     FALSE,
     REPEAT_NEVER,
     N_("print current program status") },
+  { S(sync), T_CMD,
+    checkdb_begin, sync_handler, NULL,
+    { { NULL } },
+    FALSE,
+    REPEAT_NEVER,
+    N_("Synchronize the database with disk copy") },  
+  { S(upgrade), T_CMD,
+    checkdb_begin, upgrade_handler, NULL,
+    { { NULL } },
+    FALSE,
+    REPEAT_NEVER,
+    N_("Upgrade the database") },
+  { S(downgrade), T_CMD,
+    checkdb_begin, downgrade_handler, NULL,
+    { { NULL } },
+    FALSE,
+    REPEAT_NEVER,
+    N_("Downgrade the database") },  
   { S(version), T_CMD,
     NULL, print_version_handler, NULL,
     { { NULL } },
@@ -1345,6 +1408,7 @@ struct command command_tab[] = {
     TRUE,
     REPEAT_NEVER,
     N_("query/set debug level") },
+
 #undef S
   { 0 }
 };

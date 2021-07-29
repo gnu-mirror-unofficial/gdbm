@@ -219,7 +219,7 @@ gdbm_avail_traverse (GDBM_FILE dbf,
     return -1;
 
   // FIXME
-  if (off_map_lookup (&map, offsetof (gdbm_file_header, v.avail_tab)))
+  if (off_map_lookup (&map, (char*)dbf->avail - (char*)dbf->header))
     {
       GDBM_SET_ERRNO (dbf, GDBM_MALLOC_ERROR, FALSE);
       return -1;
