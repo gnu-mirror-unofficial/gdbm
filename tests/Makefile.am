@@ -55,6 +55,7 @@ TESTSUITE_AT = \
  cloexec02.at\
  cloexec03.at\
  closerr.at\
+ conv.at\
  dbmcreate00.at\
  dbmdel00.at\
  dbmdel01.at\
@@ -113,6 +114,7 @@ check_PROGRAMS = \
  fdop\
  g_open_ce\
  g_reorg_ce\
+ gtconv\
  gtdel\
  gtdump\
  gtfetch\

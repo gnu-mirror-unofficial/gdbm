@@ -84,7 +84,9 @@ typedef struct
 
 typedef struct
 {
+  int version;
   unsigned numsync;    /* Number of synchronizations */
+  int pad[6];
 } gdbm_ext_header;
 
 typedef struct

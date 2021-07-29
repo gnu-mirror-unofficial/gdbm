@@ -13,6 +13,7 @@ dtload
 fdop
 g_open_ce
 g_reorg_ce
+gtconv
 gtdel
 gtdump
 gtfetch
