@@ -304,7 +304,7 @@ struct xdatum
 void
 xd_expand (struct xdatum *xd, size_t size)
 {
-  if (xd->dmax < size)
+  if (xd->dmax < size || 1)
     {
       xd->dptr = erealloc (xd->dptr, size);
       memset (xd->dptr + xd->dmax, 0, size - xd->dmax);
