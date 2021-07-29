@@ -230,6 +230,53 @@ stat_snapshot (const char *f, struct stat *st)
   return 0;
 }
 
+static int
+gdbm_numsync (const char *dbname, unsigned *numsync)
+{
+  GDBM_FILE dbf;
+  int rc = -1;
+  
+  dbf = gdbm_open (dbname, 0, GDBM_READER, S_IRUSR, NULL);
+  if (dbf)
+    {
+      if (dbf->xheader)
+	{
+	  *numsync = dbf->xheader->numsync;
+	  rc = 0;
+	}
+      gdbm_close (dbf);
+    }
+  return rc;
+}
+
+/*
+ * Return:
+ *   0  both numsyncs equal or result undefined
+ *  -1  a's numsync is one less than b's
+ *  -2  a's numsync is less than b's
+ *  +1  a's numsync is one greater than b's
+ *  +2  a's numsync is greater than b's
+ *
+ * Takes into account integer overflow. 
+ */
+ 
+static int
+gdbm_numsync_cmp (const char *a, const char *b)
+{
+  int na, nb;
+
+  if (gdbm_numsync (a, &na) == 0 &&
+      gdbm_numsync (b, &nb) == 0)
+    {
+      na++; nb++;
+      if (na < nb)
+	return na + 1 == nb ? -1 : -2;
+      else if (na > nb)
+	return na == nb + 1 ? 1 : 2;
+    }
+  return 0;
+}
+
 /*
  * Selects among the two given snapshot files the one to be used for
  * post-crash recovery and stores its value in *RET.
@@ -256,31 +303,58 @@ gdbm_latest_snapshot (const char *even, const char *odd, const char **ret)
 
   if (st_even.st_mode & S_IRUSR)
     {
+      int rc = GDBM_SNAPSHOT_OK;
+      
       if (!(st_odd.st_mode & S_IRUSR))
 	{
 	  *ret = even;
 	  return GDBM_SNAPSHOT_OK;
 	}
 
-      /*
-       * Both readable: check mtime.
-       * Select the newer snapshot, i.e. the one whose mtime
-       * is greater than the other's
+      /* Both readable: compare numsync value in the extended header.
+       * Select the snapshot with greater numsync value.
        */
-      switch (timespec_cmp (&st_even.st_mtim, &st_odd.st_mtim))
+      switch (gdbm_numsync_cmp (even, odd))
 	{
 	case -1:
 	  *ret = odd;
+	  break;
+
+	case -2:
+	  *ret = odd;
+	  rc = GDBM_SNAPSHOT_SUSPICIOUS;
 	  break;
 	  
 	case 1:
 	  *ret = even;
 	  break;
-	  
-	case 0:
-	  /* Shouldn't happen */
-	  return GDBM_SNAPSHOT_SAME;
+
+	case 2:
+	  *ret = even;
+	  rc = GDBM_SNAPSHOT_SUSPICIOUS;
+
+	default:
+	  /*
+	   * Both readable: check mtime.
+	   * Select the newer snapshot, i.e. the one whose mtime
+	   * is greater than the other's
+	   */
+	  switch (timespec_cmp (&st_even.st_mtim, &st_odd.st_mtim))
+	    {
+	    case -1:
+	      *ret = odd;
+	      break;
+	      
+	    case 1:
+	      *ret = even;
+	      break;
+	      
+	    case 0:
+	      /* Shouldn't happen */
+	      rc = GDBM_SNAPSHOT_SAME;
+	    }
 	}
+      return rc;
     }
   else if (st_odd.st_mode & S_IRUSR)
     {
@@ -291,10 +365,9 @@ gdbm_latest_snapshot (const char *even, const char *odd, const char **ret)
     {      
       /* neither readable: this means the crash occurred during
 	 gdbm_failure_atomic() */
-      return GDBM_SNAPSHOT_BAD;
     }
 
-  return GDBM_SNAPSHOT_OK;
+  return GDBM_SNAPSHOT_BAD;
 }
 #else
 int
@@ -324,6 +397,12 @@ gdbm_sync (GDBM_FILE dbf)
   /* Initialize the gdbm_errno variable. */
   gdbm_set_errno (dbf, GDBM_NO_ERROR, FALSE);
 
+  if (dbf->xheader)
+    {
+      dbf->xheader->numsync++;
+      dbf->header_changed = TRUE;
+    }
+  
   /* Do the sync on the file. */
   return gdbm_file_sync (dbf);
 }

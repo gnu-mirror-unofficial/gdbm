@@ -133,10 +133,12 @@ extern int gdbm_convert (GDBM_FILE dbf, int flag);
   
 enum gdbm_latest_snapshot_status
   {
-    GDBM_SNAPSHOT_OK,
-    GDBM_SNAPSHOT_BAD,
-    GDBM_SNAPSHOT_ERR,
-    GDBM_SNAPSHOT_SAME
+    GDBM_SNAPSHOT_OK,        /* Selected the right snapshot. */
+    GDBM_SNAPSHOT_BAD,       /* Neither snapshot is readable. */
+    GDBM_SNAPSHOT_ERR,       /* Error selecting snapshot. Inspect errno. */
+    GDBM_SNAPSHOT_SAME,      /* Snapshot numsync and dates are the same. */
+    GDBM_SNAPSHOT_SUSPICIOUS /* Selected snapshot is unreliable: numsyncs
+				differ by more than 1. */
   };
 extern int gdbm_latest_snapshot (const char *, const char *, const char **);
 extern int gdbm_exists (GDBM_FILE, datum);
