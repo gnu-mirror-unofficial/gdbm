@@ -77,6 +77,7 @@ int
 _gdbm_snapshot (GDBM_FILE dbf)
 {
   int s;	     /* snapshot file descriptor */
+  int oldsnap;       /* previous snapshot file descriptor */
   
   if (dbf->snapfd[0] < 0)
     /* crash consistency hasn't been requested on this database */
@@ -93,7 +94,8 @@ _gdbm_snapshot (GDBM_FILE dbf)
   
   s = dbf->snapfd[dbf->eo];
   dbf->eo = !dbf->eo;
-
+  oldsnap = dbf->snapfd[dbf->eo];
+  
   /* says "DON'T recover from this snapshot, writing in progress " */
   if (fchmod (s, S_IWUSR)) 
     {
@@ -141,6 +143,26 @@ _gdbm_snapshot (GDBM_FILE dbf)
       GDBM_SET_ERRNO (dbf, GDBM_FILE_SYNC_ERROR, FALSE);
       return -1;
     }
+
+  /*
+   * Mark the previous snapshot file write-only, indicating thereby
+   * that it contains obsolete data.  The point of this additional
+   * operation is to reduce the time window during which a crash would
+   * leave two readable snapshot files.  
+   */
+  if (fchmod (oldsnap, S_IWUSR))
+    {
+      GDBM_SET_ERRNO (dbf, GDBM_ERR_FILE_MODE, FALSE);
+      return -1;
+    }
+
+  /* commit permission bits */
+  if (fsync (oldsnap))
+    {
+      GDBM_SET_ERRNO (dbf, GDBM_FILE_SYNC_ERROR, FALSE);
+      return -1;
+    }
+  
   return 0;
 }
 
