@@ -211,8 +211,7 @@ _gdbm_validate_header (GDBM_FILE dbf)
   rc = validate_header (dbf->header, &file_stat);
   if (rc == 0)
     {
-      if (gdbm_avail_block_validate (dbf, dbf->avail,
-				     GDBM_HEADER_AVAIL_SIZE (dbf)))
+      if (gdbm_avail_block_validate (dbf, dbf->avail, dbf->avail_size))
 	rc = GDBM_BAD_AVAIL;
     }
   return rc;
@@ -590,7 +589,7 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
       gdbm_header_avail (dbf->header, &dbf->avail, &dbf->avail_size, &dbf->xheader);
 
       if (((dbf->header->block_size -
-	    (((char*)dbf->avail - (char*)dbf->header) +
+	    (GDBM_HEADER_AVAIL_OFFSET (dbf) +
 	     sizeof (avail_block))) / sizeof (avail_elem) + 1) != dbf->avail->size)
 	{
 	  if (!(flags & GDBM_CLOERROR))
@@ -599,8 +598,7 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
 	  return NULL;
 	}
       
-      if (gdbm_avail_block_validate (dbf, dbf->avail,
-				     GDBM_HEADER_AVAIL_SIZE (dbf)))
+      if (gdbm_avail_block_validate (dbf, dbf->avail, dbf->avail_size))
 	{
 	  if (!(flags & GDBM_CLOERROR))
 	    dbf->desc = -1;

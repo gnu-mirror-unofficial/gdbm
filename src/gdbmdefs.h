@@ -326,7 +326,9 @@ struct gdbm_file_info
 
 #define GDBM_DIR_COUNT(db) ((db)->header->dir_size / sizeof (off_t))
 
-#define GDBM_HEADER_AVAIL_SIZE(db) ((db)->avail_size)
+/* Offset of the avail block in GDBM header. */
+#define GDBM_HEADER_AVAIL_OFFSET(db) \
+  ((char*)(db)->avail - (char*)(db)->header)
 
 /* Execute CODE without clobbering errno */
 #define SAVE_ERRNO(code)                        \

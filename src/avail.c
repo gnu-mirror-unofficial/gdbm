@@ -214,12 +214,10 @@ gdbm_avail_traverse (GDBM_FILE dbf,
   int rc = 0;
   
   GDBM_ASSERT_CONSISTENCY (dbf, -1);
-  if (gdbm_avail_block_validate (dbf, dbf->avail,
-				 GDBM_HEADER_AVAIL_SIZE (dbf)))
+  if (gdbm_avail_block_validate (dbf, dbf->avail, dbf->avail_size))
     return -1;
 
-  // FIXME
-  if (off_map_lookup (&map, (char*)dbf->avail - (char*)dbf->header))
+  if (off_map_lookup (&map, GDBM_HEADER_AVAIL_OFFSET (dbf)))
     {
       GDBM_SET_ERRNO (dbf, GDBM_MALLOC_ERROR, FALSE);
       return -1;
