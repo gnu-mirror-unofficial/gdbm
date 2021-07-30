@@ -285,7 +285,7 @@ gdbm_numsync (const char *dbname, unsigned *numsync)
 static int
 gdbm_numsync_cmp (const char *a, const char *b)
 {
-  int na, nb;
+  unsigned na, nb;
 
   if (gdbm_numsync (a, &na) == 0 &&
       gdbm_numsync (b, &nb) == 0)
