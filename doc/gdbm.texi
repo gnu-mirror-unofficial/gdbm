@@ -107,6 +107,7 @@ Functions:
 * Sequential::                 Sequential access to records.
 * Reorganization::             Database reorganization.
 * Sync::                       Insure all writes to disk have competed.
+* Database format::            GDBM database formats.
 * Flat files::                 Export and import to Flat file format.
 * Errors::                     Error handling.
 * Recovery::                   Recovery from fatal errors.
@@ -404,9 +405,6 @@ the database and wants it created if it does not already exist.  If
 created, regardless of whether one existed, and wants read and write
 access to the new database.
 
-@kwindex GDBM_SYNC
-@kwindex GDBM_NOLOCK
-@kwindex GDBM_NOMMAP
 The following constants may also be logically or'd into the database
 flags:
 
@@ -422,6 +420,14 @@ performance degradation.
 A reverse of @code{GDBM_SYNC}.  Synchronize writes only when needed.
 This is the default.  The flag is provided for compatibility with
 previous versions of @command{GDBM}.
+
+@kwindex GDBM_NUMSYNC
+@item GDBM_NUMSYNC
+Useful only together with @code{GDBM_NEWDB}, this bit instructs
+@code{gdbm_open} to create new database in @dfn{extended database
+format}, suitable for effective crash recovery.  @xref{Numsync}, for a
+detailed discussion of this format, and @ref{Crash Tolerance}, for a
+discussion of crash recovery.
 
 @kwindex GDBM_NOLOCK
 @item GDBM_NOLOCK
@@ -869,6 +875,46 @@ immediately after the set of changes have been made.
 @code{gdbm_errno} and system @code{errno} variables to the codes
 describing the error and returns -1.
 @end deftypefn
+
+@node Database format
+@chapter Changing database format
+As of version @value{VERSION}, @command{GDBM} supports databases in
+two formats: @dfn{standard} and @dfn{extended}.  The standard format
+is used most often.  The @dfn{extended} database format is used to
+provide additional crash resistance (@pxref{Crash Tolerance}).
+
+Depending on the value of the @var{flags} parameter in a call to
+@code{gdbm_open} (@pxref{Open}), a database can be created in either
+format.
+
+The format of an existing database can be changed using the
+@code{gdbm_convert} function:
+
+@deftypefn {gdbm interface} int gdbm_convert (GDBM_FILE @var{dbf}, @
+  int @var{flag})
+Changes the format of the database file @var{dbf}.  Allowed values for
+@var{flag} are:
+
+@table @code
+@item 0
+Convert database to the standard format.
+
+@kwindex GDBM_NUMSYNC
+@item GDBM_NUMSYNC
+Convert database to the extended @dfn{numsync} format (@pxref{Numsync}).
+@end table
+
+On success, the function returns 0.  In this case, it should be
+followed by a call to @code{gdbm_sync} (@pxref{Sync}) or
+@code{gdbm_close} (@pxref{Close}) to ensure the changes are written to
+the disk.
+
+On error, returns -1 and sets the @code{gdbm_errno} variable
+(@pxref{Variables, gdbm_errno}).
+
+If the database is already in the requested format, the function
+returns success (0) without doing anything.
+@end deftypefn  
 
 @node Flat files
 @chapter Export and Import
@@ -1345,11 +1391,11 @@ support from the OS and the filesystem.  As of version
 @value{VERSION}, this means a Linux kernel 5.12.12 or later and
 a filesystem that supports reflink copying, such as XFS, BtrFS, or
 OCFS2.  If these prerequisites are met, crash tolerance code will
-be enabled automaticaly by the @command{configure} script when
+be enabled automatically by the @command{configure} script when
 building the package.
 
 The crash-tolerance mechanism, when used correctly, guarantees that a
-consistent recent state of application data can be recovered followng
+consistent recent state of application data can be recovered following
 a crash.  Specifically, it guarantees that the state of the database
 file corresponding to the most recent successful gdbm_sync() call can
 be recovered.  
@@ -1359,7 +1405,7 @@ outages, OS kernel panics, and (some) application process crashes
 will be tolerated.  Non-tolerated failures include physical
 destruction of storage devices and corruption due to bugs in
 application logic.  For example, the new mechanism won't help if a
-pointer bug in your application corrupts gdbm's private in-memory
+pointer bug in your application corrupts @command{GDBM} private in-memory
 data which in turn corrupts the database file.
 
 To enable crash tolerance in your application, follow these steps.
@@ -1391,7 +1437,7 @@ The XFS filesystem is now available in directory
 unprivileged user account may create and delete files:
 
 @example
-mkdir XFSmountpoint
+cd XFSmountpoint
 mkdir test
 chown @var{user}:@var{group} test
 @end example
@@ -1415,11 +1461,14 @@ all reside on the same reflink-capable filesystem.
 
 @heading Enabling crash tolerance
 
-Open a GNU dbm database with @code{gdbm_open}.  Unless you know what
-you are doing, do not specify the @code{GDBM_SYNC} flag when opening the
-database.  The reason is that you want your application to explicitly
-control when @code{gdbm_sync} is called; you don't want an implicit sync
-on every database operation.
+Open a GNU dbm database with @code{gdbm_open}.  Whenever possible, use
+the extended @command{GDBM} format.  Generally speaking, this means
+using the @code{GDBM_NUMSYNC} flag when creating the database
+(@pxref{Numsync}).  Unless you know what you are doing, do not specify
+the @code{GDBM_SYNC} flag when opening the database.  The reason is that
+you want your application to explicitly control when @code{gdbm_sync}
+is called; you don't want an implicit sync on every database
+operation.
 
 Request crash tolerance by invoking the following interface:
 
@@ -1470,9 +1519,11 @@ containing the database state reflecting the most recent successful
 @code{gdbm_sync} call is the snapshot file whose permission bits are
 read-only and whose last-modification timestamp is greatest.  If both
 snapshot files are readable, we choose the one with the most recent
-last-modification timestamp.  Following a crash, @emph{do not} do
-anything that could change the file permissions or last-mod timestamp on
-either snapshot file!
+last-modification timestamp@footnote{The experimental @dfn{numsync}
+extension is provided to handle such case gracefully.  @xref{Numsync},
+for details.}.  Following a crash, @emph{do not} do anything that
+could change the file permissions or last-mod timestamp on either
+snapshot file!
 
 The @code{gdbm_latest_snapshot} function is provided, that selects the
 right snapshot among the two.  Invoke it as:
@@ -1502,6 +1553,19 @@ switch (gdbm_latest_snapshot (even, odd, &recovery_file))
     case GDBM_SNAPSHOT_SAME:
       fprintf (stderr, "Both snapshots have the same date!\n);
       exit (1);
+
+    case GDBM_SNAPSHOT_SUSPICIOUS:
+      /*
+       * That can occur only in databases with extended numsync header
+       * enabled.  @xref{Numsync}.
+       */
+      fprintf (stderr, "returned snapshot %s is suspicious\n", recovery_file);
+      fprintf (stderr, "examine it and take action\n");
+      /*
+       * Switch to interactive mode letting the user examine the
+       * snapshot and take appropriate action
+       */
+
   @}
 @end group
 @end example
@@ -1528,6 +1592,76 @@ devices but that are implemented as high-availability fault-tolerant
 replicated distributed storage systems.  Installing a reflink-capable
 filesystem atop a high-availability storage system is a good starting
 point for a high-availability crash-tolerant GDBM.
+
+@node Numsync
+@section Numsync Extension
+
+In @ref{Crash recovery}, we have shown that for database recovery,
+one should select the snapshot whose permission bits are read-only and
+whose last-modification timestamp is greatest.  However, there may be
+cases when a crash occurs at such a time that both snapshot files
+remain readable.  It may also happen, that their permissions and/or
+modification times are inadvertently changed before recovery.  To
+make it possible to select the right snapshot in such cases, a new
+@dfn{extended database format} was introduced in @command{GDBM}
+version 1.21.  This format adds to the database header the
+@code{numsync} field, that holds the number of synchronizations the
+database underwent before being closed or abandoned due to a crash.
+
+Each snapshot is an exact copy of the database at a given point of
+time.  Thus, if both snapshots of a database in extended format are
+readable, it will suffice to examine their @code{numsync} counters
+and select the one whose @code{numsync} is greater.  That's what
+the @code{gdbm_latest_snapshot} function does in this case.
+
+It is worth noticing, that the two counters should differ exactly by
+one.  If the difference is greater than that, @code{gdbm_latest_snapshot}
+will still select the snapshot with the greater @code{numsync} value,
+but will return a special status code, @code{GDBM_SNAPSHOT_SUSPICIOUS},
+indicating that the proposed snapshot file has been chosen based on
+suspicious or unreliable data.  If, during a recovery attempt, you get
+this status code, we recommend to proceed with the manual recovery,
+e.g. by examining both snapshot files using @command{gdbmtool -r}
+(@pxref{gdbmtool}).
+
+To create a database in extended format, call @code{gdbm_open} with
+both @code{GDBM_NEWDB} and @code{GDBM_NUMSYNC} flags:
+
+@example
+dbf = gdbm_open(dbfile, 0, GDBM_NEWDB|GDBM_NUMSYNC, 0600, NULL);
+@end example
+
+@noindent
+Notice, that this flag must always be used together with
+@code{GDBM_NEWDB} (@pxref{Open}).
+
+A standard @command{GDBM} database can be converted to the extended
+format.  To convert an existing database to the extended format, use the
+@code{gdbm_convert} function (@pxref{Database format}):
+
+@example
+  rc = gdbm_convert(dbf, GDBM_NUMSYNC);
+@end example
+
+You can do the same using the @command{gdbmtool} utility
+(@pxref{commands, upgrade}):
+
+@example
+gdbmtool @var{dbname} upgrade
+@end example
+
+The conversion is reversible.  To convert a database from extended
+format back to the standard @command{GDBM} format, do:
+
+@example
+  rc = gdbm_convert(dbf, 0);
+@end example
+
+To do the from the command line:
+
+@example
+gdbmtool @var{dbname} downgrade
+@end example
 
 @node Crash Tolerance API
 @section Crash Tolerance API
@@ -1580,6 +1714,16 @@ describing the problem.  Finally, in the unlikely case that it cannot
 select between the two snapshots (this means they are both readable
 and have exactly the same @code{mtime} timestamp), the function returns
 @code{GDBM_SNAPSHOT_SAME}.
+
+@kwindex GDBM_SNAPSHOT_SUSPICIOUS
+If the @samp{numsync} extension is enabled (@pxref{Numsync}), the
+function can also return the @code{GDBM_SNAPSHOT_SUSPICIOUS} status
+code.  This happens when the @code{numsync} counters in the two
+snapshots differ by more than one.  In this case, the function selects
+the snapshot with the greater @code{numsync} value.  If you get this
+status code when recovering from a crash, it is recommended to switch
+to manual recovery procedure, letting the user examine the snapshots
+and take the appropriate action.
 
 If any value other than @code{GDBM_SNAPSHOT_OK} is returned, it is
 guaranteed that the function don't touch @var{retval}.
@@ -2911,6 +3055,11 @@ Delete record with the given @var{key}
 Print hash directory.
 @end deffn
 
+@deffn {command verb} downgrade
+Downgrade the database from extended to the standard database format.
+@xref{Numsync}.
+@end deffn
+
 @anchor{gdbmtool export}
 @deffn {command verb} export @var{file-name} [truncate] [binary|ascii]
 Export the database to the flat file @var{file-name}.  @xref{Flat files},
@@ -3075,6 +3224,15 @@ meaning.
 @deffn {command verb} store @var{key} @var{data}
 Store the @var{data} with @var{key} in the database.  If @var{key}
 already exists, its data will be replaced.
+@end deffn
+
+@deffn {command verb} sync
+Synchronize the database with the disk storage (@pxref{Sync}).
+@end deffn
+
+@deffn {command verb} upgrade
+Upgrade the database from standard to extended database format.
+@xref{Numsync}.
 @end deffn
 
 @deffn {command verb} version

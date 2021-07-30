@@ -13,7 +13,7 @@
 .\"
 .\" You should have received a copy of the GNU General Public License
 .\" along with GDBM. If not, see <http://www.gnu.org/licenses/>. */
-.TH GDBM 3 "June 25, 2021" "GDBM" "GDBM User Reference"
+.TH GDBM 3 "July 31, 2021" "GDBM" "GDBM User Reference"
 .SH NAME
 GDBM \- The GNU database manager.  Includes \fBdbm\fR and \fBndbm\fR
 compatibility.
@@ -446,9 +446,10 @@ of the underlying database.  This mechanism requires OS and
 filesystem support and must be requested when \fBgdbm\fR is compiled.
 The crash-tolerance mechanism is a "pure opt-in" feature, in the
 sense that it has no effects whatsoever except on those applications
-that explicitly request it.  See file "README_crash_tolerance.txt"
-in the distribution tarball for details.
-
+that explicitly request it.  For details, see the chapter
+.B "Crash Tolerance"
+in the
+.BR "GDBM manual" .
 .SH LINKING
 This library is accessed by specifying \fI\-lgdbm\fR as the last
 parameter to the compile line, e.g.:

@@ -13,7 +13,7 @@
 .\"
 .\" You should have received a copy of the GNU General Public License
 .\" along with GDBM. If not, see <http://www.gnu.org/licenses/>. */
-.TH GDBMTOOL 1 "June 27, 2018" "GDBM" "GDBM User Reference"
+.TH GDBMTOOL 1 "July 31, 2021" "GDBM" "GDBM User Reference"
 .SH NAME
 gdbmtool \- examine and modify a GDBM database
 .SH SYNOPSIS
@@ -179,6 +179,10 @@ Delete record with the given \fIKEY\fR.
 .BR dir
 Print hash directory.
 .TP
+.BR downgrade
+Downgrade the database from the extended \fInumsync\fR format to the
+standard format.
+.TP
 \fBexport\fR \fIFILE\-NAME\fR [\fBtruncate\fR] [\fBbinary\fR|\fBascii\fR]
 Export the database to the flat file \fIFILE\-NAME\fR.  This is equivalent to
 .BR gdbm_dump (1).
@@ -269,6 +273,13 @@ Print current program status.
 \fBstore\fR \fIKEY\fR \fIDATA\fR
 Store the \fIDATA\fR with the given \fIKEY\fR in the database.  If the
 \fIKEY\fR already exists, its data will be replaced.
+.TP
+.B sync
+Synchronize the database file with the disk storage.
+.TP
+.B upgrade
+Upgrade the database from the standard to the extended \fInumsync\fR
+format.
 .TP
 \fBunset\fR \fIVARIABLE\fR...
 Unsets listed variables.
