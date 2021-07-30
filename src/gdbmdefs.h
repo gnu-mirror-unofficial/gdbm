@@ -84,13 +84,6 @@ typedef struct
 
 typedef struct
 {
-  int version;
-  unsigned numsync;    /* Number of synchronizations */
-  int pad[6];
-} gdbm_ext_header;
-
-typedef struct
-{
   int   header_magic;  /* Version of file. */
   int   block_size;    /* The optimal i/o blocksize from stat. */
   off_t dir;           /* File address of hash directory table. */
@@ -99,13 +92,30 @@ typedef struct
   int   bucket_size;   /* Size in bytes of a hash bucket struct. */
   int   bucket_elems;  /* Number of elements in a hash bucket. */
   off_t next_block;    /* The next unallocated block address. */
-  /* In traditional GDBM database file, this header is followed by
-     avail_block with av_table occupying the rest of the disk block.
-     
-     In extended GDBM database file, it is followed by a gdbm_ext_header,
-     and then by avail_block. */
 } gdbm_file_header;
 
+/* The extension header keeps additional information. */
+typedef struct
+{
+  int version;         /* Version number (currently 0). */
+  unsigned numsync;    /* Number of synchronizations. */
+  int pad[6];          /* Reserve space for further use. */
+} gdbm_ext_header;
+
+/* Standard GDBM file header. */
+typedef struct
+{
+  gdbm_file_header hdr;
+  avail_block avail;
+} gdbm_file_standard_header;
+
+/* Extended GDBM file header. */
+typedef struct
+{
+  gdbm_file_header hdr;
+  gdbm_ext_header ext;
+  avail_block avail;
+} gdbm_file_extended_header;
 
 /* The dbm hash bucket element contains the full 31 bit hash value, the
    "pointer" to the key and data (stored together) with their sizes.  It also

@@ -15,7 +15,7 @@
 # along with GDBM. If not, see <http://www.gnu.org/licenses/>. 
 
 0	lelong	0x13579acf	GNU DBM 64-bit, little endian
-!:mime	application/octet-stream
+!:mime	application/x-gdbm
 >4	lelong	x		\b; block size=%d
 >8	lequad	x		\b; dir offset=%lld
 >16	lelong	x		\b, size=%d
@@ -24,7 +24,7 @@
 >28	lelong	x		\b, elts=%d
 
 0	belong	0x13579acf	GNU DBM 64-bit, big endian
-!:mime	application/octet-stream
+!:mime	application/x-gdbm
 >4	belong	x		\b; block size=%d
 >8	bequad	x		\b; dir offset=%lld
 >16	belong	x		\b, size=%d
@@ -33,16 +33,16 @@
 >28	belong	x		\b, elts=%d
 
 0	lelong	0x13579acd	GNU DBM 32-bit, little endian
-!:mime	application/octet-stream
+!:mime	application/x-gdbm
 
 0	belong	0x13579acd	GNU DBM 32-bit, big endian
-!:mime	application/octet-stream
+!:mime	application/x-gdbm
 
 0	lelong	0x13579ace	GNU DBM old format, little endian
-!:mime	application/octet-stream
+!:mime	application/x-gdbm
 
 0	belong	0x13579ace	GNU DBM old format, big endian
-!:mime	application/octet-stream
+!:mime	application/x-gdbm
 
 0	string	\!\r\n
 >3	string	\!\040GDBM\040FLAT\040FILE\040DUMP\040--\040THIS\040IS\040NOT\040A\040TEXT\040FILE\r\n	GDBM flat dump file
@@ -58,3 +58,31 @@
 >>&0	string	>\0		\b, for file %s
 >0	string	#\040GDBM\040dump\040file\040created\040by\040GDBM\040version\040
 >>&0	regex	([0-9.]+)\.		\b, created by GDBM version %s
+
+0	lelong	0x13579ad1	GNU DBM extended 64-bit, little endian
+!:mime	application/x-gdbm
+>4	lelong	x		\b; block size=%d
+>8	lequad	x		\b; dir offset=%lld
+>16	lelong	x		\b, size=%d
+>20	lelong	x		\b, bits=%d
+>24	lelong	x		\b; bucket size=%d
+>28	lelong	x		\b, elts=%d
+>40     lelong  x               \b, version=%d
+>44     lelong  x               \b, numsync=%u
+
+0	belong	0x13579ad1	GNU DBM extended 64-bit, big endian
+!:mime	application/x-gdbm
+>4	belong	x		\b; block size=%d
+>8	bequad	x		\b; dir offset=%lld
+>16	belong	x		\b, size=%d
+>20	belong	x		\b, bits=%d
+>24	belong	x		\b; bucket size=%d
+>28	belong	x		\b, elts=%d
+>40     belong  x               \b, version=%d
+>44     belong  x               \b, numsync=%u
+
+0	lelong	0x13579ad0	GNU DBM extended 32-bit, little endian
+!:mime	application/x-gdbm
+
+0	belong	0x13579ad0	GNU DBM extended 32-bit, big endian
+!:mime	application/x-gdbm

@@ -790,15 +790,15 @@ print_header_handler (struct handler_param *param)
   switch (gdbm_file->header->header_magic)
     {
     case GDBM_OMAGIC:
-      type = "Old GDBM";
+      type = "GDBM (old)";
       break;
 
     case GDBM_MAGIC:
-      type = "GDBM";
+      type = "GDBM (standard)";
       break;
 
     case GDBM_NUMSYNC_MAGIC:
-      type = "GDBM numsync";
+      type = "GDBM (numsync)";
       break;
 
     default:
@@ -823,9 +823,12 @@ print_header_handler (struct handler_param *param)
   fprintf (fp, _("  avail nx blk = %lu\n"),
 	   (unsigned long) gdbm_file->avail->next_block);
 
-  // FIXME
   if (gdbm_file->xheader)
-    fprintf (fp, _("       numsync = %u\n"), gdbm_file->xheader->numsync);  
+    {
+      fprintf (fp, _("\nExtended Header: \n\n"));
+      fprintf (fp, _("       version = %d\n"), gdbm_file->xheader->version);  
+      fprintf (fp, _("       numsync = %u\n"), gdbm_file->xheader->numsync);
+    }
 }
 
 static void

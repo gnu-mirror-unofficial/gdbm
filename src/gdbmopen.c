@@ -57,15 +57,17 @@ gdbm_header_avail (gdbm_file_header const *hdr,
     { 
     case GDBM_OMAGIC:
     case GDBM_MAGIC: 
-      *avail_ptr = (avail_block *) (hdr + 1);
-      *avail_size = (hdr->block_size - sizeof (gdbm_file_header));
       *exhdr = NULL;
+      *avail_ptr = &((gdbm_file_standard_header*)hdr)->avail;
+      *avail_size = (hdr->block_size -
+		     offsetof (gdbm_file_standard_header, avail));
       break;
       
     case GDBM_NUMSYNC_MAGIC:
-      *exhdr = (gdbm_ext_header *) (hdr + 1);
-      *avail_ptr = (avail_block *) (*exhdr + 1);
-      *avail_size = (hdr->block_size - (sizeof (gdbm_file_header) + sizeof (gdbm_ext_header)));
+      *exhdr = &((gdbm_file_extended_header*)hdr)->ext;
+      *avail_ptr = &((gdbm_file_extended_header*)hdr)->avail;
+      *avail_size = (hdr->block_size -
+		     offsetof (gdbm_file_extended_header, avail));
       break;
     }
 }
@@ -587,7 +589,9 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
 	}
       gdbm_header_avail (dbf->header, &dbf->avail, &dbf->avail_size, &dbf->xheader);
 
-      if (((dbf->header->block_size - (((char*)dbf->avail-(char*)dbf->header) + sizeof (avail_block))) / sizeof (avail_elem) + 1) != dbf->avail->size)
+      if (((dbf->header->block_size -
+	    (((char*)dbf->avail - (char*)dbf->header) +
+	     sizeof (avail_block))) / sizeof (avail_elem) + 1) != dbf->avail->size)
 	{
 	  if (!(flags & GDBM_CLOERROR))
 	    dbf->desc = -1;
