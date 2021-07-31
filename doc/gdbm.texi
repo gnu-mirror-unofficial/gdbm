@@ -465,14 +465,8 @@ variable to @code{GDBM_BLOCK_SIZE_ERROR} and return @code{NULL}.
 @cindex close-on-exec
 @item GDBM_CLOEXEC
 Set the close-on-exec flag on the database file descriptor.  The
-@code{libc} must support the @code{O_CLOEXEC} flag@footnote{
-@ifhtml
-(@uref{http://www.manpagez.com/man/2/open, open(2)})
-@end ifhtml
-@ifnothtml
-@xref{open,,,open(2),open(2) man page}
-@end ifnothtml
-}
+@code{libc} must support the @code{O_CLOEXEC} flag
+(@pxref{O_CLOEXEC,,,open(2),open(2) man page}).
 
 @kwindex GDBM_XVERIFY
 @item GDBM_XVERIFY
@@ -485,21 +479,8 @@ on large databases, it can slow down the opening process.
 @end table
 
 @item mode
-File mode@footnote{See
-@ifhtml
-@uref{http://www.manpagez.com/man/2/chmod, chmod(2)},
-@end ifhtml
-@ifnothtml
-@xref{chmod,,change permissions of a file,chmod(2),
-chmod(2) man page},
-@end ifnothtml
-and
-@ifhtml
-@uref{http://www.manpagez.com/man/2/open, open(2)}},
-@end ifhtml
-@ifnothtml
-@ref{open,,open a file,open(2), open(2) man page}.},
-@end ifnothtml
+File mode@footnote{@xref{chmod,,,chmod(2),chmod(2) man page},
+and @xref{open,,open a file,open(2), open(2) man page}.},
 which is used if the file is created.
 @item fatal_func
 A function for @code{gdbm} to call if it detects a fatal error.  The only
@@ -991,14 +972,7 @@ If @var{flag} is @code{GDBM_NEWDB}, the function will create a new
 output file, replacing it if it already exists.
 
 @item mode
-The permissions to use when creating the output file.
-@ifhtml
-See @uref{http://www.manpagez.com/man/2/open, open(2)},
-@end ifhtml
-@ifnothtml
-See @ref{open,,open a file,open(2), open(2) man page},
-@end ifnothtml
-for a detailed discussion.
+The permissions to use when creating the output file (@pxref{open,,open a file,open(2), open(2) man page}).
 @end table
 @end deftypefn
 
@@ -1309,14 +1283,8 @@ If the @code{GDBM_RCVR_ERRFUN} flag bit is set, @code{errfun} points
 to a function that will be called upon each recoverable or non-fatal
 error that occurred during the recovery.  The @code{data} field of
 @code{gdbm_recovery} will be passed to it as its first argument.  The
-@var{fmt} argument is a
-@ifhtml
-@uref{http://www.manpagez.com/man/3/printf, printf(3)}-like
-@end ifhtml
-@ifnothtml
-@code{printf}-like (@pxref{printf,,format output,printf(3), printf(2) man page}),
-@end ifnothtml
-format string.  The rest of arguments supply parameters for that format.
+@var{fmt} argument is a @code{printf}-like (@pxref{Format of the format string,,,printf(3), printf(3) man page}), format string.  The rest of
+arguments supply parameters for that format.
 @end deftypecv
 
 @deftypecv {input member} gdbm_recovery {void *} data
@@ -1519,11 +1487,22 @@ containing the database state reflecting the most recent successful
 @code{gdbm_sync} call is the snapshot file whose permission bits are
 read-only and whose last-modification timestamp is greatest.  If both
 snapshot files are readable, we choose the one with the most recent
-last-modification timestamp@footnote{The experimental @dfn{numsync}
-extension is provided to handle such case gracefully.  @xref{Numsync},
-for details.}.  Following a crash, @emph{do not} do anything that
-could change the file permissions or last-mod timestamp on either
-snapshot file!
+last-modification timestamp.  Modern operating systems record
+timestamps in nanoseconds, which gives sufficient confidence that the
+timestamps of the two snapshots will differ.  However, one can't rule
+out the possibility that the two snapshot files will be both readable
+and have identical timestamps@footnote{This can happen, for example,
+if the storage is very fast and the system clock is low-resolution, or
+if the system administrator sets the system clock backwards.  In the
+latter case one can end up with the most recent snapshot file having
+modification time earlier than that of the obsolete snapshot.}.  To
+cope with this, @command{GDBM} version 1.21 introduced the new
+@dfn{extended database format}, which stores in the database file
+header the number of synchronizations performed so far.  This number
+can reliably be used to select the most recent snapshot, independently
+of its timestamp.  We strongly suggest using this new format when
+writing crash-tolerant applications.  @xref{Numsync}, for a detailed
+discussion.
 
 The @code{gdbm_latest_snapshot} function is provided, that selects the
 right snapshot among the two.  Invoke it as:
@@ -1531,44 +1510,64 @@ right snapshot among the two.  Invoke it as:
 @example
 @group
 const char *recovery_file = NULL;
-
-switch (gdbm_latest_snapshot (even, odd, &recovery_file))
-  @{
-    case GDBM_SNAPSHOT_OK:
-      /*
-       * Success. @code{recovery_file} now points to the
-       * right filename.
-       */
-      break;
-
-    case GDBM_SNAPSHOT_BAD:
-      fprintf (stderr, "Both snapshot files unusable\n");
-      exit (1);
-      
-    case GDBM_SNAPSHOT_ERR:
-      /* An error occurred.  Inspect @code{errno} for details. */
-      perror ("gdbm_latest_snapshot")
-      exit(1);
-
-    case GDBM_SNAPSHOT_SAME:
-      fprintf (stderr, "Both snapshots have the same date!\n);
-      exit (1);
-
-    case GDBM_SNAPSHOT_SUSPICIOUS:
-      /*
-       * That can occur only in databases with extended numsync header
-       * enabled.  @xref{Numsync}.
-       */
-      fprintf (stderr, "returned snapshot %s is suspicious\n", recovery_file);
-      fprintf (stderr, "examine it and take action\n");
-      /*
-       * Switch to interactive mode letting the user examine the
-       * snapshot and take appropriate action
-       */
-
-  @}
+result = gdbm_latest_snapshot (even, odd, &recovery_file);
 @end group
 @end example
+
+@noindent
+where @var{even} and @var{odd} are names of the snapshot files.  On
+success, it stores the pointer to the most recent snapshot file name
+in @var{recovery_file} and returns @code{GDBM_SNAPSHOT_OK}.  On error,
+it returns one of the following error codes.
+
+@defvr {gdbm_latest_snapshot} GDBM_SNAPSHOT_BAD
+Neither snapshot file is readable.  This means that the crash has occurred
+before @code{gdbm_failure_atomic} completed.  In this case, the best
+course of action is to fall back on a safe backup copy of the data file.
+@end defvr
+
+@defvr {gdbm_latest_snapshot} GDBM_SNAPSHOT_ERR
+System error ocurred in @code{gdbm_latest_snapshot}.  Examine the
+system @code{errno} variable for details.  Its possible values are:
+
+@table @code
+@item EACCESS
+File mode of one of the snapshot files was incorrect.  Each snapshot
+file can be either readable (0400) or writable (0200), but not both.
+This error can aslo be returned by underlying @code{stat} call,
+meaning that search permission was denied for one of the directories
+in the path prefix of a snapshot file name.
+
+@item EINVAL
+Some arguments passed to @code{gdbm_latest_snapshot} were not valid.
+
+@item ENOSYS
+Function is not implemented.  This means @code{GDBM} was built without
+crash-tolerance support.
+
+@item Other value (@code{EBADF}, @code{EFAULT}, etc)
+An error occurred when trying to @code{stat} the snapshot file.
+@xref{ERRORS,,,stat(2),stat(2) man page}, for a discussion of 
+possible @code{errno} values.
+@end table
+@end defvr
+
+@defvr {gdbm_latest_snapshot} GDBM_SNAPSHOT_SAME
+File modes and modification dates of both snapshot files are exactly
+the same.
+@end defvr
+
+@defvr {gdbm_latest_snapshot} GDBM_SNAPSHOT_SUSPICIOUS
+For the database in extended @dfn{numsync} format (@pxref{Numsync}):
+the @code{numsync} values of the two snapshot differ by more than
+one.  Check the arguments to the @code{gdbm_latest_snapshot} function.
+The most probably reason of such an error is that the @var{even} and
+@var{odd} parameters point to snapshot files belonging to different
+database files.
+
+The best course of action in this case is manual recovery, e.g. using the
+@command{gdbmtool} utility (@pxref{gdbmtool}).
+@end defvr
 
 @heading Performance
 
@@ -1600,13 +1599,14 @@ In @ref{Crash recovery}, we have shown that for database recovery,
 one should select the snapshot whose permission bits are read-only and
 whose last-modification timestamp is greatest.  However, there may be
 cases when a crash occurs at such a time that both snapshot files
-remain readable.  It may also happen, that their permissions and/or
-modification times are inadvertently changed before recovery.  To
-make it possible to select the right snapshot in such cases, a new
-@dfn{extended database format} was introduced in @command{GDBM}
-version 1.21.  This format adds to the database header the
-@code{numsync} field, that holds the number of synchronizations the
-database underwent before being closed or abandoned due to a crash.
+remain readable.  It may also happen, that their permissions had
+been reset to read-only and/or modification times inadvertently
+changed before recovery.  To make it possible to select the right
+snapshot in such cases, a new @dfn{extended database format} was
+introduced in @command{GDBM} version 1.21.  This format adds to the
+database header the @code{numsync} field, that holds the number of
+synchronizations the database underwent before being closed or
+abandoned due to a crash.
 
 Each snapshot is an exact copy of the database at a given point of
 time.  Thus, if both snapshots of a database in extended format are
@@ -1616,13 +1616,10 @@ the @code{gdbm_latest_snapshot} function does in this case.
 
 It is worth noticing, that the two counters should differ exactly by
 one.  If the difference is greater than that, @code{gdbm_latest_snapshot}
-will still select the snapshot with the greater @code{numsync} value,
-but will return a special status code, @code{GDBM_SNAPSHOT_SUSPICIOUS},
-indicating that the proposed snapshot file has been chosen based on
-suspicious or unreliable data.  If, during a recovery attempt, you get
-this status code, we recommend to proceed with the manual recovery,
-e.g. by examining both snapshot files using @command{gdbmtool -r}
-(@pxref{gdbmtool}).
+will return a special status code, @code{GDBM_SNAPSHOT_SUSPICIOUS}.
+If, during a recovery attempt, you get this status code, we recommend
+to proceed with the manual recovery, e.g. by examining both snapshot
+files using @command{gdbmtool -r} (@pxref{gdbmtool}).
 
 To create a database in extended format, call @code{gdbm_open} with
 both @code{GDBM_NEWDB} and @code{GDBM_NUMSYNC} flags:
@@ -1719,11 +1716,10 @@ and have exactly the same @code{mtime} timestamp), the function returns
 If the @samp{numsync} extension is enabled (@pxref{Numsync}), the
 function can also return the @code{GDBM_SNAPSHOT_SUSPICIOUS} status
 code.  This happens when the @code{numsync} counters in the two
-snapshots differ by more than one.  In this case, the function selects
-the snapshot with the greater @code{numsync} value.  If you get this
-status code when recovering from a crash, it is recommended to switch
-to manual recovery procedure, letting the user examine the snapshots
-and take the appropriate action.
+snapshots differ by more than one.  If you get this status code when
+recovering from a crash, it is recommended to switch to manual
+recovery procedure, letting the user examine the snapshots and take
+the appropriate action.
 
 If any value other than @code{GDBM_SNAPSHOT_OK} is returned, it is
 guaranteed that the function don't touch @var{retval}.
@@ -2407,13 +2403,7 @@ Opens a database.  The @var{file} argument is the full name of the
 database file to be opened.  The function opens two files:
 @file{@var{file}.pag} and @file{@var{file}.dir}.  The @var{flags} and
 @var{mode} arguments have the same meaning as the second and third
-arguments of 
-@ifhtml
-@uref{http://www.manpagez.com/man/2/open, open(2)},
-@end ifhtml
-@ifnothtml
-@code{open} (@pxref{open,,open a file,open(2), open(2) man page}),
-@end ifnothtml
+arguments of @code{open} (@pxref{open,,,open(2), open(2) man page}),
 except that a database opened for write-only access opens the files
 for read and write access and the behavior of the @code{O_APPEND} flag is
 unspecified.

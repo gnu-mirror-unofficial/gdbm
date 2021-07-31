@@ -234,21 +234,33 @@ timespec_cmp (struct timespec const *a, struct timespec const *b)
 }
 
 static int
+check_snapshot_mode (int mode)
+{
+  if (!S_ISREG (mode))	/* file is not a regular file */
+    return -1;
+  if (S_IXUSR & mode)	/* file is executable */
+    return -1;
+  if (S_IRUSR & mode)
+    {
+      if (S_IWUSR & mode)
+	return -1;	/* file is both readable and writable */
+    }
+  else if (!(S_IWUSR & mode))
+    return -1;		/* file is neither readable nor writable */
+  /* All OK */
+  return 0;
+}
+
+static int
 stat_snapshot (const char *f, struct stat *st)
 {
   if (stat (f, st))
     return -1;
-  if (!S_ISREG (st->st_mode))	/* f is not a regular file */
-    return -1;
-  if (S_IXUSR & st->st_mode)	/* f is executable */
-    return -1;
-  if (S_IRUSR & st->st_mode)
+  if (check_snapshot_mode (st->st_mode))
     {
-      if (S_IWUSR & st->st_mode)
-	return -1;	/* f is both readable and writable */
+      errno = EACCESS;
+      return -1;
     }
-  else if (!(S_IWUSR & st->st_mode))
-    return -1;		/* f is neither readable nor writable */
   return 0;
 }
 
@@ -342,7 +354,6 @@ gdbm_latest_snapshot (const char *even, const char *odd, const char **ret)
 	  break;
 
 	case -2:
-	  *ret = odd;
 	  rc = GDBM_SNAPSHOT_SUSPICIOUS;
 	  break;
 	  
@@ -351,7 +362,6 @@ gdbm_latest_snapshot (const char *even, const char *odd, const char **ret)
 	  break;
 
 	case 2:
-	  *ret = even;
 	  rc = GDBM_SNAPSHOT_SUSPICIOUS;
 	  break;
 	  

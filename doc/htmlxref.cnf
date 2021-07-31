@@ -1,0 +1,11 @@
+GNU=http://www.gnu.org/software
+READLINE=${GNU}/readline/manual
+readline	mono	${READLINE}/readline.html
+readline	node	${READLINE}/html_node/
+readline	section	${READLINE}/html_section/
+readline	chapter	${READLINE}/html_chapter/
+
+open(2)		mono	https://man.gnu.org.ua/2/open
+stat(2)		mono	https://man.gnu.org.ua/2/stat
+chmod(2)	mono	https://man.gnu.org.ua/2/chmod
+printf(3)	mono	https://man.gnu.org.ua/3/printf

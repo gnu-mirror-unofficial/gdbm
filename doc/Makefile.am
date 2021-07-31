@@ -23,7 +23,7 @@ gdbm_TEXINFOS=\
 dist_man_MANS   = gdbm.3 gdbm_dump.1 gdbm_load.1 gdbmtool.1
 
 GENDOCS = perl gendocs.pl
-EXTRA_DIST = gendocs.pl webdoc.init
+EXTRA_DIST = gendocs.pl webdoc.init htmlxref.cnf
 
 TEXI2DVI=texi2dvi -t '@set $(RENDITION)'
 
