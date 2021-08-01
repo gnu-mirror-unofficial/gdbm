@@ -852,6 +852,214 @@ downgrade_handler (struct handler_param *param)
     terror ("%s", gdbm_db_strerror (gdbm_file));
 }
 
+struct snapshot_status_info
+{
+  char const *code;
+  char const *descr;
+  void (*fn) (FILE *, char const *, char const *);
+};
+
+#define MODBUFSIZE 10
+
+static char *
+decode_mode (mode_t mode, char *buf)
+{
+  char *s = buf;
+  *s++ = mode & S_IRUSR ? 'r' : '-';
+  *s++ = mode & S_IWUSR ? 'w' : '-';
+  *s++ = (mode & S_ISUID
+	       ? (mode & S_IXUSR ? 's' : 'S')
+	       : (mode & S_IXUSR ? 'x' : '-'));
+  *s++ = mode & S_IRGRP ? 'r' : '-';
+  *s++ = mode & S_IWGRP ? 'w' : '-';
+  *s++ = (mode & S_ISGID
+	       ? (mode & S_IXGRP ? 's' : 'S')
+	       : (mode & S_IXGRP ? 'x' : '-'));
+  *s++ = mode & S_IROTH ? 'r' : '-';
+  *s++ = mode & S_IWOTH ? 'w' : '-';
+  *s++ = (mode & S_ISVTX
+	       ? (mode & S_IXOTH ? 't' : 'T')
+	       : (mode & S_IXOTH ? 'x' : '-'));
+  *s = '\0';
+  return buf;
+}
+
+struct error_entry
+{
+  const char *msg;
+  int gdbm_err;
+  int sys_err;
+};
+
+static void
+error_push (struct error_entry *stk, int *tos, int maxstk, char const *text,
+	    int gdbm_err, int sys_err)
+{
+  if (*tos == maxstk)
+    abort ();
+  stk += *tos;
+  ++ *tos;
+  stk->msg = text;
+  stk->gdbm_err = gdbm_err;
+  stk->sys_err = sys_err;
+}
+
+static void
+print_snapshot (char const *snapname, FILE *fp)
+{
+  struct stat st;
+  char buf[MODBUFSIZE];
+
+  if (stat (snapname, &st) == 0)
+    {
+# define MAXERRS 4
+      struct error_entry errs[MAXERRS];
+      int errn = 0;
+      int i;
+      
+      switch (st.st_mode & ~S_IFREG)
+	{
+	case S_IRUSR:
+	case S_IWUSR:
+	  break;
+	  
+	default:
+	  error_push (errs, &errn, sizeof (errs) / sizeof (errs[0]),
+		      N_("bad file mode"), 0, 0);
+	}
+      
+      fprintf (fp, "%s: ", snapname);
+      fprintf (fp, "%03o %s ", st.st_mode & 0777,
+	       decode_mode (st.st_mode, buf));
+      fprintf (fp, "%ld.%09ld", st.st_mtim.tv_sec, st.st_mtim.tv_nsec);
+      if (S_ISREG (st.st_mode))
+	{
+	  GDBM_FILE dbf;
+
+	  dbf = gdbm_open (snapname, 0, GDBM_READER, 0, NULL);
+	  if (dbf)
+	    {
+	      if (dbf->xheader)
+		fprintf (fp, " %u", dbf->xheader->numsync);
+	      else
+		fprintf (fp, " %s", _("N/A"));
+	    }
+	  else if (gdbm_check_syserr (gdbm_errno))
+	    {
+	      if (errno == EACCES)
+		fprintf (fp, " ?");
+	      else
+		error_push (errs, &errn, sizeof (errs) / sizeof (errs[0]),
+			    N_("can't open database"),
+			    gdbm_errno, errno);
+	    }
+	  else
+	    error_push (errs, &errn, sizeof (errs) / sizeof (errs[0]),
+			N_("can't open database"),
+			gdbm_errno, 0);
+	}
+      else
+	error_push (errs, &errn, sizeof (errs) / sizeof (errs[0]),
+		    N_("not a regular file"),
+		    0, 0);
+      fputc ('\n', fp);
+      for (i = 0; i < errn; i++)
+	{
+	  fprintf (fp, "%s: %s: %s", snapname, _("ERROR"), gettext (errs[i].msg));
+	  if (errs[i].gdbm_err)
+	    fprintf (fp, ": %s", gdbm_strerror (errs[i].gdbm_err));
+	  if (errs[i].sys_err)
+	    fprintf (fp, ": %s", strerror (errs[i].sys_err));
+	  fputc ('\n', fp);
+	}	  
+    }
+  else
+    {
+      fprintf (fp, _("%s: ERROR: can't stat: %s"), snapname, strerror (errno));
+      return;
+    }
+}
+
+static void
+snapshot_print_fn (FILE *fp, char const *sa, char const *sb)
+{
+  print_snapshot (sa, fp);
+  print_snapshot (sb, fp);
+}
+
+static void
+snapshot_err_fn (FILE *fp, char const *sa, char const *sb)
+{
+  switch (errno)
+    {
+    default:
+      print_snapshot (sa, fp);
+      print_snapshot (sb, fp);
+      break;
+      
+    case EINVAL:
+      fprintf (fp, "%s.\n",
+	       _("Invalid arguments in call to gdbm_latest_snapshot"));
+      break;
+      
+    case ENOSYS:
+      fprintf (fp, "%s.\n",
+	       _("Function is not implemented: GDBM is built without crash-tolerance support"));
+      break;
+    }      
+}
+
+static struct snapshot_status_info snapshot_status_info[] = {
+  [GDBM_SNAPSHOT_OK] = {
+    "GDBM_SNAPSHOT_OK",
+    N_("Selected the right snapshot")
+  },
+  [GDBM_SNAPSHOT_BAD] = {
+    "GDBM_SNAPSHOT_BAD",
+    N_("Neither snapshot is readable"),
+    snapshot_print_fn
+  },
+  [GDBM_SNAPSHOT_ERR] = {
+    "GDBM_SNAPSHOT_ERR",
+    N_("Error selecting snapshot"),
+    snapshot_err_fn
+  },
+  [GDBM_SNAPSHOT_SAME] = {
+    "GDBM_SNAPSHOT_SAME",
+    N_("Snapshot modes and dates are the same"),
+    snapshot_print_fn
+  },
+  [GDBM_SNAPSHOT_SUSPICIOUS] = {
+    "GDBM_SNAPSHOT_SUSPICIOUS",
+    N_("Snapshot sync counters differ by more than 1"),
+    snapshot_print_fn
+  }
+};
+    
+void
+snapshot_handler (struct handler_param *param)
+{
+  char *sa = tildexpand (PARAM_STRING (param, 0));
+  char *sb = tildexpand (PARAM_STRING (param, 1));
+  char const *sel;
+  int rc = gdbm_latest_snapshot (sa, sb, &sel); 
+
+  if (rc >= 0 && rc < sizeof(snapshot_status_info)/sizeof(snapshot_status_info[0]))
+    {
+      fprintf (param->fp,
+	       "%s: %s.\n", 
+	       snapshot_status_info[rc].code,
+	       gettext (snapshot_status_info[rc].descr));
+      if (snapshot_status_info[rc].fn)
+	snapshot_status_info[rc].fn (param->fp, sa, sb);
+      if (rc == GDBM_SNAPSHOT_OK)
+	print_snapshot (sel, param->fp);
+    }
+  else
+    terror (_("unexpected error code: %d"), rc);
+}
+
+
 /* hash KEY - hash the key */
 void
 hash_handler (struct handler_param *param)
@@ -1337,7 +1545,15 @@ struct command command_tab[] = {
     { { NULL } },
     FALSE,
     REPEAT_NEVER,
-    N_("Downgrade the database") },  
+    N_("Downgrade the database") },    
+  { S(snapshot), T_CMD,
+    NULL, snapshot_handler, NULL,
+    { { "FILE", GDBM_ARG_STRING },
+      { "FILE", GDBM_ARG_STRING },
+      { NULL } },
+    FALSE,
+    REPEAT_NEVER,
+    N_("analyze two database snapshots") },
   { S(version), T_CMD,
     NULL, print_version_handler, NULL,
     { { NULL } },

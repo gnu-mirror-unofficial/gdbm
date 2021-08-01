@@ -1531,7 +1531,7 @@ System error ocurred in @code{gdbm_latest_snapshot}.  Examine the
 system @code{errno} variable for details.  Its possible values are:
 
 @table @code
-@item EACCESS
+@item EACCES
 File mode of one of the snapshot files was incorrect.  Each snapshot
 file can be either readable (0400) or writable (0200), but not both.
 This error can aslo be returned by underlying @code{stat} call,
@@ -1565,9 +1565,62 @@ The most probably reason of such an error is that the @var{even} and
 @var{odd} parameters point to snapshot files belonging to different
 database files.
 
-The best course of action in this case is manual recovery, e.g. using the
-@command{gdbmtool} utility (@pxref{gdbmtool}).
+The best course of action in this case is manual recovery.
 @end defvr
+
+@dfn{Manual recovery} is usually performed with the help of the
+@command{gdbmtool} utility.  If you get any of the errors above, start
+@command{gdbmtool} in read-only mode (the @option{-r}) option.  Once
+in the command shell, issue the following command:
+
+@example
+snapshot @var{a} @var{b}
+@end example
+
+@noindent
+where @var{a} and @var{b} are names of the two snapshot files you
+configured using the @code{gdbm_failure_atomic} function.  This
+command investigates the snapshot files and prints out the detailed
+diagnostics.
+
+Its output begins with a line listing one of the error codes above,
+followed by a colon and a textual description of the error.  The lines
+that follow show details for each snapshot file.
+
+Each snapshot description begins with the snapshot file name followed
+by a colon and four fields, in this order:
+
+@enumerate 1
+@item File permission bits in octal
+@item File permission bits in @command{ls -l} notation
+@item Modification timestamp
+@item Numsync counter
+For datatabases in standard GDBM format, this field is @samp{N/A}.  If
+the counter cannot be obtained because of error, this field is @samp{?}.
+@end enumerate
+
+Any errors or inconsistencies discovered are reported in the lines
+that follow, one error per line.  Here's an example of the
+@command{snapshot} command output, describing the
+@code{GDBM_SNAPSHOT_ERR} condition:
+
+@example
+@group
+gdbmtool> snapshot even.dbf odd.dbf
+GDBM_SNAPSHOT_ERR: Error selecting snapshot.
+even.dbf: 200 -w------- 1627820627.485681330 ?
+odd.dbf: 600 rw------- 1627827212.689503918 301
+odd.dbf: ERROR: bad file mode
+@end group
+@end example
+
+Line 2 lists the meta-data of the snapshot @file{even.dbf}.  The
+@code{numsync} field contains question mark because the file
+permissions (write-only) prevented @command{gdbmtool} from opening it.
+
+The lines for @file{odd.dbf} show the actual reason for the error: bad
+file mode (read-write).  Apparently, the file mode has been changed
+manually after the crash.
 
 @heading Performance
 
@@ -1619,7 +1672,8 @@ one.  If the difference is greater than that, @code{gdbm_latest_snapshot}
 will return a special status code, @code{GDBM_SNAPSHOT_SUSPICIOUS}.
 If, during a recovery attempt, you get this status code, we recommend
 to proceed with the manual recovery, e.g. by examining both snapshot
-files using @command{gdbmtool -r} (@pxref{gdbmtool}).
+files using the @command{snapshot} command in @command{gdbmtool}
+(@pxref{gdbmtool}). 
 
 To create a database in extended format, call @code{gdbm_open} with
 both @code{GDBM_NEWDB} and @code{GDBM_NUMSYNC} flags:
@@ -3189,6 +3243,14 @@ Verbosely list each error encountered.
 
 @deffn {command verb} reorganize
 Reorganize the database (@pxref{Reorganization}).
+@end deffn
+
+@deffn {command verb} snapshot @var{filename} @var{filename}
+Analyze two snapshot files and select the most recent of them.  In
+case of error, display a detailed diagnostics and meta-information of
+both snapshots.
+
+@xref{Crash recovery}, for a detailed discussion.
 @end deffn
 
 @deffn {command verb} source @var{filename}

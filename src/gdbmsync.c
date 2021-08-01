@@ -313,10 +313,10 @@ gdbm_numsync_cmp (const char *a, const char *b)
 
 /*
  * Selects among the two given snapshot files the one to be used for
- * post-crash recovery and stores its value in *RET.
- * Returns 0 (GDBM_SNAPSHOT_OK) on success, GDBM_SNAPSHOT_ERR on error (examine
- * errno) and GDBM_SNAPSHOT_SAME in the unlikely case when two snapshots have
- * the same modification time.
+ * post-crash recovery.
+ * Returns one of the GDBM_SNAPSHOT_* constants (see gdbm.h).
+ * If GDBM_SNAPSHOT_OK is returned a pointer to the most recent snapshot
+ * name is stored in *ret.  Otherwise, *ret is untouched.
  */
 int
 gdbm_latest_snapshot (const char *even, const char *odd, const char **ret)

@@ -13,7 +13,7 @@
 .\"
 .\" You should have received a copy of the GNU General Public License
 .\" along with GDBM. If not, see <http://www.gnu.org/licenses/>. */
-.TH GDBMTOOL 1 "July 31, 2021" "GDBM" "GDBM User Reference"
+.TH GDBMTOOL 1 "August 1, 2021" "GDBM" "GDBM User Reference"
 .SH NAME
 gdbmtool \- examine and modify a GDBM database
 .SH SYNOPSIS
@@ -262,7 +262,16 @@ Reorganize the database.
 \fBset\fR [\fIVAR\fR=\fIVALUE\fR...]
 Without arguments, lists variables and their values.  If arguments are
 specified, sets variables.   Boolean variables can be set by specifying
-variable name, optionally prefixed with \fBno\fR, to set it to \fBfalse\fR.
+variable name, optionally prefixed with \fBno\fR, to set it to
+\fBfalse\fR.
+.TP
+\fBsnapshot\fR \fIFILE\fR \fIFILE\fR
+Analyzes two database snapshots and selects the most recent of them.
+In case of error, prints a detailed diagnostics.  Use this command to
+manually recover from a crash.  For details, please refer to the chapter
+.B "Crash Tolerance"
+in the
+.BR "GDBM manual" .
 .TP
 \fBsource\fR \fIFILE\fR
 Read commands from the given \fIFILE\fR.
