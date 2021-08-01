@@ -258,7 +258,7 @@ stat_snapshot (const char *f, struct stat *st)
     return -1;
   if (check_snapshot_mode (st->st_mode))
     {
-      errno = EACCESS;
+      errno = EACCES;
       return -1;
     }
   return 0;
