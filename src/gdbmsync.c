@@ -302,8 +302,11 @@ gdbm_numsync_cmp (const char *a, const char *b)
   if (gdbm_numsync (a, &na) == 0 &&
       gdbm_numsync (b, &nb) == 0)
     {
-      na++; nb++;
-      if (na < nb)
+      if (na == UINT_MAX && nb == 0)
+	return -1;
+      else if (na == 0 && nb == UINT_MAX)
+	return 1;
+      else if (na < nb)
 	return na + 1 == nb ? -1 : -2;
       else if (na > nb)
 	return na == nb + 1 ? 1 : 2;

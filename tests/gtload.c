@@ -158,6 +158,8 @@ main (int argc, char **argv)
 	  rcvr.max_failures = read_size (arg + 20);
 	  rcvr_flags |= GDBM_RCVR_MAX_FAILED_BUCKETS;
 	}
+      else if (strncmp (arg, "-numsync", 8) == 0)
+	flags = GDBM_NUMSYNC;
 #ifdef GDBM_DEBUG_ENABLE
       else if (strncmp (arg, "-debug=", 7) == 0)
 	{
