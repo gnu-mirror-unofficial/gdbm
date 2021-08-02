@@ -105,6 +105,8 @@ _gdbm_finish_transfer (GDBM_FILE dbf, GDBM_FILE new_dbf,
       return -1;
     }
   
+  _gdbmsync_done (dbf);
+  
 #if HAVE_MMAP
   _gdbm_mapped_unmap (dbf);
 #endif
@@ -152,6 +154,10 @@ _gdbm_finish_transfer (GDBM_FILE dbf, GDBM_FILE new_dbf,
   dbf->dir               = new_dbf->dir;
   dbf->bucket            = new_dbf->bucket;
   dbf->bucket_dir        = new_dbf->bucket_dir;
+
+  dbf->avail             = new_dbf->avail;
+  dbf->avail_size        = new_dbf->avail_size;
+  dbf->xheader           = new_dbf->xheader;
 
   dbf->cache_size        = new_dbf->cache_size;  
   dbf->cache_num         = new_dbf->cache_num;   
@@ -399,6 +405,7 @@ gdbm_recover (GDBM_FILE dbf, gdbm_recovery *rcvr, int flags)
       new_dbf = gdbm_fd_open (fd, new_name, dbf->header->block_size,
 			      GDBM_WRCREAT
 			      | (dbf->cloexec ? GDBM_CLOEXEC : 0)
+			      | (dbf->xheader ? GDBM_NUMSYNC : 0)
 			      | GDBM_CLOERROR, dbf->fatal_err);
   
       SAVE_ERRNO (free (new_name));
