@@ -172,7 +172,7 @@ t_num (int base)
 %option nounput
 %option nodefault
 
-%x CMD STR MLSTR DEF
+%x CMD STR MLSTR DEF SHELLWS SHELL SHSTR SHQ
 
 WS [ \t][ \t]*
 IDENT [a-zA-Z_][a-zA-Z_0-9-]*
@@ -225,8 +225,20 @@ O [0-7]
 <INITIAL>{
 \?        { BEGIN (CMD);
             return command_lookup ("help", &yylloc, &yylval.cmd); }
-{IDENT}   { BEGIN (CMD);
-            return command_lookup (yytext, &yylloc, &yylval.cmd); }
+\! {
+  BEGIN (SHELLWS);
+  string_begin ();
+  return command_lookup ("shell", &yylloc, &yylval.cmd); 
+ }
+{IDENT}   {
+  int t;
+  t = command_lookup (yytext, &yylloc, &yylval.cmd);
+  if (t == T_SHELL)
+    BEGIN (SHELLWS);
+  else
+    BEGIN (CMD);
+  return t;
+ }
 {WS}      ; 
 }
  
@@ -258,7 +270,8 @@ pad           { return T_PAD; }
                      memcpy (yylval.string, yytext+1, yyleng-2);
 		     yylval.string[yyleng-2] = 0;
 		     return T_WORD; }
-\"[^\\\"\n]*\\$    {
+\"[^\\\"\n]*\\\n   {
+                     advance_line ();
                      string_begin ();
                      string_add (yytext + 1, yyleng - 2);
                      BEGIN (MLSTR); }
@@ -277,11 +290,57 @@ pad           { return T_PAD; }
 		     yylval.string = string_end ();
 		     BEGIN (CMD);
 		     return T_WORD; }
-[^\\\"\n]*\\$      { string_add (yytext, yyleng - 1); }
+[^\\\"\n]*\\\n     { advance_line ();
+                     string_add (yytext, yyleng - 1); }
 [^\\\"\n]*\\.      { string_add (yytext, yyleng - 2);
                      string_addc (unescape (yytext[yyleng-1])); }
 }
- 
+
+<SHELLWS>{
+{WS}  { BEGIN(SHELL); }
+"\n"  {
+    BEGIN (INITIAL);
+    advance_line ();
+    return '\n';
+ }
+}
+
+<SHELL>{
+\\\n        { advance_line (); string_add (yytext, yyleng); }
+\\.         { string_add (yytext, yyleng); }
+\'[^\'\n]*\' { string_add (yytext, yyleng); }
+\'[^\'\n]*\n { advance_line ();
+               string_add (yytext, yyleng);
+	       BEGIN (SHQ); }
+\"[^\\\"\n]*\" { string_add (yytext, yyleng); }
+\"[^\\\"\n]*\n { advance_line ();
+                 string_add (yytext, yyleng);
+	         BEGIN (SHSTR); }
+\"[^\\\"\n]*\\. { string_add (yytext, yyleng);
+                  BEGIN (SHSTR); }
+"\n"  {
+    BEGIN (INITIAL);
+    advance_line ();
+    yyless (0);
+    yylval.string = string_end ();
+    return T_WORD;    
+ }
+.   string_addc (yytext[0]);
+}
+
+<SHSTR>{
+[^\\\"]*\\. { string_add (yytext, yyleng); }
+[^\\\"]*\"  { string_add (yytext, yyleng);
+              BEGIN (SHELL); }
+}
+
+<SHQ>{
+[^\'\n]*\n  { advance_line ();
+              string_add (yytext, yyleng); }
+[^\'\n]*\'  { string_add (yytext, yyleng);
+              BEGIN (SHELL); } 
+}
+
 <*>\n              { BEGIN (INITIAL); advance_line (); return '\n'; }
 
 <INITIAL,CMD,DEF>. return yytext[0];
@@ -510,9 +569,17 @@ expand_char (int c, struct slist **tailp)
 char const *
 psname (void)
 {
-  if (YYSTATE == DEF || YYSTATE == MLSTR)
-    return "ps2";
-  return "ps1";
+  switch (YYSTATE)
+    {
+    case DEF:
+    case MLSTR:
+    case SHSTR:
+    case SHQ:
+      return "ps2";
+
+    default:
+      return "ps1";
+    }
 }
 
 char *

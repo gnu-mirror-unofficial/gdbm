@@ -49,7 +49,7 @@ bucket_element_count (size_t bucket_size)
 }
 
 static void
-gdbm_header_avail (gdbm_file_header const *hdr,
+gdbm_header_avail (gdbm_file_header *hdr,
 		   avail_block **avail_ptr, size_t *avail_size,
 		   gdbm_ext_header **exhdr)
 {

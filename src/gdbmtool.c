@@ -23,6 +23,7 @@
 #include <signal.h>
 #include <pwd.h>
 #include <sys/ioctl.h>
+#include <sys/wait.h>
 #include <termios.h>
 #include <stdarg.h>
 #ifdef HAVE_LOCALE_H
@@ -1012,7 +1013,7 @@ snapshot_err_fn (FILE *fp, char const *sa, char const *sb)
 static struct snapshot_status_info snapshot_status_info[] = {
   [GDBM_SNAPSHOT_OK] = {
     "GDBM_SNAPSHOT_OK",
-    N_("Selected the right snapshot")
+    N_("Selected the most recent snapshot")
   },
   [GDBM_SNAPSHOT_BAD] = {
     "GDBM_SNAPSHOT_BAD",
@@ -1351,6 +1352,55 @@ debug_handler (struct handler_param *param)
 }
 
 void
+shell_handler (struct handler_param *param)
+{
+  char *argv[4];
+  pid_t pid, rc;
+  int status;
+  
+  argv[0] = getenv ("$SHELL");
+  if (!argv[0])
+    argv[0] = "/bin/sh";
+  if (param->vararg)
+    {
+      argv[1] = "-c";
+      argv[2] = param->vararg->v.string;
+      argv[3] = NULL;
+    }
+  else
+    {
+      argv[1] = NULL;
+    }
+
+  pid = fork ();
+  if (pid == -1)
+    {
+      terror ("fork: %s", strerror (errno));
+      return;
+    }
+  if (pid == 0)
+    {
+      execv (argv[0], argv);
+      _exit (127);
+    }
+
+  rc = waitpid (pid, &status, 0);
+  if (rc == -1)
+    terror ("waitpid: %s\n", strerror (errno));
+  else if (!interactive ())
+    {
+      if (WIFEXITED (status))
+	{
+	  if (WEXITSTATUS (status) != 0)
+	    terror ("command failed with status %d", WEXITSTATUS (status));
+	}
+      else if (WIFSIGNALED (status))
+	terror ("command terminated on signal %d", WTERMSIG (status));
+    }
+}
+
+
+void
 source_handler (struct handler_param *param)
 {
   char *fname = tildexpand (PARAM_STRING (param, 0));
@@ -1627,7 +1677,12 @@ struct command command_tab[] = {
     TRUE,
     REPEAT_NEVER,
     N_("query/set debug level") },
-
+  { S(shell), T_SHELL,
+    NULL, shell_handler, NULL,
+    { { NULL } },
+    TRUE,
+    REPEAT_NEVER,
+    N_("invoke the shell") },          
 #undef S
   { 0 }
 };
@@ -1707,7 +1762,6 @@ help_handler (struct handler_param *param)
 
       for (i = 0; i < NARGS && cmd->args[i].name; i++)
 	n += fprintf (fp, " %s", gettext (cmd->args[i].name));
-
       if (n < CMDCOLS)
 	fprintf (fp, "%*.s", CMDCOLS-n, "");
       fprintf (fp, " %s", gettext (cmd->doc));
@@ -1724,7 +1778,8 @@ command_lookup (const char *str, struct locus *loc, struct command **pcmd)
   
   for (cmd = command_tab; state != fcom_abort && cmd->name; cmd++)
     {
-      if (memcmp (cmd->name, str, len < cmd->len ? len : cmd->len) == 0)
+      size_t n = len < cmd->len ? len : cmd->len;
+      if (memcmp (cmd->name, str, n) == 0 && str[n] == 0)
 	{
 	  switch (state)
 	    {

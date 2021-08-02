@@ -83,7 +83,7 @@ Documentation License.''
 
 @ifnottex
 @node Top
-@top The GNU database manager.
+@top The GNU database manager
 
 GNU @command{dbm} is a library of functions implementing a hashed database
 on a disk file.  This manual documents GNU @command{dbm} Version @value{VERSION}
@@ -163,7 +163,7 @@ gdbmtool interactive mode
 @end menu
 
 @node Copying
-@chapter Copying Conditions.
+@chapter Copying Conditions
 This library is @dfn{free}; this means that everyone is free to use
 it and free to redistribute it on a free basis.  GNU @command{dbm}
 (@code{gdbm}) is not in the public domain; it is copyrighted and there
@@ -198,7 +198,7 @@ Public License.)  A copy the GNU General Public License is included with
 the distribution of @code{gdbm}.
 
 @node Intro
-@chapter Introduction to GNU @command{dbm}.
+@chapter Introduction to GNU @command{dbm}
 
 GNU @command{dbm} (@code{gdbm}) is a library of database functions that use
 extensible hashing and works similar to the standard UNIX @command{dbm}
@@ -361,7 +361,7 @@ no such key
 @end example
 
 @node Open
-@chapter Opening the database.
+@chapter Opening the database
 
 @cindex opening the database
 @cindex database, opening or creating
@@ -515,7 +515,7 @@ Copy file ownership and mode from @var{src} to @var{dst}.
 @end deftypefn
 
 @node Close
-@chapter Closing the database.
+@chapter Closing the database
 @cindex closing database
 @cindex database, closing
 
@@ -556,7 +556,7 @@ and returns -1.
 @end deftypefn
 
 @node Store
-@chapter Inserting and replacing records in the database.
+@chapter Inserting and replacing records in the database
 @cindex storing records
 @cindex records, storing
 
@@ -613,7 +613,7 @@ value for an object of type @code{int} (type of the @code{dsize} member of
 @code{datum}).
 
 @node Fetch
-@chapter Searching for records in the database.
+@chapter Searching for records in the database
 @cindex fetching records
 @cindex looking up records
 @cindex record, fetching
@@ -678,7 +678,7 @@ The search key.
 @end deftypefn
 
 @node Delete
-@chapter Removing records from the database.
+@chapter Removing records from the database
 @cindex deleting records
 @cindex record, deleting
 
@@ -703,7 +703,7 @@ requester is a reader.  The return of @code{0} marks a successful delete.
 @end deftypefn
 
 @node Sequential
-@chapter Sequential access to records.
+@chapter Sequential access to records
 @cindex sequential access
 @cindex iterating over records
 @cindex records, iterating over
@@ -799,7 +799,7 @@ will not be visited if a loop like the following is executed:
 @end example
 
 @node Reorganization
-@chapter Database reorganization.
+@chapter Database reorganization
 @cindex database reorganization
 @cindex reorganization, database
 
@@ -1136,7 +1136,7 @@ gdbm_load_from_file (@var{dbf}, @var{fp}, @var{flag}, 0, NULL);
 @end deftypefn
 
 @node Errors
-@chapter Error handling.
+@chapter Error handling
 @cindex gdbm_errno
 @cindex error strings
 @cindex global error state
@@ -1376,9 +1376,11 @@ application logic.  For example, the new mechanism won't help if a
 pointer bug in your application corrupts @command{GDBM} private in-memory
 data which in turn corrupts the database file.
 
-To enable crash tolerance in your application, follow these steps.
+In the following sections we will describe how to enable crash
+tolerance in your application and what to do if a crash occurs.
 
-@heading Using Proper Filesystem
+@node Filesystems supporting crash tolerance
+@section Using Proper Filesystem
 
 Use a filesystem that supports reflink copying.  Currently XFS, BtrFS,
 and OCFS2 support reflink.  You can create such a filesystem if you
@@ -1427,7 +1429,8 @@ cp --reflink=always file1 file2
 Your GNU dbm database file and two @dfn{snapshot} files described below must
 all reside on the same reflink-capable filesystem.
 
-@heading Enabling crash tolerance
+@node Enabling crash tolerance
+@section Enabling crash tolerance
 
 Open a GNU dbm database with @code{gdbm_open}.  Whenever possible, use
 the extended @command{GDBM} format.  Generally speaking, this means
@@ -1460,7 +1463,8 @@ snapshot files determine which one contains the state of the database
 file corresponding to the most recent successful @code{gdbm_sync}.
 @xref{Crash recovery}, for discussion of crash recovery.
 
-@heading Synchronizing the Database
+@node Synchronizing the Database
+@section Synchronizing the Database
 
 When your application knows that the state of the database is
 consistent (i.e., all relevant application-level invariants hold), 
@@ -1480,8 +1484,9 @@ when you'd really want to call @code{gdbm_sync}, regardless of whether
 crash-tolerance is enabled.  Why on earth would you push the state of
 an inconsistent unrecoverable database down to durable media?).
 
-@heading Crash recovery
-@anchor{Crash recovery}
+@node Crash recovery
+@section Crash recovery
+
 If a crash occurs, the snapshot file (@var{even} or @var{odd})
 containing the database state reflecting the most recent successful
 @code{gdbm_sync} call is the snapshot file whose permission bits are
@@ -1517,13 +1522,18 @@ result = gdbm_latest_snapshot (even, odd, &recovery_file);
 @noindent
 where @var{even} and @var{odd} are names of the snapshot files.  On
 success, it stores the pointer to the most recent snapshot file name
-in @var{recovery_file} and returns @code{GDBM_SNAPSHOT_OK}.  On error,
-it returns one of the following error codes.
+in @var{recovery_file} and returns @code{GDBM_SNAPSHOT_OK}.  To
+finalize the recovery, rename this file to the name of your database
+file and re-open it using @code{gdbm_open}.  The remaining snapshot
+can be used as a backup copy.
+
+If an error occurs, @code{gdbm_latest_snapshot} returns one of the
+following error codes.
 
 @defvr {gdbm_latest_snapshot} GDBM_SNAPSHOT_BAD
 Neither snapshot file is readable.  This means that the crash has occurred
-before @code{gdbm_failure_atomic} completed.  In this case, the best
-course of action is to fall back on a safe backup copy of the data file.
+before @code{gdbm_failure_atomic} completed.  In this case, it is best
+to fall back on a safe backup copy of the data file.
 @end defvr
 
 @defvr {gdbm_latest_snapshot} GDBM_SNAPSHOT_ERR
@@ -1532,14 +1542,24 @@ system @code{errno} variable for details.  Its possible values are:
 
 @table @code
 @item EACCES
-File mode of one of the snapshot files was incorrect.  Each snapshot
+The file mode of one of the snapshot files was incorrect.  Each snapshot
 file can be either readable (0400) or writable (0200), but not both.
-This error can aslo be returned by underlying @code{stat} call,
+This probably means that someone touched one or both snapshot files
+after the crash and before your attempt to recover from it.  This case
+needs additional investigation.  If you're sure that the only change
+someone made to the files is altering their modes, and your database
+is in @dfn{numsync} format (@pxref{Numsync}), you can reset the modes
+to 0400 and retry the recovery.
+
+This error can also be returned by underlying @code{stat} call,
 meaning that search permission was denied for one of the directories
-in the path prefix of a snapshot file name.
+in the path prefix of a snapshot file name.  That again means that
+someone has messed with permissions after the crash.
 
 @item EINVAL
 Some arguments passed to @code{gdbm_latest_snapshot} were not valid.
+It is a programmer's error which means that your application needs to be
+fixed. 
 
 @item ENOSYS
 Function is not implemented.  This means @code{GDBM} was built without
@@ -1564,14 +1584,18 @@ one.  Check the arguments to the @code{gdbm_latest_snapshot} function.
 The most probably reason of such an error is that the @var{even} and
 @var{odd} parameters point to snapshot files belonging to different
 database files.
-
-The best course of action in this case is manual recovery.
 @end defvr
 
+If you get any of these errors, we strongly suggest to undertake
+@dfn{manual recovery}.
+
+@node Manual crash recovery
+@section Manual crash recovery
+
 @dfn{Manual recovery} is usually performed with the help of the
-@command{gdbmtool} utility.  If you get any of the errors above, start
-@command{gdbmtool} in read-only mode (the @option{-r}) option.  Once
-in the command shell, issue the following command:
+@command{gdbmtool} utility.  Start @command{gdbmtool} in read-only
+mode (the @option{-r}) option.  Once in the command shell, issue the
+following command:
 
 @example
 snapshot @var{a} @var{b}
@@ -1580,7 +1604,7 @@ snapshot @var{a} @var{b}
 @noindent
 where @var{a} and @var{b} are names of the two snapshot files you
 configured using the @code{gdbm_failure_atomic} function.  This
-command investigates the snapshot files and prints out the detailed
+command investigates both files and prints out the detailed
 diagnostics.
 
 Its output begins with a line listing one of the error codes above,
@@ -1609,7 +1633,7 @@ that follow, one error per line.  Here's an example of the
 gdbmtool> snapshot even.dbf odd.dbf
 GDBM_SNAPSHOT_ERR: Error selecting snapshot.
 even.dbf: 200 -w------- 1627820627.485681330 ?
-odd.dbf: 600 rw------- 1627827212.689503918 301
+odd.dbf: 600 rw------- 1627820627.689503918 301
 odd.dbf: ERROR: bad file mode
 @end group
 @end example
@@ -1620,9 +1644,41 @@ permissions (write-only) prevented @command{gdbmtool} from opening it.
 
 The lines for @file{odd.dbf} show the actual reason for the error: bad
 file mode (read-write).  Apparently, the file mode has been changed
-manually after the crash.
+manually after the crash.  The timestamp of the file, which is more
+recent than that of @file{even.dbf} suggests that it might be used for
+recovery.  To confirm this guess, change the mode of the
+@file{even.dbf} to read-only an repeat the @command{snapshot} command:
 
-@heading Performance
+@example
+@group
+gdbmtool> ! chmod 400 even.dbf
+gdbmtool> snapshot even.dbf odd.dbf
+GDBM_SNAPSHOT_ERR: Error selecting snapshot.
+even.dbf: 400 -w------- 1627820627.485681330 300
+odd.dbf: 600 rw------- 1627820627.689503918 301
+odd.dbf: ERROR: bad file mode
+@end group
+@end example
+
+This shows the numsync value of the @file{even.dbf} file, which is
+exactly one less than that of @file{odd.dbf}.  This means that the
+latter should be selected for recovery.
+
+For completeness sake, you can change the mode of @file{odd.dbf} to
+read-only as well and repeat the @command{snapshot} command.  In this
+case you will see:
+
+@example
+@group
+gdbmtool> ! chmod 400 odd.dbf
+gdbmtool> snapshot even.dbf odd.dbf
+GDBM_SNAPSHOT_OK: Selected the most recent snapshot.
+odd.dbf: 400 rw------- 1627820627.689503918 301
+@end group
+@end example
+
+@node Performance Impact
+@section Performance Impact
 
 The purpose of a parachute is not to hasten descent.  Crash tolerance
 is a safety mechanism, not a performance accelerator.  Reflink
@@ -1634,7 +1690,8 @@ the underlying storage system, how often the application calls
 @code{gdbm_sync}, and the extent of changes to the database file
 between consecutive calls to @code{gdbm_sync}.
 
-@heading Availability
+@node Availability
+@section Availability
 
 To ensure that application data can survive the failure of one or
 more storage devices, replicated storage (e.g., RAID) may be used
@@ -1746,7 +1803,26 @@ Call to @code{realpath} function failed.  @code{realpath} is used to
 determine actual path names of the snapshot files.
 
 Examine the system @code{errno} variable for details.
+
+@item GDBM_FILE_OPEN_ERROR
+Unable to create snapshot file.  Examine the system @code{errno}
+variable for details.
 @end table
+
+Notes:
+
+@itemize @bullet
+@item It is not an error to call @code{gdbm_failure_atomic} several times.
+Each subsequent call closes the previously configured snapshot files
+and installs new ones instead.
+
+@item Crash tolerance settings are cleared by functions
+@code{gdbm_recover} (@pxref{Recovery}) and @code{gdbm_reorganize}
+(@pxref{Reorganization}).  After calling either function, provided
+that the call returns successfully, you need to call
+@code{gdbm_failure_atomic} again with the same arguments as before.
+@end itemize
+
 @end deftypefn
 
 @deftypefn {gdbm interface} int gdbm_latest_snapshot (const char *@var{even}, @
@@ -1979,7 +2055,7 @@ Return the block size in bytes.  The @var{value} should point to @code{int}.
 @end table
 
 @node Locking
-@chapter File Locking.
+@chapter File Locking
 @cindex locking
 
 @kwindex GDBM_NOLOCK
@@ -1997,7 +2073,7 @@ calls.
 @end deftypefn
 
 @node Variables
-@chapter Useful global variables.
+@chapter Useful global variables
 
 The following global variables and constants are available:
 
@@ -2400,7 +2476,7 @@ Function usage error.  That includes invalid argument values, and the like.
 @end defvr
 
 @node Compatibility
-@chapter Compatibility with standard @command{dbm} and @command{ndbm}.
+@chapter Compatibility with standard @command{dbm} and @command{ndbm}
 
 @cindex compatibility layer
 @command{Gdbm} includes a compatibility layer, which provides traditional
@@ -2447,7 +2523,7 @@ process.
 @end menu
 
 @node ndbm
-@section NDBM interface functions.
+@section NDBM interface functions
 @cindex NDBM functions
 
 The functions below implement the @acronym{POSIX} @command{ndbm} interface:
@@ -2581,7 +2657,7 @@ and @code{0} otherwise.
 @end deftypefn
 
 @node dbm
-@section DBM interface functions.
+@section DBM interface functions
 @cindex DBM functions
 
 The functions below are provided for compatibility with the old
@@ -2653,7 +2729,7 @@ never free it.
 @end deftypefn
 
 @node gdbmtool
-@chapter Examine and modify a GDBM database.
+@chapter Examine and modify a GDBM database
 @prindex gdbmtool
 
 The @command{gdbmtool} utility allows you to view and modify an
@@ -3245,12 +3321,27 @@ Verbosely list each error encountered.
 Reorganize the database (@pxref{Reorganization}).
 @end deffn
 
+@deffn {command verb} shell @var{command}
+@deffnx {command verb} ! @var{command}
+Execute @var{command} via current shell.  If @var{command} is empty,
+shell is started without additional arguments.  Otherwise, it is run
+as @samp{$SHELL -c @var{command}}.
+
+For convenience, @var{command} is not parsed as @command{gdbmtool}
+command line.  It is passed to the shell verbatim.  It can include
+newline characters if these are preceded by a backslash or appear
+within singly or doubly quoted strings.
+
+When using @code{!} form, be sure to separate it from @var{command} by
+whitespace, otherwise it will be treated as readline @dfn{event specifier}.
+@end deffn
+
 @deffn {command verb} snapshot @var{filename} @var{filename}
 Analyze two snapshot files and select the most recent of them.  In
 case of error, display a detailed diagnostics and meta-information of
 both snapshots.
 
-@xref{Crash recovery}, for a detailed discussion.
+@xref{Manual crash recovery}, for a detailed discussion.
 @end deffn
 
 @deffn {command verb} source @var{filename}
@@ -3617,7 +3708,7 @@ the table below:
 @end multitable
 
 @node Bugs
-@chapter Problems and bugs.
+@chapter Problems and bugs
 
 If you have problems with GNU @code{dbm} or think you've found a bug,
 please report it.  Before reporting a bug, make sure you've actually

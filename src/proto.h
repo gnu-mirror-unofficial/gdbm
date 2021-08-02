@@ -138,8 +138,9 @@ gdbm_file_seek (GDBM_FILE dbf, off_t off, int whence)
 #endif
 }
 
-#ifdef GDBM_FAILURE_ATOMIC
 /* From gdbmsync.c */
+int gdbm_file_sync (GDBM_FILE dbf);
+#ifdef GDBM_FAILURE_ATOMIC
 extern int _gdbm_snapshot(GDBM_FILE);
 #endif /* GDBM_FAILURE_ATOMIC */
 
@@ -163,27 +164,3 @@ _gdbmsync_done (GDBM_FILE dbf)
 #endif
 }
 
-static inline int
-gdbm_file_sync (GDBM_FILE dbf)
-{
-  int r = 0;  /* return value */
-#if HAVE_MMAP
-  r = _gdbm_mapped_sync (dbf);
-#elif HAVE_FSYNC
-  if (fsync (dbf->desc))
-    {
-      GDBM_SET_ERRNO (dbf, GDBM_FILE_SYNC_ERROR, TRUE);
-      r = 1;
-    }
-#else
-  sync ();
-  sync ();
-#endif
-#ifdef GDBM_FAILURE_ATOMIC
-  /* If and only if the conventional fsync/msync/sync succeeds,
-     attempt to clone the data file. */
-  if (r == 0)
-    r = _gdbm_snapshot(dbf);
-#endif /* GDBM_FAILURE_ATOMIC */
-  return r;
-}

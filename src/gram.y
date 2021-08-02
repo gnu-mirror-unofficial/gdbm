@@ -34,8 +34,10 @@ struct dsegm *dsdef[DS_MAX];
        T_BOGUS
 
 %token <cmd> T_CMD "command verb"
+%token <cmd> T_SHELL "shell"
 %token <num> T_NUM "number"
 %token <string> T_IDENT "identifier" T_WORD "word"
+%type <cmd> command
 %type <string> string 
 %type <arg> arg
 %type <arglist> arglist arg1list
@@ -74,7 +76,7 @@ stmt      : /* empty */ eol
             {
 	      run_last_command ();
 	    }
-          | T_CMD arglist eol
+          | command arglist eol
             {
 	      if (run_command ($1, &$2) && !interactive ())
 		exit (EXIT_USAGE);
@@ -101,6 +103,10 @@ stmt      : /* empty */ eol
 	      else
 		YYERROR;
 	    }
+          ;
+
+command   : T_CMD
+          | T_SHELL
           ;
 
 eol       : '\n'

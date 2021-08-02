@@ -421,6 +421,31 @@ gdbm_latest_snapshot (const char *even, const char *odd, const char **ret)
 }
 #endif /* GDBM_FAILURE_ATOMIC */
 
+int
+gdbm_file_sync (GDBM_FILE dbf)
+{
+  int r = 0;  /* return value */
+#if HAVE_MMAP
+  r = _gdbm_mapped_sync (dbf);
+#elif HAVE_FSYNC
+  if (fsync (dbf->desc))
+    {
+      GDBM_SET_ERRNO (dbf, GDBM_FILE_SYNC_ERROR, TRUE);
+      r = 1;
+    }
+#else
+  sync ();
+  sync ();
+#endif
+#ifdef GDBM_FAILURE_ATOMIC
+  /* If and only if the conventional fsync/msync/sync succeeds,
+     attempt to clone the data file. */
+  if (r == 0)
+    r = _gdbm_snapshot (dbf);
+#endif /* GDBM_FAILURE_ATOMIC */
+  return r;
+}
+
 /* Make sure the database is all on disk. */
 
 int
@@ -437,6 +462,8 @@ gdbm_sync (GDBM_FILE dbf)
       dbf->xheader->numsync++;
       dbf->header_changed = TRUE;
     }
+  
+  _gdbm_end_update (dbf);
   
   /* Do the sync on the file. */
   return gdbm_file_sync (dbf);
