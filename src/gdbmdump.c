@@ -72,7 +72,7 @@ _gdbm_dump_ascii (GDBM_FILE dbf, FILE *fp)
   time (&t);
   fprintf (fp, "# GDBM dump file created by %s on %s",
 	   gdbm_version, ctime (&t));
-  fprintf (fp, "#:version=1.0\n");
+  fprintf (fp, "#:version=1.1\n");
 
   fprintf (fp, "#:file=%s\n", dbf->name);
   fprintf (fp, "#:uid=%lu,", (unsigned long) st.st_uid);
@@ -84,6 +84,7 @@ _gdbm_dump_ascii (GDBM_FILE dbf, FILE *fp)
   if (gr)
     fprintf (fp, "group=%s,", gr->gr_name);
   fprintf (fp, "mode=%03o\n", st.st_mode & 0777);
+  fprintf (fp, "#:format=%s\n", dbf->xheader ? "numsync" : "standard");
   fprintf (fp, "# End of header\n");
   
   key = gdbm_firstkey (dbf);

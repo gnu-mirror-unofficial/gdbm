@@ -397,6 +397,8 @@ _gdbm_load_file (struct dump_file *file, GDBM_FILE dbf, GDBM_FILE *ofp,
   char *param = NULL;
   int rc;
   GDBM_FILE tmp = NULL;
+  int format = 0;
+  const char *p;
   
   rc = get_parms (file);
   if (rc)
@@ -411,17 +413,41 @@ _gdbm_load_file (struct dump_file *file, GDBM_FILE dbf, GDBM_FILE *ofp,
   else
     return GDBM_ILLEGAL_DATA;
 
+  if ((p = getparm (file->header, "format")) != NULL)
+    {
+      if (strcmp (p, "numsync") == 0)
+	format = GDBM_NUMSYNC;
+      /* FIXME: other values silently ignored */
+    }
+      
   if (!dbf)
     {
+      int flags = replace ? GDBM_WRCREAT : GDBM_NEWDB;
       const char *filename = getparm (file->header, "file");
+      
       if (!filename)
 	return GDBM_NO_DBNAME;
-      tmp = gdbm_open (filename, 0,
-		       replace ? GDBM_WRCREAT : GDBM_NEWDB, 0600, NULL);
+
+      tmp = gdbm_open (filename, 0, flags | format, 0600, NULL);
       if (!tmp)
 	return gdbm_errno;
       dbf = tmp;
     }
+
+  if (format)
+    {
+      /*
+       * If the database is already in the requested format, the call to
+       * gdbm_convert will return 0 immediately.
+       */
+      if (gdbm_convert (dbf, format))
+	{	
+	  rc = gdbm_errno;
+	  if (tmp)
+	    gdbm_close (tmp);
+	  return rc;
+	}
+    }	  
   
   param = file->header;
   while (1)
