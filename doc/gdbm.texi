@@ -1537,7 +1537,7 @@ to fall back on a safe backup copy of the data file.
 @end defvr
 
 @defvr {gdbm_latest_snapshot} GDBM_SNAPSHOT_ERR
-System error ocurred in @code{gdbm_latest_snapshot}.  Examine the
+System error occurred in @code{gdbm_latest_snapshot}.  Examine the
 system @code{errno} variable for details.  Its possible values are:
 
 @table @code
@@ -1619,7 +1619,7 @@ by a colon and four fields, in this order:
 @item File permission bits in @command{ls -l} notation
 @item Modification timestamp
 @item Numsync counter
-For datatabases in standard GDBM format, this field is @samp{N/A}.  If
+For databases in standard GDBM format, this field is @samp{N/A}.  If
 the counter cannot be obtained because of error, this field is @samp{?}.
 @end enumerate
 

@@ -21,7 +21,7 @@ the documentation can be accessed by running `man gdbm' and
 
 * Overview
 
-GNU dbm is a set of database routines that use extendible hashing and
+GNU dbm is a set of database routines that use extendable hashing and
 works similar to the standard UNIX dbm routines.  The library provides
 also an optional compatibility layer for UNIX-like dbm and ndbm calls.
 
