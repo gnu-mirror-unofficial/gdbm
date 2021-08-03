@@ -109,6 +109,7 @@ char *make_prompt (void);
 
 extern char *file_name;
 extern int open_mode;
+extern int open_format;
 
 #define GDBMTOOLRC ".gdbmtoolrc"
 #define GDBMTOOL_DEFFILE "junk.gdbm"

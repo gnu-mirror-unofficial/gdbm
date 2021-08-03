@@ -86,10 +86,10 @@ Documentation License.''
 @top The GNU database manager
 
 GNU @command{dbm} is a library of functions implementing a hashed database
-on a disk file.  This manual documents GNU @command{dbm} Version @value{VERSION}
-(@code{gdbm}).  The software was originally written by Philip A.@:
-Nelson.  This document was originally written by Pierre Gaumond from
-texts written by Phil.
+on a disk file.  This manual documents GNU @command{dbm} Version
+@value{VERSION} (@code{gdbm}).  The software was originally written by
+Philip A.@: Nelson.  This document was originally written by Pierre
+Gaumond from texts written by Phil.
 @end ifnottex
 
 @menu
@@ -142,12 +142,12 @@ Other topics:
 @detailmenu
  --- The Detailed Node Listing ---
 
-Compatibility with standard @command{dbm} and @command{ndbm}.
+Compatibility with standard @command{dbm} and @command{ndbm}
 
 * ndbm::  NDBM interface functions.
 * dbm::   DBM interface functions.
 
-Examine and modify a GDBM database.
+Examine and modify a GDBM database
 
 * invocation::
 * shell::
@@ -2931,6 +2931,29 @@ such as truncating the existing database.
 Default is @code{true}.
 @end deftypevr
 
+@deftypevr {gdbmtool variable} string delim1
+A string used to delimit fields of a structured datum on output
+(@pxref{definitions}).
+
+Default is @samp{,} (a comma).  This variable cannot be unset.
+@end deftypevr
+
+@deftypevr {gdbmtool variable} string delim2
+A string used to delimit array items when printing a structured datum
+(@pxref{definitions}).
+
+Default is @samp{,} (a comma).  This variable cannot be unset.
+@end deftypevr
+
+@deftypevr {gdbmtool variable} string pager
+The name and command line of the pager program to pipe output to.
+This program is used in interactive mode when the estimated number of
+output lines is greater then the number of lines on your screen.
+
+The default value is inherited from the environment variable
+@env{PAGER}.  Unsetting this variable disables paging.
+@end deftypevr
+
 @deftypevr {gdbmtool variable} string ps1
 Primary prompt string.  Its value can contain @dfn{conversion
 specifiers}, consisting of the @samp{%} character followed by another
@@ -2959,29 +2982,6 @@ lines of a multi-line command.
 The default value is @samp{%_>%_}.
 @end deftypevr
 
-@deftypevr {gdbmtool variable} string delim1
-A string used to delimit fields of a structured datum on output
-(@pxref{definitions}).
-
-Default is @samp{,} (a comma).  This variable cannot be unset.
-@end deftypevr
-
-@deftypevr {gdbmtool variable} string delim2
-A string used to delimit array items when printing a structured datum
-(@pxref{definitions}).
-
-Default is @samp{,} (a comma).  This variable cannot be unset.
-@end deftypevr
-
-@deftypevr {gdbmtool variable} string pager
-The name and command line of the pager program to pipe output to.
-This program is used in interactive mode when the estimated number of
-output lines is greater then the number of lines on your screen.
-
-The default value is inherited from the environment variable
-@env{PAGER}.  Unsetting this variable disables paging.
-@end deftypevr
-
 @anchor{quiet}
 @deftypevr {gdbmtool variable} bool quiet
 Whether to display a welcome banner at startup.  To affect
@@ -2999,6 +2999,23 @@ Sets the block size.  @xref{Open, block_size}.  Unset by default.
 @deftypevr {gdbmtool variable} numeric cachesize
 Sets the cache size.  @xref{Options, GDBM_SETCACHESIZE}.
 By default this variable is not set.
+@end deftypevr
+
+@deftypevr {gdbmtool variable} string format
+Defines the format in which new databases will be created.  Allowed
+values are:
+
+@table @samp
+@item standard
+Databases will be created in standard format.  This is the format used
+by all @command{GDBM} versions prior to 1.21.  This value is the
+default.
+
+@item numsync
+Extended format, best for crash-tolerant applications.
+@xref{Numsync}, for a discussion of this format.
+@end table
+
 @end deftypevr
 
 @anchor{openvar}

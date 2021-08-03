@@ -226,7 +226,7 @@ get_parms (struct dump_file *file)
   return ferror (file->fp) ? GDBM_FILE_READ_ERROR : 0;
 }
 
-int
+static int
 get_len (const char *param, size_t *plen)
 {
   unsigned long n;
@@ -247,7 +247,7 @@ get_len (const char *param, size_t *plen)
   return GDBM_ILLEGAL_DATA;
 }
 
-int
+static int
 read_record (struct dump_file *file, char *param, int n, datum *dat)
 {
   int rc;
@@ -391,6 +391,16 @@ _set_gdbm_meta_info (GDBM_FILE dbf, char *param, int meta_mask)
 }
 
 int
+_gdbm_str2fmt (char const *str)
+{
+  if (strcmp (str, "numsync") == 0)
+    return GDBM_NUMSYNC;
+  if (strcmp (str, "standard") == 0)
+    return 0;
+  return -1;
+}
+
+static int
 _gdbm_load_file (struct dump_file *file, GDBM_FILE dbf, GDBM_FILE *ofp,
 		 int replace, int meta_mask)
 {
@@ -415,8 +425,9 @@ _gdbm_load_file (struct dump_file *file, GDBM_FILE dbf, GDBM_FILE *ofp,
 
   if ((p = getparm (file->header, "format")) != NULL)
     {
-      if (strcmp (p, "numsync") == 0)
-	format = GDBM_NUMSYNC;
+      int n = _gdbm_str2fmt (p);
+      if (n != -1)
+	format = n;
       /* FIXME: other values silently ignored */
     }
       
@@ -555,7 +566,7 @@ xdatum_read (FILE *fp, datum *d, size_t *pdmax)
   return c;
 }
 
-int
+static int
 gdbm_load_bdb_dump (struct dump_file *file, GDBM_FILE dbf, int replace)
 {
   datum xd[2];

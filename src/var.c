@@ -41,6 +41,7 @@ struct variable
 };
 
 static int open_hook (struct variable *, union value *);
+static int format_hook (struct variable *, union value *);
 
 static struct variable vartab[] = {
   /* Top-level prompt */
@@ -61,6 +62,7 @@ static struct variable vartab[] = {
   { "coalesce", VART_BOOL, VARF_INIT, { .bool = 0 } },
   { "centfree", VART_BOOL, VARF_INIT, { .bool = 0 } },
   { "filemode", VART_INT, VARF_INIT|VARF_OCTAL|VARF_PROT, { .num = 0644 } },
+  { "format", VART_STRING, VARF_INIT, { .string = "standard" }, format_hook },
   { "pager", VART_STRING, VARF_DFL },
   { "quiet", VART_BOOL, VARF_DFL },
   { NULL }
@@ -94,7 +96,17 @@ open_hook (struct variable *var, union value *v)
 
   return VAR_ERR_BADVALUE;
 }
-	    
+
+static int
+format_hook (struct variable *var, union value *v)
+{
+  int n = _gdbm_str2fmt (v->string);
+  if (n == -1)
+    return VAR_ERR_BADVALUE;
+  open_format = n;
+  return VAR_OK;
+}
+
 static struct variable *
 varfind (const char *name)
 {

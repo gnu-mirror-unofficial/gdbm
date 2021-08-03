@@ -35,7 +35,7 @@ GDBM_FILE gdbm_file = NULL;   /* Database to operate upon */
 datum key_data;               /* Current key */
 datum return_data;            /* Current data */
 int open_mode;                /* Default open mode */
-
+int open_format;              /* Default format for the open command */
 unsigned input_line;
 
 
@@ -56,7 +56,7 @@ opendb (char *dbname)
 {
   int cache_size = 0;
   int block_size = 0;
-  int flags = 0;
+  int flags = open_format;
   int filemode;
   GDBM_FILE db;
   
@@ -138,8 +138,7 @@ checkdb (void)
       if (!file_name)
 	{
 	  file_name = estrdup (GDBMTOOL_DEFFILE);
-	  terror (_("warning: using default database file %s"),
-			file_name);
+	  terror (_("warning: using default database file %s"),	file_name);
 	}
       return opendb (file_name);
     }
