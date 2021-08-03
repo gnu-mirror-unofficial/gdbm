@@ -1756,13 +1756,25 @@ help_handler (struct handler_param *param)
     {
       int i;
       int n;
-
+      int optoff;
+      
       n = fprintf (fp, " %s", cmd->name);
-
+      optoff = n;
+      
       for (i = 0; i < NARGS && cmd->args[i].name; i++)
-	n += fprintf (fp, " %s", gettext (cmd->args[i].name));
+	{
+	  if (n >= CMDCOLS)
+	    {
+	      fputc ('\n', fp);
+	      n = fprintf (fp, "%*.*s", optoff, optoff, "");
+	    }
+	  n += fprintf (fp, " %s", gettext (cmd->args[i].name));
+	} 
+
       if (n < CMDCOLS)
 	fprintf (fp, "%*.s", CMDCOLS-n, "");
+      else
+	fprintf (fp, "\n%*.*s", CMDCOLS, CMDCOLS, "");
       fprintf (fp, " %s", gettext (cmd->doc));
       fputc ('\n', fp);
     }
