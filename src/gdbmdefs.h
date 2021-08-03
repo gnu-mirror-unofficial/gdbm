@@ -54,6 +54,9 @@ off_t_sum_ok (off_t a, off_t b)
   return a >= 0 && b >= 0 && OFF_T_MAX - a >= b;
 }
 
+
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+
 /* The type definitions are next.  */
 
 /* The available file space is stored in an "avail" table.  The one with

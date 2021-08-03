@@ -334,8 +334,7 @@ variable_print_all (FILE *fp)
   
   if (!sorted)
     {
-      qsort (vartab, sizeof (vartab) / sizeof (vartab[0]) - 1,
-	     sizeof (vartab[0]), varcmp);
+      qsort (vartab, ARRAY_SIZE (vartab) - 1, sizeof (vartab[0]), varcmp);
       sorted = 1;
     }
   

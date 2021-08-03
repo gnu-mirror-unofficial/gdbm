@@ -924,8 +924,8 @@ print_snapshot (char const *snapname, FILE *fp)
 	  break;
 	  
 	default:
-	  error_push (errs, &errn, sizeof (errs) / sizeof (errs[0]),
-		      N_("bad file mode"), 0, 0);
+	  error_push (errs, &errn, ARRAY_SIZE (errs), N_("bad file mode"), 
+                      0, 0);
 	}
       
       fprintf (fp, "%s: ", snapname);
@@ -949,17 +949,17 @@ print_snapshot (char const *snapname, FILE *fp)
 	      if (errno == EACCES)
 		fprintf (fp, " ?");
 	      else
-		error_push (errs, &errn, sizeof (errs) / sizeof (errs[0]),
+		error_push (errs, &errn, ARRAY_SIZE (errs),
 			    N_("can't open database"),
 			    gdbm_errno, errno);
 	    }
 	  else
-	    error_push (errs, &errn, sizeof (errs) / sizeof (errs[0]),
+	    error_push (errs, &errn, ARRAY_SIZE (errs),
 			N_("can't open database"),
 			gdbm_errno, 0);
 	}
       else
-	error_push (errs, &errn, sizeof (errs) / sizeof (errs[0]),
+	error_push (errs, &errn, ARRAY_SIZE (errs),
 		    N_("not a regular file"),
 		    0, 0);
       fputc ('\n', fp);
@@ -1044,7 +1044,7 @@ snapshot_handler (struct handler_param *param)
   char const *sel;
   int rc = gdbm_latest_snapshot (sa, sb, &sel); 
 
-  if (rc >= 0 && rc < sizeof(snapshot_status_info)/sizeof(snapshot_status_info[0]))
+  if (rc >= 0 && rc < ARRAY_SIZE (snapshot_status_info))
     {
       fprintf (param->fp,
 	       "%s: %s.\n", 
@@ -1695,9 +1695,9 @@ cmdcmp (const void *a, const void *b)
 }
 
 void
-sort_commands ()
+sort_commands (void)
 {
-  qsort (command_tab, sizeof (command_tab) / sizeof (command_tab[0]) - 1,
+  qsort (command_tab, ARRAY_SIZE (command_tab) - 1,
 	 sizeof (command_tab[0]), cmdcmp);
 }
 
@@ -1742,7 +1742,7 @@ int
 help_begin (struct handler_param *param GDBM_ARG_UNUSED, size_t *exp_count)
 {
   if (exp_count)
-    *exp_count = sizeof (command_tab) / sizeof (command_tab[0]) + 1;
+    *exp_count = ARRAY_SIZE (command_tab) + 1;
   return 0;
 }
 
