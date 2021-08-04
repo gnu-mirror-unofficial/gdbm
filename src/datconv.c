@@ -40,7 +40,7 @@ static int
 f_stringz (FILE *fp, void *ptr, int size)
 {
   int sz;
-  char *s;
+  unsigned char *s;
   
   for (sz = 1, s = ptr; *s; s++, sz++)
     {
@@ -60,7 +60,7 @@ static int
 f_string (FILE *fp, void *ptr, int size)
 {
   int sz;
-  char *s;
+  unsigned char *s;
   
   for (sz = 0, s = ptr; sz < size; s++, sz++)
     {
