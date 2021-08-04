@@ -15,6 +15,7 @@
    along with GDBM. If not, see <http://www.gnu.org/licenses/>.    */
 
 #include "gdbmtool.h"
+#include <wctype.h>
 
 #define DEFFMT(name, type, fmt)			\
 static int					\
@@ -39,41 +40,66 @@ DEFFMT (f_double, double, "%e")
 static int
 f_stringz (FILE *fp, void *ptr, int size)
 {
-  int sz;
-  unsigned char *s;
-  
-  for (sz = 1, s = ptr; *s; s++, sz++)
+  wchar_t wc;
+  char *str = ptr;
+  int i;
+
+  mbtowc (NULL, NULL, 0);
+  for (i = 0; i < size; )
     {
-      int c;
-      
-      if (isprint (*s))
-	fputc (*s, fp);
-      else if ((c = escape (*s)))
-	fprintf (fp, "\\%c", c);
+      int n = mbtowc (&wc, &str[i], MB_CUR_MAX);
+      if (n == 0)
+	break;
+      if (n == -1 || !iswprint (wc))
+	{
+	  int c;
+	  if ((c = escape (str[i])))
+	    fprintf (fp, "\\%c", c);
+	  else
+	    fprintf (fp, "\\%03o", *(unsigned char*)(str+i));
+	  i++;
+	}
       else
-	fprintf (fp, "\\%03o", *s);
+	{
+	  fwrite (str + i, n, 1, fp);
+	  i += n;
+	}
     }
-  return sz;
+  return i + 1;
 }
 
 static int
 f_string (FILE *fp, void *ptr, int size)
 {
-  int sz;
-  unsigned char *s;
+  wchar_t wc;
+  char *str = ptr;
+  int i;
   
-  for (sz = 0, s = ptr; sz < size; s++, sz++)
+  mbtowc (NULL, NULL, 0);
+  for (i = 0; i < size; )
     {
-      int c;
-      
-      if (isprint (*s))
-	fputc (*s, fp);
-      else if ((c = escape (*s)))
-	fprintf (fp, "\\%c", c);
+      int n = mbtowc (&wc, &str[i], MB_CUR_MAX);
+      if (n == 0)
+	{
+	  fprintf (fp, "\\%03o", *(unsigned char*)str);
+	  i++;
+	}
+      else if (n == -1 || !iswprint (wc))
+	{
+	  int c;
+	  if ((c = escape (str[i])))
+	    fprintf (fp, "\\%c", c);
+	  else
+	    fprintf (fp, "\\%03o", *(unsigned char*)(str+i));
+	  i++;
+	}
       else
-	fprintf (fp, "\\%03o", *s);
+	{
+	  fwrite (str + i, n, 1, fp);
+	  i += n;
+	}
     }
-  return sz;
+  return i;
 }
 
 int
