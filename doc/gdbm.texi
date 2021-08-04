@@ -1433,9 +1433,9 @@ all reside on the same reflink-capable filesystem.
 @section Enabling crash tolerance
 
 Open a GNU dbm database with @code{gdbm_open}.  Whenever possible, use
-the extended @command{GDBM} format.  Generally speaking, this means
-using the @code{GDBM_NUMSYNC} flag when creating the database
-(@pxref{Numsync}).  Unless you know what you are doing, do not specify
+the extended @command{GDBM} format (@pxref{Numsync}).  Generally
+speaking, this means using the @code{GDBM_NUMSYNC} flag when creating
+the database.  Unless you know what you are doing, do not specify
 the @code{GDBM_SYNC} flag when opening the database.  The reason is that
 you want your application to explicitly control when @code{gdbm_sync}
 is called; you don't want an implicit sync on every database
@@ -1615,10 +1615,10 @@ Each snapshot description begins with the snapshot file name followed
 by a colon and four fields, in this order:
 
 @enumerate 1
-@item File permission bits in octal
-@item File permission bits in @command{ls -l} notation
-@item Modification timestamp
-@item Numsync counter
+@item File permission bits in octal.
+@item File permission bits in @command{ls -l} notation.
+@item Modification timestamp.
+@item Numsync counter.
 For databases in standard GDBM format, this field is @samp{N/A}.  If
 the counter cannot be obtained because of error, this field is @samp{?}.
 @end enumerate
@@ -1645,7 +1645,7 @@ permissions (write-only) prevented @command{gdbmtool} from opening it.
 The lines for @file{odd.dbf} show the actual reason for the error: bad
 file mode (read-write).  Apparently, the file mode has been changed
 manually after the crash.  The timestamp of the file, which is more
-recent than that of @file{even.dbf} suggests that it might be used for
+recent than that of @file{even.dbf}, suggests that it might be used for
 recovery.  To confirm this guess, change the mode of the
 @file{even.dbf} to read-only an repeat the @command{snapshot} command:
 
@@ -1654,7 +1654,7 @@ recovery.  To confirm this guess, change the mode of the
 gdbmtool> ! chmod 400 even.dbf
 gdbmtool> snapshot even.dbf odd.dbf
 GDBM_SNAPSHOT_ERR: Error selecting snapshot.
-even.dbf: 400 -w------- 1627820627.485681330 300
+even.dbf: 400 r-------- 1627820627.485681330 300
 odd.dbf: 600 rw------- 1627820627.689503918 301
 odd.dbf: ERROR: bad file mode
 @end group
@@ -1673,7 +1673,7 @@ case you will see:
 gdbmtool> ! chmod 400 odd.dbf
 gdbmtool> snapshot even.dbf odd.dbf
 GDBM_SNAPSHOT_OK: Selected the most recent snapshot.
-odd.dbf: 400 rw------- 1627820627.689503918 301
+odd.dbf: 400 r-------- 1627820627.689503918 301
 @end group
 @end example
 
@@ -1728,9 +1728,7 @@ It is worth noticing, that the two counters should differ exactly by
 one.  If the difference is greater than that, @code{gdbm_latest_snapshot}
 will return a special status code, @code{GDBM_SNAPSHOT_SUSPICIOUS}.
 If, during a recovery attempt, you get this status code, we recommend
-to proceed with the manual recovery, e.g. by examining both snapshot
-files using the @command{snapshot} command in @command{gdbmtool}
-(@pxref{gdbmtool}). 
+to proceed with the manual recovery (@pxref{Manual crash recovery}).
 
 To create a database in extended format, call @code{gdbm_open} with
 both @code{GDBM_NEWDB} and @code{GDBM_NUMSYNC} flags:
@@ -1741,11 +1739,13 @@ dbf = gdbm_open(dbfile, 0, GDBM_NEWDB|GDBM_NUMSYNC, 0600, NULL);
 
 @noindent
 Notice, that this flag must always be used together with
-@code{GDBM_NEWDB} (@pxref{Open}).
+@code{GDBM_NEWDB} (@pxref{Open}).  It is silently ignored when used
+together with another opening flag.
 
 A standard @command{GDBM} database can be converted to the extended
-format.  To convert an existing database to the extended format, use the
-@code{gdbm_convert} function (@pxref{Database format}):
+format and vice versa.  To convert an existing database to the
+extended format, use the @code{gdbm_convert} function (@pxref{Database
+format}):
 
 @example
   rc = gdbm_convert(dbf, GDBM_NUMSYNC);
@@ -1758,8 +1758,8 @@ You can do the same using the @command{gdbmtool} utility
 gdbmtool @var{dbname} upgrade
 @end example
 
-The conversion is reversible.  To convert a database from extended
-format back to the standard @command{GDBM} format, do:
+To convert a database from extended format back to the standard
+@command{GDBM} format, do:
 
 @example
   rc = gdbm_convert(dbf, 0);
@@ -1846,13 +1846,13 @@ and have exactly the same @code{mtime} timestamp), the function returns
 If the @samp{numsync} extension is enabled (@pxref{Numsync}), the
 function can also return the @code{GDBM_SNAPSHOT_SUSPICIOUS} status
 code.  This happens when the @code{numsync} counters in the two
-snapshots differ by more than one.  If you get this status code when
-recovering from a crash, it is recommended to switch to manual
-recovery procedure, letting the user examine the snapshots and take
-the appropriate action.
+snapshots differ by more than one.
 
 If any value other than @code{GDBM_SNAPSHOT_OK} is returned, it is
-guaranteed that the function don't touch @var{retval}.
+guaranteed that the function don't touch @var{retval}.    In this case
+it is recommended to switch to manual recovery procedure, letting the
+user examine the snapshots and take the appropriate action.
+@pxref{Manual crash recovery}, for details.
 @end deftypefn
 
 @node Options
