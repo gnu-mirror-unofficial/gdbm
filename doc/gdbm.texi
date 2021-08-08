@@ -498,6 +498,7 @@ In all of the following calls, the parameter @var{dbf} refers to the pointer
 returned from @code{gdbm_open}.
 @end deftypefn
 
+@anchor{gdbm_fd_open}
 @deftypefn {gdbm interface} GDBM_FILE gdbm_fd_open (int @var{fd},@
   const char *@var{name}, int @var{block_size}, @
   int @var{flags}, int @var{mode}, void (*@var{fatal_func})(const char *))
@@ -2795,44 +2796,73 @@ options:
 @item -b @var{size}
 @itemx --block-size=@var{size}
 Set block size.
+
 @item -c @var{size}
 @itemx --cache-size=@var{size}
 Set cache size.
+
+@item -d @var{fd}
+@itemx --db-descriptor=@var{fd}
+Use the database referred to by the file descriptor @var{fd}.  This
+must be a valid open file descriptor, obtained by a call to
+@code{open} (@pxref{open,,open a file,open(2), open(2) man page}),
+@code{creat} or a similar function.  The database will be opened using
+@code{gdbm_fd_open} (@pxref{gdbm_fd_open}).
+
+This option is intended for use by automatic test suites.
+
 @item -f @var{file}
 @item --file @var{file}
 Read commands from @var{file}, instead of the standard input.
+
 @item -h
 @itemx --help
 Print a concise help summary.
+
 @item -N
 @itemx --norc
 Don't read startup files (@pxref{startup files}).
+
 @item -n
 @itemx --newdb
 Create the database.
+
 @item -l
 @itemx --no-lock
 Disable file locking.
+
 @item -m
 @itemx --no-mmap
 Disable memory mapping.
+
 @anchor{-q option}
 @item -q
 @itemx --quiet
 Don't print the usual welcome banner at startup.  This is the same as
 setting the variable @code{quiet} in the startup file.  @xref{quiet}.
+
 @item -r
 @itemx --read-only
 Open the database in read-only mode.
+
 @item -s
 @itemx --synchronize
 Synchronize to the disk after each write.
+
 @item -V
 @itemx --version
 Print program version and licensing information and exit.
+
 @item --usage
 Print a terse invocation syntax summary along with a list of available
 command line options.
+
+@item -x
+@itemx --extended
+@itemx --numsync
+Create new database in extended (numsync) format (@pxref{Numsync}).
+This option sets the @code{format} variable to @samp{numsync}.
+@xref{format variable}.
 @end table
 
 @node shell
@@ -3001,6 +3031,7 @@ Sets the cache size.  @xref{Options, GDBM_SETCACHESIZE}.
 By default this variable is not set.
 @end deftypevr
 
+@anchor{format variable}
 @deftypevr {gdbmtool variable} string format
 Defines the format in which new databases will be created.  Allowed
 values are:
