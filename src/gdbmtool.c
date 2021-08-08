@@ -30,7 +30,8 @@
 # include <locale.h>
 #endif
 
-char *file_name = NULL;       /* Database file name */   
+char *file_name = NULL;       /* Database file name */
+int file_descr = -1;          /* Database file descriptor */
 GDBM_FILE gdbm_file = NULL;   /* Database to operate upon */
 datum key_data;               /* Current key */
 datum return_data;            /* Current data */
@@ -48,11 +49,12 @@ closedb (void)
       gdbm_file = NULL;
       free (file_name);
       file_name = NULL;
+      file_descr = -1;
     }
 }
 
 static int
-opendb (char *dbname)
+opendb (char *dbname, int fd)
 {
   int cache_size = 0;
   int block_size = 0;
@@ -97,7 +99,10 @@ opendb (char *dbname)
   if (variable_get ("filemode", VART_INT, (void**) &filemode))
     abort ();
 
-  db = gdbm_open (dbname, block_size, open_mode | flags, filemode, NULL);
+  if (fd > 0)
+    db = gdbm_fd_open (fd, dbname, block_size, open_mode | flags, NULL);
+  else
+    db = gdbm_open (dbname, block_size, open_mode | flags, filemode, NULL);
 
   if (db == NULL)
     {
@@ -140,7 +145,7 @@ checkdb (void)
 	  file_name = estrdup (GDBMTOOL_DEFFILE);
 	  terror (_("warning: using default database file %s"),	file_name);
 	}
-      return opendb (file_name);
+      return opendb (file_name, file_descr);
     }
   return 0;
 }
@@ -343,7 +348,7 @@ open_handler (struct handler_param *param)
 {
   char *name = tildexpand (PARAM_STRING (param, 0));
   closedb ();
-  if (opendb (name) == 0)
+  if (opendb (name, -1) == 0)
     file_name = name;
   else
     free (name);
@@ -1852,6 +1857,9 @@ struct gdbm_option optab[] = {
   { 'r', "read-only",  NULL,       N_("open database in read-only mode") },
   { 's', "synchronize", NULL,      N_("synchronize to disk after each write") },
   { 'q', "quiet",      NULL,       N_("don't print initial banner") },
+  { 'd', "db-descriptor", N_("FD"),N_("open database at the given file descriptor") },
+  { 'x', "extended",   NULL,       N_("extended format (numsync)") },
+  {   0, "numsync",    NULL,       NULL, PARSEOPT_ALIAS },
 #if GDBMTOOL_DEBUG    
   { OPT_LEX_TRACE, "lex-trace", NULL, N_("enable lexical analyzer traces") },
   { OPT_GRAM_TRACE, "gram-trace", NULL, N_("enable grammar traces") },
@@ -2387,6 +2395,15 @@ main (int argc, char *argv[])
        opt = parseopt_next ())
     switch (opt)
       {
+      case 'd':
+	file_descr = atoi (optarg);
+	if (file_descr <= 0)
+	  {
+	    terror (_("invalid file descriptor: %s"), optarg);
+	    exit (EXIT_USAGE);
+	  }
+	break;
+	
       case 'f':
 	source = optarg;
 	break;
@@ -2435,6 +2452,10 @@ main (int argc, char *argv[])
 	variable_set ("quiet", VART_BOOL, &bv);
 	break;
 
+      case 'x':
+	variable_set ("format", VART_STRING, "numsync");
+	break;
+	
       case OPT_LEX_TRACE:
 	lex_trace (1);
 	break;
@@ -2444,8 +2465,8 @@ main (int argc, char *argv[])
 	break;
 	
       default:
-	terror (_("unknown option; try `%s -h' for more info"),
-		progname);
+	terror (_("unknown option %c; try `%s -h' for more info"),
+		optopt, progname);
 	exit (EXIT_USAGE);
       }
   

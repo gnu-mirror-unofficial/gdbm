@@ -159,7 +159,7 @@ typedef struct
 
 /* We want to keep from reading buckets as much as possible.  The following is
    to implement a bucket cache.  When full, buckets will be dropped in a
-   least recently read from disk order.  */
+   least recently used order.  */
 
 /* To speed up fetching and "sequential" access, we need to implement a
    data cache for key/data pairs read from the file.  To find a key, we
