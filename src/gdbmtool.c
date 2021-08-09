@@ -947,6 +947,7 @@ print_snapshot (char const *snapname, FILE *fp)
 	      if (dbf->xheader)
 		fprintf (fp, " %u", dbf->xheader->numsync);
 	      else
+		/* TRANSLATORS: Stands for "Not Available". */
 		fprintf (fp, " %s", _("N/A"));
 	    }
 	  else if (gdbm_check_syserr (gdbm_errno))
@@ -1593,13 +1594,13 @@ struct command command_tab[] = {
     { { NULL } },
     FALSE,
     REPEAT_NEVER,
-    N_("Upgrade the database") },
+    N_("Upgrade the database to extended format") },
   { S(downgrade), T_CMD,
     checkdb_begin, downgrade_handler, NULL,
     { { NULL } },
     FALSE,
     REPEAT_NEVER,
-    N_("Downgrade the database") },    
+    N_("Downgrade the database to standard format") },    
   { S(snapshot), T_CMD,
     NULL, snapshot_handler, NULL,
     { { "FILE", GDBM_ARG_STRING },
@@ -1857,7 +1858,10 @@ struct gdbm_option optab[] = {
   { 'r', "read-only",  NULL,       N_("open database in read-only mode") },
   { 's', "synchronize", NULL,      N_("synchronize to disk after each write") },
   { 'q', "quiet",      NULL,       N_("don't print initial banner") },
-  { 'd', "db-descriptor", N_("FD"),N_("open database at the given file descriptor") },
+  { 'd', "db-descriptor",
+    /* TRANSLATORS: File Descriptor. */
+    N_("FD"),
+    N_("open database at the given file descriptor") },
   { 'x', "extended",   NULL,       N_("extended format (numsync)") },
   {   0, "numsync",    NULL,       NULL, PARSEOPT_ALIAS },
 #if GDBMTOOL_DEBUG    
