@@ -193,10 +193,13 @@ int
 parseopt_first (int pc, char **pv, struct gdbm_option *opts)
 {
   free (option_tab);
+  option_tab = NULL;
   free (short_options);
+  short_options = NULL;
   short_option_count = short_option_max = 0;
 #ifdef HAVE_GETOPT_LONG
   free (long_options);
+  long_options = NULL;
   long_option_count = long_option_max = 0;
 #endif
   add_options (opts);
