@@ -1,5 +1,4 @@
 \input texinfo  @c -*- Texinfo -*-
-@comment $Id$
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename gdbm.info
 @include version.texi
@@ -63,8 +62,8 @@ Documentation License.''
 @sp 2
 @center by Philip A.  Nelson, Jason Downs and Sergey Poznyakoff
 @sp 4
-@center Manual by Pierre Gaumond, Philip A.  Nelson, Jason Downs
-@center and Sergey Poznyakoff
+@center Manual by Pierre Gaumond, Philip A.  Nelson, Jason Downs,
+@center Sergey Poznyakoff, and Terence Kelly
 @sp 1
 @center Edition @value{EDITION}
 @sp 1
@@ -110,19 +109,20 @@ Functions:
 * Database format::            GDBM database formats.
 * Flat files::                 Export and import to Flat file format.
 * Errors::                     Error handling.
+* Database consistency::       Structural and logical consistency.
 * Recovery::                   Recovery from fatal errors.
-* Crash Tolerance::
+* Crash Tolerance::            Ensuring recovery to a consistent state.
 * Options::                    Setting internal options.
 * Locking::                    File locking.
 * Variables::                  Useful global variables.
-* Additional functions::
+* Additional functions::       Functions for verifying internal structures.
 * Error codes::                Error codes returned by @code{gdbm} calls.
 * Compatibility::              Compatibility with UNIX dbm and ndbm.
 
 Programs
 
 * gdbmtool::                   Examine and modify a GDBM database.
-* gdbm_dump::                  Dump the database into a flat file.          
+* gdbm_dump::                  Dump the database into a flat file.
 * gdbm_load::                  Load the database from a flat file.
 * Exit codes::                 Exit codes returned by GDBM utilities.
 
@@ -220,7 +220,10 @@ typedef struct
 @} datum;
 @end example
 
-This structure allows for arbitrary sized keys and data items.
+This structure allows for arbitrary sized keys and data items.  In
+particular, zero-length keys or data (@code{dsize = 0}) are allowed.
+However, the @code{dptr} field is required to point to a valid memory
+location.  In other words, @code{dptr} cannot be NULL.
 
 The key/data pairs are stored in a @code{gdbm} disk file, called a
 @dfn{gdbm database}.  An application must open a @code{gdbm} database
@@ -228,9 +231,14 @@ to be able manipulate the keys and data contained in the database.
 @code{gdbm} allows an application to have multiple databases open at the
 same time.  When an application opens a @code{gdbm} database, it is
 designated as a @code{reader} or a @code{writer}.  A @code{gdbm}
-database can be opened by at most one writer at a time.  However, many readers
-may open the database simultaneously.  Readers and writers can not
-open the @code{gdbm} database at the same time.
+database can be opened by at most one writer at a time.  However, many
+readers may open the database simultaneously.  Readers and writers can
+not open the @code{gdbm} database at the same time.
+
+Speaking about @dfn{application} we usually mean a separate process.
+However, it is entirely normal for a multi-thread program to operate
+as a @code{gdbm} reader in one thread and writer in another, provided,
+of course, that the two threads don't operate on the same database.
 
 @flindex gdbm.h
 To use the @code{gdbm} functions, the programmer must first include
@@ -238,7 +246,7 @@ the header file @file{gdbm.h}.
 
 @tpindex GDBM_FILE
 This file defines, among others, the @code{GDBM_FILE} data type, an
-opaque pointer to the structure that represents the opened gdbm
+opaque pointer to the structure that represents the opened @code{gdbm}
 database.  To access the database, the programmer must first open it
 using the @code{gdbm_open} function.  The function takes several
 arguments, the name of the database file being one of them, and
@@ -263,7 +271,7 @@ main (int argc, char **argv)
   datum key, content; /* Key and content data */
   int status = 0;     /* Exit status of the program: 0 - OK, 1 - key
                          not found, 2 - error. */
-                       
+
   /*
    * Validate arguments.
    */
@@ -276,7 +284,7 @@ main (int argc, char **argv)
   /*
    * Open the database.  The GDBM_READER flag indicates that we only intend
    * to read from it.
-   */  
+   */
   gdbf = gdbm_open (argv[1], 0, GDBM_READER, 0, NULL);
   if (gdbf == NULL)
     @{
@@ -384,7 +392,7 @@ memory.  This parameter is ignored if the file has been previously
 initialized.  If the value is less than 512, the file system block
 size is used instead.  The size is adjusted so that the block can hold
 exact number of directory entries, so that the effective block size
-can be slightly greater than requested.  However, if the 
+can be slightly greater than requested.  However, if the
 @code{GDBM_BSEXACT} flag is set and the size needs to be adjusted, the
 function will return with error status, setting the @code{gdbm_errno}
 variable to @code{GDBM_BLOCK_SIZE_ERROR}.
@@ -403,7 +411,9 @@ to @code{GDBM_WRCREAT}, the user wants both read and write access to
 the database and wants it created if it does not already exist.  If
 @code{flags} is set to @code{GDBM_NEWDB}, the user want a new database
 created, regardless of whether one existed, and wants read and write
-access to the new database.
+access to the new database.  If an existing database file is opened with
+the @code{GDBM_NEWDB} flag, the existing data are destroyed, and an
+empty database structure is created in its place.
 
 The following constants may also be logically or'd into the database
 flags:
@@ -411,9 +421,12 @@ flags:
 @table @code
 @kwindex GDBM_SYNC
 @item GDBM_SYNC
-Synchronize all database operations to disk immediately.  This
-provides for the best database consistency at the expense of severe
-performance degradation.
+Synchronize all database operations to disk immediately.  Notice, that
+this option entails severe performance degradation and does not
+necessarily ensure that the resulting database state is consistent.
+In general, we discourage its use (@pxref{Sync}).
+@xref{Crash Tolerance}, for a discussion of how to ensure database
+consistency with minimal performance overhead.
 
 @kwindex GDBM_FAST
 @item GDBM_FAST
@@ -444,7 +457,7 @@ When mapping GDBM file to memory, read its contents immediately,
 instead of when needed (@dfn{prefault reading}).  This can be
 advantageous if you open a @emph{read-only} database and are going to
 do a lot of look-ups on it.  In this case entire database will be
-pre-read and look-ups will operate on an in-memory copy.  In the
+pre-read and look-ups will operate on an in-memory copy.  In 
 contrast, @code{GDBM_PREREAD} should not be used if you open a
 database (even in read-only mode) only to do a couple of look-ups.
 Finally, never use @code{GDBM_PREREAD} when opening a database for
@@ -520,8 +533,9 @@ Copy file ownership and mode from @var{src} to @var{dst}.
 @cindex closing database
 @cindex database, closing
 
-It is important that every file opened is also closed.  This is needed to
-update the reader/writer count on the file:
+It is important that every file opened is also closed.  This is needed
+to properly update its disk structure and maintain a consistent
+locking state on the file.
 
 @deftypefn {gdbm interface} int gdbm_close (GDBM_FILE @var{dbf})
 This function closes the @code{gdbm} file and frees all memory
@@ -590,18 +604,58 @@ This function can return the following values:
 @item 0
 Success.  The value of @var{content} is keyed by @var{key} in the
 database.
-@item -1
-The item was not stored in the database because the caller was not an
-official writer or either @var{key} or @var{content} have a
-@code{NULL} @code{dptr} field.
 
-Both @var{key} and @var{content} must have the @code{dptr} field be a
-non-@code{NULL} value.  Since a @code{NULL} @code{dptr} field is used by
-other functions to indicate an error, it cannot be valid data.
+@item -1
+An error occurred which prevented the item from being stored in the
+database.   Examine the @code{gdbm_errno} variable to determine the
+actual cause of the error.
+
 @item +1
 The item was not stored because the argument @var{flag} was
 @code{GDBM_INSERT} and the @var{key} was already in the database.
+The @code{gdbm_errno} variable is set to @code{GDBM_CANNOT_REPLACE}.
 @end table
+
+If the function returns -1, @code{gdbm_errno} can have the following
+values:
+
+@table @code
+@item GDBM_READER_CANT_STORE
+Database was open in read-only mode, i.e. with the @code{GDBM_READER}
+flag.  @xref{Open}.
+
+@item GDBM_MALFORMED_DATA
+Either @var{key} or @var{content} had their @code{dptr} field set to
+@code{NULL}.
+
+It is OK to have a @dfn{zero-length} key or content, i.e. a datum with
+@code{dsize} set to 0, but the @code{dptr} field must always be a
+non-NULL value.
+
+@item GDBM_BAD_HASH_TABLE
+Database hash table is malformed.  This usually means that some error
+in the application or the library caused memory overrun.  The database
+is marked as needing recovery.  All further calls on this database
+will return with @code{gdbm_error} set to @code{GDBM_NEED_RECOVERY}.
+@xref{Recovery}, for a discussion of database recovery process.
+
+@item GDBM_BAD_DIR_ENTRY
+Database directory entry is corrupted.  The database is marked as
+needing recovery.  @xref{Recovery}.
+
+@item GDBM_BAD_BUCKET
+Database bucket is corrupted.  The database is marked as
+needing recovery.  @xref{Recovery}.
+
+@item GDBM_BAD_AVAIL
+Database available storage index is corrupted.  The database is marked as
+needing recovery.  @xref{Recovery}.
+
+@item GDBM_FILE_SEEK_ERROR
+A seek error occurred on the underlying disk file.  Examine the system
+@code{errno} variable for more detail.
+@end table
+
 @end deftypefn
 
 If you store data for a @var{key} that is already in the data base,
@@ -829,19 +883,23 @@ correct information about the new file.  If an error is detected, the return
 value is negative.  The value zero is returned after a successful
 reorganization.
 
+@emph{Notice}, that calling this function disables crash tolerance,
+reverting the effect of the recent @code{gdbm_failure_atomic} call.
+You will have to call @code{gdbm_failure_atomic} again after
+@code{gdbm_reorganize} returns successfully.  This will be fixed in
+future releases.
+
 @node Sync
 @chapter Database Synchronization
 @cindex database synchronization
 @cindex synchronization, database
 
-@kwindex GDBM_SYNC
-Unless your database was opened with the @code{GDBM_SYNC} flag,
-@code{gdbm} does not wait for writes to be flushed to the disk before
-continuing.  This allows for faster writing of databases at the risk
-of having a corrupted database if the application terminates in an
-abnormal fashion.  The following function allows the programmer to
-make sure the disk version of the database has been completely updated
-with all changes to the current time.
+Normally, @command{GDBM} functions don't flush changed data to the
+disk immediately after a change.  This allows for faster writing of
+databases at the risk of having a corrupted database if the
+application terminates in an abnormal fashion.  The following function
+allows the programmer to make sure the disk version of the database
+has been completely updated with all changes to the current time.
 
 @deftypefn {gdbm interface} int gdbm_sync (GDBM_FILE @var{dbf})
 Synchronizes the changes in @var{dbf} with its disk file.  The
@@ -849,6 +907,15 @@ parameter is a pointer returned by @code{gdbm_open}.
 
 This function would usually be called after a complete set of changes
 have been made to the database and before some long waiting time.
+This set of changes should preserve application-level invariants.  In
+other words, call @code{gdbm_sync} only when the database is in a
+consistent state with regard to the application logic, a state from
+which you are willing and able to recover.  You can think about all
+database operations between two consecutive @code{gdbm_sync} calls as
+constituting a single @dfn{transaction}.  @xref{Synchronizing the
+Database}, for a detailed discussion about how to properly select
+the synchronization points.
+
 The @code{gdbm_close} function automatically calls the equivalent of
 @code{gdbm_sync} so no call is needed if the database is to be closed
 immediately after the set of changes have been made.
@@ -857,6 +924,17 @@ immediately after the set of changes have been made.
 @code{gdbm_errno} and system @code{errno} variables to the codes
 describing the error and returns -1.
 @end deftypefn
+
+@kwindex GDBM_SYNC
+Opening the database with @code{GDBM_SYNC} flag ensures that
+@code{gdbm_sync} function will be called after each change, thereby
+flushing the changes to disk immediately.  You are advised against
+using this flag, however, because it incurs a severe performance
+penalty, while giving only a moderate guarantee that the
+@emph{structural} consistency of the database will be preserved in case
+of failure, and that only unless the failure occurs while being in the
+@code{fsync} call.  For the ways to ensure proper @emph{logical} consistency
+of the database, see @ref{Crash Tolerance}.
 
 @node Database format
 @chapter Changing database format
@@ -896,7 +974,7 @@ On error, returns -1 and sets the @code{gdbm_errno} variable
 
 If the database is already in the requested format, the function
 returns success (0) without doing anything.
-@end deftypefn  
+@end deftypefn
 
 @node Flat files
 @chapter Export and Import
@@ -912,18 +990,27 @@ stored.  Both formats can be used, for example, to migrate between
 the different versions of @code{gdbm} databases.  Generally speaking,
 flat files are safe to send over the network, and can be used to
 recreate the database on another machine.  The recreated database is
-guaranteed to be a byte-to-byte equivalent of the database from which
-the flat file was created.  This does not necessarily mean, however,
-that this file can be used in the same way as the original one.  For
-example, if the original database contained non-@acronym{ASCII} data
-(e.g.@: @acronym{C} structures, integers etc.), the recreated database
-can be of any use only if the target machine has the same integer
-size and byte ordering as the source one and if its @acronym{C}
-compiler uses the same packing conventions as the one which generated
-@acronym{C} which populated the original database.  In general, such
-binary databases are not portable between machines, unless you follow
-some stringent rules on what data is written to them and how it is
-interpreted.
+guaranteed to have the same format and contain the same set of
+key/value pairs as the database from which the flat file was created.
+However, it will not constitute a byte-to-byte equivalent of the latter.
+Various internal structures in the database can differ.  In
+particular, ordering of key/value pairs can be different and the table
+of available file space will most probably differ, too.  For databases
+in extended format, the @code{numsync} counter will be reset to 0
+(@pxref{Numsync}).  These details are not visible to the application
+programmer, and are mentioned here only for completeness sake.
+
+The fact that the restored database contains the same set of key/value
+pairs does not necessarily mean, however, that it can be used in the
+same way as the original one.  For example, if the original database
+contained non-@acronym{ASCII} data (e.g.@: @acronym{C} structures,
+integers etc.), the recreated database can be of any use only if the
+target machine has the same integer size and byte ordering as the
+source one and if its @acronym{C} compiler uses the same packing
+conventions as the one which generated @acronym{C} which populated the
+original database.  In general, such binary databases are not portable
+between machines, unless you follow some stringent rules on what data
+is written to them and how it is interpreted.
 
 The GDBM version @value{VERSION} supports two flat file formats.  The
 @dfn{binary} flat file format was first implemented in GDBM version
@@ -983,10 +1070,10 @@ The permissions to use when creating the output file (@pxref{open,,open a file,o
     int @var{meta_mask}, @
     unsigned long *@var{errline})
 Loads data from the dump file @var{filename} into the database pointed
-to by @var{pdbf}.  The latter can point to @code{NULL}, in which case 
+to by @var{pdbf}.  The latter can point to @code{NULL}, in which case
 the function will try to create a new database.  If it succeeds, the
 function will return, in the memory location pointed to by @var{pdbf},
-a pointer to the newly created database.  If the dump file carries no 
+a pointer to the newly created database.  If the dump file carries no
 information about the original database file name, the function will
 set @code{gdbm_errno} to @code{GDBM_NO_DBNAME} and return
 @code{-1}, indicating failure.
@@ -1024,14 +1111,20 @@ Not enough memory to load data.
 Reading from @var{filename} failed.  The @code{errno} variable can be
 used to get more detail about the failure.
 
-@item GDBM_ILLEGAL_DATA
-Input contained some illegal data.
+@item GDBM_MALFORMED_DATA
+@itemx GDBM_ILLEGAL_DATA
+Input contained malformed data, i.e. it is not a valid @code{gdbm}
+dump file.  This often means that the dump file got corrupted
+during the transfer.
+
+The @code{GDBM_ILLEGAL_DATA} is an alias for this error code,
+maintained for backward compatibility.
 
 @item GDBM_ITEM_NOT_FOUND
 This error can occur only when the input file is in ASCII format.  It
 indicates that the data part of the record about to be read lacked
 length specification.  Application developers are advised to treat
-this error equally as @code{GDBM_ILLEGAL_DATA}.
+this error equally as @code{GDBM_MALFORMED_DATA}.
 @end table
 
 Mild errors mean that the function was able to successfully load and
@@ -1076,7 +1169,7 @@ Format of the dump file.  See the @var{format} argument to the
 @code{gdbm_dump} function.
 @end table
 @end deftypefn
-    
+
 @deftypefn {gdbm interface} int gdbm_load_from_file (GDBM_FILE *@var{pdbf}, @
     FILE *@var{fp}, int @var{replace}, int @var{meta_mask}, @
     unsigned long *@var{line})
@@ -1150,7 +1243,7 @@ To convert this code to human-readable string, use the following function:
 @deftypefn {gdbm interface} {const char *} gdbm_strerror (gdbm_error @var{errno})
 Converts @var{errno} (which is an integer value) into a human-readable
 descriptive text.  Returns a pointer to a static string.  The caller
-must not alter or free the returned pointer.
+must not free the returned pointer or alter the string it points to.
 @end deftypefn
 
 Detailed information about the most recent error that occurred while
@@ -1211,23 +1304,64 @@ function is called upon the entry to any GDBM function.
 @end deftypefn
 
 Certain errors (such as write error when saving stored key) can leave
-database file in inconsistent state.  When such a critical error
-occurs, the database file is marked as needing recovery.  Subsequent
-calls to any GDBM functions for that database file (except
-@code{gdbm_recover}), will return immediately with GDBM error value
-@code{GDBM_NEED_RECOVERY}.  Additionally, the following 
-function can be used to check the state of the database file:
+database file in inconsistent state (@pxref{Database consistency}).
+When such a critical error occurs, the database file is marked as
+needing recovery.  Subsequent calls to any GDBM functions for that
+database file (except @code{gdbm_recover}), will return immediately
+with GDBM error value @code{GDBM_NEED_RECOVERY}.  Additionally, the
+following function can be used to check the state of the database file:
 
 @deftypefn {gdbm interface} int gdbm_needs_recovery (GDBM_FILE @var{dbf})
 Returns @code{1} if the database file @var{dbf} is in inconsistent
 state and needs recovery.
 @end deftypefn
 
-The only way to bring the database back to operational state is to
-call the @code{gdbm_recover} function (@pxref{Recovery}).
+To restore structural consistency of the database, use the
+@code{gdbm_recover} function (@pxref{Recovery}).
+
+Crash tolerance provides a better way of recovery, because it restores
+both structural and logical consistency.  @xref{Crash Tolerance}, for
+a detailed discussion,
+
+@node Database consistency
+@chapter Database consistency
+
+@cindex consistency, database
+In the chapters that follow we will cover different aspects of
+@dfn{database consistency} and ways to maintain it.  Speaking
+about consistency, it is important to discern between two different
+aspects of it: structural and logical consistency.
+
+@cindex structural consistency
+@dfn{Structural consistency} means that all internal structures of the
+database are in good order, contain valid data and are coherent with
+one another.  Structural consistency means that the database is in
+good shape @dfn{technically}, but it does not imply that the data it
+contains are in any way meaningful.
+
+@cindex logical consistency
+@dfn{Logical consistency} means that the data stored in the
+database are coherent with respect to the application logic.
+Usually this implies that structural consistency is observed as well.
+
+For as long as the program is free from memory management errors and
+each opened database is properly closed before the program terminates,
+structural consistency is maintained.  Maintaining logical consistency
+is more complex task and its maintenance is entirely on the
+responsibility of application programmer.  @xref{Crash Tolerance}, for
+a detailed discussion.
+
+Both consistency aspects can suffer as a result of both application
+errors that cause the program to terminate prematurely without properly
+saving the database, and hardware errors, such as disk failures or
+power outages.  When such situations occur, it becomes necessary to
+@dfn{recover the database}.
+
+In the next chapter we will discuss how to recover structural
+consistency of a database.
 
 @node Recovery
-@chapter Recovery
+@chapter Recovering structural consistency
 
 Certain errors (such as write error when saving stored key) can leave
 database file in @dfn{inconsistent state}.  When such a critical error
@@ -1250,7 +1384,7 @@ additional statistics about the recovery process (@var{rcvr} can be
 
 Each input member has a corresponding flag bit, which must be set in
 @var{flags}, in order to instruct the function to use it.
-              
+
 The @code{gdbm_recover} type is defined as:
 
 @example
@@ -1366,19 +1500,24 @@ building the package.
 The crash-tolerance mechanism, when used correctly, guarantees that a
 consistent recent state of application data can be recovered following
 a crash.  Specifically, it guarantees that the state of the database
-file corresponding to the most recent successful gdbm_sync() call can
-be recovered.  
+file corresponding to the most recent successful @code{gdbm_sync} call
+can be recovered.
 
 If the new mechanism is used correctly, crashes such as power
 outages, OS kernel panics, and (some) application process crashes
 will be tolerated.  Non-tolerated failures include physical
 destruction of storage devices and corruption due to bugs in
 application logic.  For example, the new mechanism won't help if a
-pointer bug in your application corrupts @command{GDBM} private in-memory
+pointer bug in your application corrupts @command{GDBM}'s private in-memory
 data which in turn corrupts the database file.
 
 In the following sections we will describe how to enable crash
 tolerance in your application and what to do if a crash occurs.
+
+The design rationale of the crash tolerance mechanism is described in
+detail in the article, @cite{Crashproofing the Original NoSQL Key-Value
+Store}, by Terence Kelly, ACM _Queue_ magazine, July/August 2021,
+available from the ACM Digital Library: @uref{https://dl.acm.org}.
 
 @node Filesystems supporting crash tolerance
 @section Using Proper Filesystem
@@ -1389,7 +1528,7 @@ don't have one already.  (Note that reflink support may require that
 special options be specified at the time of filesystem creation; this
 is true of XFS.)  The most conventional way to create a filesystem is
 on a dedicated storage device.  However it is also possible to create
-a filesystem within an ordinary file on some other filesystem.
+a filesystem @emph{within an ordinary file} on some other filesystem.
 
 For example, the following commands, executed as root, will create a
 smallish XFS filesystem inside a file on another filesystem:
@@ -1440,7 +1579,7 @@ the database.  Unless you know what you are doing, do not specify
 the @code{GDBM_SYNC} flag when opening the database.  The reason is that
 you want your application to explicitly control when @code{gdbm_sync}
 is called; you don't want an implicit sync on every database
-operation.
+operation (@pxref{Sync}).
 
 Request crash tolerance by invoking the following interface:
 
@@ -1468,7 +1607,7 @@ file corresponding to the most recent successful @code{gdbm_sync}.
 @section Synchronizing the Database
 
 When your application knows that the state of the database is
-consistent (i.e., all relevant application-level invariants hold), 
+consistent (i.e., all relevant application-level invariants hold),
 you may call @code{gdbm_sync}.  For example, if your application
 manages bank accounts, transferring money from one account to another
 should maintain the invariant that the sum of the two accounts is the
@@ -1476,7 +1615,7 @@ same before and after the transfer: It is correct to decrement account
 @samp{A} by $7, increment account @samp{B} by $7, and then call
 @code{gdbm_sync}.  However it is @emph{not} correct to call
 @code{gdbm_sync} @emph{between} the decrement of @samp{A} and the
-increment of @samp{B}, because a crash immediately after that call 
+increment of @samp{B}, because a crash immediately after that call
 would destroy money.  The general rule is simple, sensible, and
 memorable: Call @code{gdbm_sync} only when the database is in a state
 from which you are willing and able to recover following a crash.  (If
@@ -1496,7 +1635,7 @@ snapshot files are readable, we choose the one with the most recent
 last-modification timestamp.  Modern operating systems record
 timestamps in nanoseconds, which gives sufficient confidence that the
 timestamps of the two snapshots will differ.  However, one can't rule
-out the possibility that the two snapshot files will be both readable
+out the possibility that the two snapshot files will both be readable
 and have identical timestamps@footnote{This can happen, for example,
 if the storage is very fast and the system clock is low-resolution, or
 if the system administrator sets the system clock backwards.  In the
@@ -1525,8 +1664,8 @@ where @var{even} and @var{odd} are names of the snapshot files.  On
 success, it stores the pointer to the most recent snapshot file name
 in @var{recovery_file} and returns @code{GDBM_SNAPSHOT_OK}.  To
 finalize the recovery, rename this file to the name of your database
-file and re-open it using @code{gdbm_open}.  The remaining snapshot
-can be used as a backup copy.
+file and re-open it using @code{gdbm_open}.  You should discard the
+remaining snapshot.
 
 If an error occurs, @code{gdbm_latest_snapshot} returns one of the
 following error codes.
@@ -1560,7 +1699,7 @@ someone has messed with permissions after the crash.
 @item EINVAL
 Some arguments passed to @code{gdbm_latest_snapshot} were not valid.
 It is a programmer's error which means that your application needs to be
-fixed. 
+fixed.
 
 @item ENOSYS
 Function is not implemented.  This means @code{GDBM} was built without
@@ -1568,14 +1707,15 @@ crash-tolerance support.
 
 @item Other value (@code{EBADF}, @code{EFAULT}, etc)
 An error occurred when trying to @code{stat} the snapshot file.
-@xref{ERRORS,,,stat(2),stat(2) man page}, for a discussion of 
+@xref{ERRORS,,,stat(2),stat(2) man page}, for a discussion of
 possible @code{errno} values.
 @end table
 @end defvr
 
 @defvr {gdbm_latest_snapshot} GDBM_SNAPSHOT_SAME
 File modes and modification dates of both snapshot files are exactly
-the same.
+the same.  This can happen only if numsync is not available
+(@pxref{Numsync}).
 @end defvr
 
 @defvr {gdbm_latest_snapshot} GDBM_SNAPSHOT_SUSPICIOUS
@@ -1605,7 +1745,7 @@ snapshot @var{a} @var{b}
 @noindent
 where @var{a} and @var{b} are names of the two snapshot files you
 configured using the @code{gdbm_failure_atomic} function.  This
-command investigates both files and prints out the detailed
+command investigates both files and prints out detailed
 diagnostics.
 
 Its output begins with a line listing one of the error codes above,
@@ -1648,7 +1788,7 @@ file mode (read-write).  Apparently, the file mode has been changed
 manually after the crash.  The timestamp of the file, which is more
 recent than that of @file{even.dbf}, suggests that it might be used for
 recovery.  To confirm this guess, change the mode of the
-@file{even.dbf} to read-only an repeat the @command{snapshot} command:
+@file{even.dbf} to read-only and repeat the @command{snapshot} command:
 
 @example
 @group
@@ -1715,11 +1855,11 @@ been reset to read-only and/or modification times inadvertently
 changed before recovery.  To make it possible to select the right
 snapshot in such cases, a new @dfn{extended database format} was
 introduced in @command{GDBM} version 1.21.  This format adds to the
-database header the @code{numsync} field, that holds the number of
+database header the @code{numsync} field, which holds the number of
 synchronizations the database underwent before being closed or
 abandoned due to a crash.
 
-Each snapshot is an exact copy of the database at a given point of
+A readable snapshot is a consistent copy of the database at a given point of
 time.  Thus, if both snapshots of a database in extended format are
 readable, it will suffice to examine their @code{numsync} counters
 and select the one whose @code{numsync} is greater.  That's what
@@ -1766,7 +1906,7 @@ To convert a database from extended format back to the standard
   rc = gdbm_convert(dbf, 0);
 @end example
 
-To do the from the command line:
+To do the same from the command line, run:
 
 @example
 gdbmtool @var{dbname} downgrade
@@ -1798,16 +1938,29 @@ The database needs recovery.  @xref{Recovery}.
 @item GDBM_ERR_SNAPSHOT_CLONE
 Failed to clone the database file into a snapshot.  Examine the system
 @code{errno} variable for details.
+@end table
 
+If one of the following error codes is returned, examine the system
+@code{errno} variable for details:
+
+@table @code
 @item GDBM_ERR_REALPATH
 Call to @code{realpath} function failed.  @code{realpath} is used to
 determine actual path names of the snapshot files.
 
-Examine the system @code{errno} variable for details.
-
 @item GDBM_FILE_OPEN_ERROR
-Unable to create snapshot file.  Examine the system @code{errno}
-variable for details.
+Unable to create snapshot file.
+
+@item GDBM_FILE_SYNC_ERROR
+Failed to sync a snapshot file or one of directories in its pathname,
+during initial synchronization.
+
+@item GDBM_FILE_CLOSE_ERROR
+Failed to close a snapshot file or one of directories in its pathname,
+during initial synchronization.
+
+@item GDBM_ERR_FILE_MODE
+The @code{fchmod} call on one of the snapshot files failed.
 @end table
 
 Notes:
@@ -1819,11 +1972,14 @@ and installs new ones instead.
 
 @item Crash tolerance settings are cleared by functions
 @code{gdbm_recover} (@pxref{Recovery}) and @code{gdbm_reorganize}
-(@pxref{Reorganization}).  After calling either function, provided
-that the call returns successfully, you need to call
-@code{gdbm_failure_atomic} again with the same arguments as before.
+(@pxref{Reorganization}).  In case of @code{gdbm_recover}, it should
+not be a problem, because if you enabled crash tolerance, the
+procedure described in @ref{Crash recovery} is the preferred way of
+recovering the database.  If, however, you decided to call either
+function even though you had enabled crash tolerance previously, be
+sure to call @code{gdbm_failure_atomic} again with the same arguments
+as before (provided that the call returns successfully).
 @end itemize
-
 @end deftypefn
 
 @deftypefn {gdbm interface} int gdbm_latest_snapshot (const char *@var{even}, @
@@ -1849,8 +2005,11 @@ function can also return the @code{GDBM_SNAPSHOT_SUSPICIOUS} status
 code.  This happens when the @code{numsync} counters in the two
 snapshots differ by more than one.
 
+@xref{Crash recovery}, for a detailed description of possible return
+codes and their interpretation.
+
 If any value other than @code{GDBM_SNAPSHOT_OK} is returned, it is
-guaranteed that the function don't touch @var{retval}.    In this case
+guaranteed that the function did not touch @var{retval}.    In this case
 it is recommended to switch to manual recovery procedure, letting the
 user examine the snapshots and take the appropriate action.
 @pxref{Manual crash recovery}, for details.
@@ -2253,7 +2412,7 @@ able to lock file when called in @code{GDBM_READER} mode (@pxref{Open,
 GDBM_READER}).
 @end defvr
 
-@defvr {Error Code} GDBM_CANT_BE_WRITER       
+@defvr {Error Code} GDBM_CANT_BE_WRITER
 This error code is set by the @code{gdbm_open} function if it is not
 able to lock file when called in writer mode (@pxref{Open}).
 @end defvr
@@ -2264,13 +2423,13 @@ operate on a database that is open in read-only mode (@pxref{Open,
 GDBM_READER}).
 @end defvr
 
-@defvr {Error Code} GDBM_READER_CANT_STORE    
+@defvr {Error Code} GDBM_READER_CANT_STORE
 Set by the @code{gdbm_store} (@pxref{Store}) if it attempted to
 operate on a database that is open in read-only mode (@pxref{Open,
 GDBM_READER}).
 @end defvr
 
-@defvr {Error Code} GDBM_READER_CANT_REORGANIZE       
+@defvr {Error Code} GDBM_READER_CANT_REORGANIZE
 Set by the @code{gdbm_reorganize} (@pxref{Reorganization}) if it attempted to
 operate on a database that is open in read-only mode (@pxref{Open,
 GDBM_READER}).
@@ -2294,22 +2453,35 @@ database and the @var{flag} parameter is not @code{GDBM_REPLACE}.
 @xref{Store}, for a detailed discussion.
 @end defvr
 
-@defvr {Error Code} GDBM_ILLEGAL_DATA
-Either @var{key} or @var{content} parameter was wrong in a call to
-to @code{gdbm_store} (@pxref{Store}).
+@defvr {Error Code} GDBM_MALFORMED_DATA
+@defvrx {Error Code} GDBM_ILLEGAL_DATA
+Input data was malformed in some way.  When returned by
+@code{gdbm_load}, this means that the input file was not a valid
+@code{gdbm} dump file (@pxref{gdbm_load function}).  When returned by
+@code{gdbm_store}, this means that either @var{key} or @var{content}
+parameter had its @code{dptr} field set to @code{NULL}
+(@pxref{Store}).
+
+The @code{GDBM_ILLEGAL_DATA} is an alias for this error code,
+maintained for backward compatibility.  Its use in modern applications
+is discouraged.
 @end defvr
 
-@defvr {Error Code} GDBM_OPT_ALREADY_SET      
+@defvr {Error Code} GDBM_OPT_ALREADY_SET
 Requested option can be set only once and was already set.  As of
 version @value{VERSION}, this error code is no longer used.  In prior
 versions it could have been returned by the @code{gdbm_setopt}
 function when setting the @code{GDBM_CACHESIZE} value.
 @end defvr
 
-@defvr {Error Code} GDBM_OPT_ILLEGAL
+@defvr {Error Code} GDBM_OPT_BADVAL
+@defvrx {Error Code} GDBM_OPT_ILLEGAL
 The @var{option} argument is not valid or the @var{value} argument
 points to an invalid value in a call to @code{gdbm_setopt} function.
 @xref{Options}.
+
+@code{GDBM_OPT_ILLEGAL} is an alias for this error code, maintained
+for backward compatibility.  Modern applications should not use it.
 @end defvr
 
 @defvr {Error Code} GDBM_BYTE_SWAPPED
@@ -2344,7 +2516,7 @@ This error can be set by any GDBM function that does I/O.  Some of
 these functions are: @code{gdbm_delete}, @code{gdbm_exists},
 @code{gdbm_fetch}, @code{gdbm_export}, @code{gdbm_import},
 @code{gdbm_reorganize}, @code{gdbm_firstkey}, @code{gdbm_nextkey},
-@code{gdbm_store}. 
+@code{gdbm_store}.
 @end defvr
 
 @defvr {Error Code} GDBM_NO_DBNAME
@@ -2397,7 +2569,7 @@ header.
 @end defvr
 
 @defvr {Error Code} GDBM_BAD_AVAIL
-The available space stack is invalid.  This error can be set by 
+The available space stack is invalid.  This error can be set by
 @code{gdbm_open} and @code{gdbm_fd_open}, if the extended database
 verification was requested (@code{GDBM_XVERIFY}).  It is also set
 by the @code{gdbm_avail_verify} function (@pxref{Additional
@@ -2514,6 +2686,11 @@ in the databases created by other @command{dbm} or @command{ndbm}
 libraries.  In other words, you cannot access a standard UNIX
 @command{dbm} file with GNU @command{dbm}!
 
+Compatibility interface includes only functions required by
+@acronym{POSIX} (@pxref{ndbm}) or present in the traditional DBM
+implementation (@pxref{dbm}).  Advanced @command{GDBM} features, such
+as crash tolerance, cannot be used with such databases.
+
 GNU @command{dbm} files are not @code{sparse}.  You can copy them with
 the usual @code{cp} command and they will not expand in the copying
 process.
@@ -2586,7 +2763,7 @@ The existing record is left unchanged, and the function returns
 If no matching record exists in the database, new record will be
 inserted no matter what the value of the @var{mode} is.
 @end deftypefn
-                                 
+
 @deftypefn {ndbm} int dbm_delete (DBM *@var{dbf}, datum @var{key})
 Deletes the record with the matching key from the database.  If the
 function succeeds, @code{0} is returned.  Otherwise, if no matching
@@ -2702,7 +2879,7 @@ Returns @code{0} on success and @code{-1} on error.
 @end deftypefn
 
 @deftypefn {dbm} int delete (datum @var{key})
-Deletes a record with the matching key. 
+Deletes a record with the matching key.
 
 If the function succeeds, @code{0} is returned.  Otherwise, if no
 matching record is found or if an error occurs, @code{-1} is
@@ -2736,7 +2913,7 @@ never free it.
 The @command{gdbmtool} utility allows you to view and modify an
 existing @acronym{GDBM} database or to create a new one.
 
-@cindex default database, @command{gdbmtool} 
+@cindex default database, @command{gdbmtool}
 @flindex junk.gdbm
 When invoked without arguments, it tries to open a database file called
 @file{junk.gdbm}, located in the current working directory.  You can
@@ -2778,7 +2955,7 @@ any additional arguments nor the @option{-f} (@option{--file}) option
 are given, @command{gdbmtool} opens starts interactive shell and
 receives commands directly from the human operator.
 
-If more than one arguments are given, all arguments past the database
+If more than one argument is given, all arguments past the database
 name are parsed as @command{gdbmtool} commands (@pxref{shell}, for a
 description of available commands) and executed in turn. All commands,
 except the last one, should be terminated with semicolons. Semicolon
@@ -2988,7 +3165,7 @@ The default value is inherited from the environment variable
 Primary prompt string.  Its value can contain @dfn{conversion
 specifiers}, consisting of the @samp{%} character followed by another
 character.  These specifiers are expanded in the resulting prompt as
-follows: 
+follows:
 
 @multitable @columnfractions 0.4 0.5
 @headitem Sequence @tab Expansion
@@ -3132,7 +3309,7 @@ Unset variables are shown after a comment sign (@samp{#}).  For string
 and numeric variables, values are shown after an equals sign.  For
 boolean variables, only the variable name is displayed if the variable
 is @code{true}.  If it is @code{false}, its name is prefixed with
-@samp{no}. 
+@samp{no}.
 
 For example:
 
@@ -3247,7 +3424,7 @@ Fetch and display the record with the given @var{key}.
 
 @deffn {command verb} first
 Fetch and display the first record in the database.  Subsequent
-records can be fetched using the @code{next} command (see below). 
+records can be fetched using the @code{next} command (see below).
 @xref{Sequential}, for more information on sequential access.
 @end deffn
 
@@ -3339,7 +3516,10 @@ Close the database and quit the utility.
 @end deffn
 
 @deffn {command verb} recover [@var{options}]
-Run database recovery. The following @var{options} are understood:
+Recover the database from structural inconsistencies.  @xref{Database
+consistency}.
+
+The following @var{options} are understood:
 
 @table @option
 @item backup
@@ -3529,7 +3709,7 @@ define content @{
         pad 8,
         char id[3],
         string name
-@}        
+@}
 @end example
 
 @noindent
@@ -3547,7 +3727,7 @@ define content @{
         offset 16,
         char id[3],
         string name
-@}        
+@}
 @end example
 
 @emph{NOTE}: The @code{string} type can reasonably be used only if it
@@ -3726,7 +3906,7 @@ UID.  Similarly, the @var{group} is either a valid group name or GID.
 If @var{group} is not given, the main group of @var{user} is used.
 
 User and group parts can be separated by a dot, instead of the colon.
-                                    
+
 @item -h
 @itemx --help
 Print a concise help summary.
@@ -3782,9 +3962,16 @@ Non-bug suggestions are always welcome as well.  If you have questions
 about things that are unclear in the documentation or are just obscure
 features, please report them too.
 
+@c SP: Check formatting!
+
 You may contact the authors and maintainers by e-mail:
-@email{phil@@cs.wwu.edu}, @email{downsj@@downsj.com},
-@email{gray@@gnu.org} or @email{gray@@gnu.org.ua}.
+Philip Nelson @email{phil@@cs.wwu.edu},
+Jason Downs @email{downsj@@downsj.com},
+Sergey Poznyakoff @email{gray@@gnu.org} or @email{gray@@gnu.org.ua}.
+
+Crash tolerance support written by Terence Kelly
+@email{tpkelly@@acm.org}, @email{tpkelly@@cs.princeton.edu}, or
+@email{tpkelly@@eecs.umich.edu}.
 
 @node Resources
 @chapter Additional resources

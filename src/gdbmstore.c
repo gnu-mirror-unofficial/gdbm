@@ -64,7 +64,7 @@ gdbm_store (GDBM_FILE dbf, datum key, datum content, int flags)
      NULL dptr returned by a lookup procedure indicates an error. */
   if ((key.dptr == NULL) || (content.dptr == NULL))
     {
-      GDBM_SET_ERRNO2 (dbf, GDBM_ILLEGAL_DATA, FALSE,
+      GDBM_SET_ERRNO2 (dbf, GDBM_MALFORMED_DATA, FALSE,
 		       GDBM_DEBUG_STORE);
       return -1;
     }

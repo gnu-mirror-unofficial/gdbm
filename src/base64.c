@@ -106,7 +106,7 @@ _gdbm_base64_decode (const unsigned char *input, size_t input_len,
 	  || input[3] > 127 || ((input[3] != '=')
 				&& (b64val[input[3]] == -1)))
 	{
-	  rc = GDBM_ILLEGAL_DATA;
+	  rc = GDBM_MALFORMED_DATA;
 	  break;
 	}
       *out++ = (b64val[input[0]] << 2) | (b64val[input[1]] >> 4);

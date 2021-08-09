@@ -896,7 +896,7 @@ gdbm_convert (GDBM_FILE dbf, int flag)
       break;
 
     default:
-      GDBM_SET_ERRNO2 (dbf, GDBM_ILLEGAL_DATA, FALSE,
+      GDBM_SET_ERRNO2 (dbf, GDBM_MALFORMED_DATA, FALSE,
 		       GDBM_DEBUG_STORE);
       return -1;
     }

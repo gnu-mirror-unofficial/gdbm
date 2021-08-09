@@ -212,7 +212,7 @@ get_parms (struct dump_file *file)
 		  file->buffer[file->buflevel++] = 0;
 		}
 	      else
-		return GDBM_ILLEGAL_DATA;
+		return GDBM_MALFORMED_DATA;
 	    }
 	  else
 	    break;
@@ -244,7 +244,7 @@ get_len (const char *param, size_t *plen)
       return 0;
     }
 
-  return GDBM_ILLEGAL_DATA;
+  return GDBM_MALFORMED_DATA;
 }
 
 static int
@@ -276,7 +276,7 @@ read_record (struct dump_file *file, char *param, int n, datum *dat)
   if (rc)
     return rc;
   if (consumed_size != file->buflevel || decoded_size != len)
-    return GDBM_ILLEGAL_DATA;
+    return GDBM_MALFORMED_DATA;
   dat->dptr = (void*) file->data[n].buffer;
   return 0;
 }
@@ -421,7 +421,7 @@ _gdbm_load_file (struct dump_file *file, GDBM_FILE dbf, GDBM_FILE *ofp,
       file->bufsize = file->buflevel = 0;
     }
   else
-    return GDBM_ILLEGAL_DATA;
+    return GDBM_MALFORMED_DATA;
 
   if ((p = getparm (file->header, "format")) != NULL)
     {

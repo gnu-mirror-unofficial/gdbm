@@ -89,7 +89,7 @@ gdbm_import_from_file (GDBM_FILE dbf, FILE *fp, int flag)
       size = ntohl (rsize);
       if (size > INT_MAX)
 	{
-	  ec = GDBM_ILLEGAL_DATA;
+	  ec = GDBM_MALFORMED_DATA;
 	  break;
 	}
       
@@ -122,7 +122,7 @@ gdbm_import_from_file (GDBM_FILE dbf, FILE *fp, int flag)
       size = ntohl (rsize);
       if (size > INT_MAX)
 	{
-	  ec = GDBM_ILLEGAL_DATA;
+	  ec = GDBM_MALFORMED_DATA;
 	  break;
 	}
       if (size > dbufsize)
