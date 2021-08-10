@@ -337,9 +337,11 @@ struct gdbm_file_info
 #define SAVE_ERRNO(code)                        \
   do                                            \
     {                                           \
+      int __gc = gdbm_errno;			\
       int __ec = errno;                         \
       code;                                     \
       errno = __ec;                             \
+      gdbm_errno = __gc;			\
     }                                           \
   while (0)                                     \
 
