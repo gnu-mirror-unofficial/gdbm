@@ -85,7 +85,22 @@ libgdbmapp_a_SOURCES =\
  mem.c\
  gdbmapp.h\
  parseopt.c\
- progname.c
+ progname.c\
+ datconv.c\
+ gram.y\
+ input-argv.c\
+ input-file.c\
+ input-null.c\
+ lex.l\
+ gdbmshell.c\
+ var.c\
+ util.c
+
+if GDBM_COND_READLINE
+  libgdbmapp_a_SOURCES += input-rl.c
+else
+  libgdbmapp_a_SOURCES += input-std.c
+endif
 
 # Programs
 bin_PROGRAMS = gdbmtool gdbm_load gdbm_dump
@@ -96,22 +111,8 @@ gdbmtool_LDADD  = \
  @READLINE_LIBS@
 
 gdbmtool_SOURCES = \
- datconv.c\
- gram.y\
- input-argv.c\
- input-file.c\
- input-null.c\
- lex.l\
  gdbmtool.h\
- gdbmtool.c\
- var.c\
- util.c
-
-if GDBM_COND_READLINE
-  gdbmtool_SOURCES += input-rl.c
-else
-  gdbmtool_SOURCES += input-std.c
-endif
+ gdbmtool.c
 
 AM_YFLAGS = -dv $(YFLAGS_DEBUG)
 AM_LFLAGS = $(LFLAGS_DEBUG)

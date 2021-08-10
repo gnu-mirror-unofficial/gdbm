@@ -22,7 +22,7 @@
 #define VARF_PROT   0x04   /* Variable is protected, i.e. cannot be unset */
 #define VARF_OCTAL  0x08   /* For integer variables -- use octal base */
 
-#define VAR_IS_SET(v) ((v)->flags & (VARF_SET|VARF_INIT))
+#define VAR_IS_SET(v) ((v)->flags & VARF_SET)
 
 union value
 {
@@ -36,6 +36,7 @@ struct variable
   char *name;
   int type;
   int flags;
+  union value init;
   union value v;
   int (*hook) (struct variable *, union value *);
 };
@@ -55,14 +56,14 @@ static struct variable vartab[] = {
   { "confirm", VART_BOOL, VARF_INIT, { .bool = 1 } },
   { "cachesize", VART_INT, VARF_DFL },
   { "blocksize", VART_INT, VARF_DFL },
-  { "open", VART_STRING, VARF_DFL, { NULL }, open_hook },
+  { "open", VART_STRING, VARF_DFL, { NULL }, { NULL }, open_hook },
   { "lock", VART_BOOL, VARF_INIT, { .bool = 1 } },
   { "mmap", VART_BOOL, VARF_INIT, { .bool = 1 } },
   { "sync", VART_BOOL, VARF_INIT, { .bool = 0 } },
   { "coalesce", VART_BOOL, VARF_INIT, { .bool = 0 } },
   { "centfree", VART_BOOL, VARF_INIT, { .bool = 0 } },
   { "filemode", VART_INT, VARF_INIT|VARF_OCTAL|VARF_PROT, { .num = 0644 } },
-  { "format", VART_STRING, VARF_INIT, { .string = "standard" }, format_hook },
+  { "format", VART_STRING, VARF_INIT, { .string = "standard" }, { NULL }, format_hook },
   { "pager", VART_STRING, VARF_DFL },
   { "quiet", VART_BOOL, VARF_DFL },
   { NULL }
@@ -255,12 +256,11 @@ variable_set (const char *name, int type, void *val)
 
   if (!val)
     {
-      vp->flags &= (VARF_INIT|VARF_SET);
+      vp->flags &= VARF_SET;
     }
   else
     {
       vp->v = v;
-      vp->flags &= ~VARF_INIT;
       vp->flags |= VARF_SET;
     }
   
@@ -281,7 +281,7 @@ variable_unset (const char *name)
   if (vp->hook && (rc = vp->hook (vp, NULL)) != VAR_OK)
     return rc;
 
-  vp->flags &= ~(VARF_INIT|VARF_SET);
+  vp->flags &= ~VARF_SET;
 
   return VAR_OK;
 }
@@ -396,3 +396,36 @@ variable_is_true (const char *name)
     return n;
   return 0;
 }
+
+void
+variables_free (void)
+{
+  struct variable *vp;
+
+  for (vp = vartab; vp->name; vp++)
+    {
+      if (vp->type == VART_STRING && (vp->flags & VARF_SET))
+	free (vp->v.string);
+      vp->v.string = NULL;
+      vp->flags &= ~VARF_SET;
+    }
+}
+
+void
+variables_init (void)
+{
+  struct variable *vp;
+
+  for (vp = vartab; vp->name; vp++)
+    {
+      if (vp->flags & VARF_INIT)
+	{
+	  if (vp->type == VART_STRING)
+	    variable_set (vp->name, vp->type, vp->init.string);
+	  else
+	    variable_set (vp->name, vp->type, &vp->init);
+	}
+    }
+}
+
+    

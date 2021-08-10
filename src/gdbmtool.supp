@@ -1,0 +1,19 @@
+{
+   <parseopt_first>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:realloc
+   fun:erealloc
+   fun:add_options
+   fun:parseopt_first
+}
+{
+   <parseopt_first>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:realloc
+   fun:erealloc
+   fun:add_options
+   fun:parseopt_first
+}

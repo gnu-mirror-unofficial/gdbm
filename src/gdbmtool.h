@@ -108,6 +108,7 @@ void terror (const char *fmt, ...)
 char *make_prompt (void);
 
 extern char *file_name;
+extern int file_descr;
 extern int open_mode;
 extern int open_format;
 
@@ -372,4 +373,10 @@ int vgetyn (const char *prompt, va_list ap);
 int getyn (const char *prompt, ...) GDBM_PRINTFLIKE (1, 2);
 
 int getnum (int *pnum, char *arg, char **endp);
-int get_screen_lines (void);
+
+int gdbmshell (instream_t input);
+int gdbmshell_run (int (*init) (void *, instream_t *), void *data);
+
+void variables_init (void);
+void variables_free (void);
+
