@@ -1329,7 +1329,7 @@ a detailed discussion,
 @cindex consistency, database
 In the chapters that follow we will cover different aspects of
 @dfn{database consistency} and ways to maintain it.  Speaking
-about consistency, it is important to discern between two different
+about consistency, it is important to distinguish between two different
 aspects of it: structural and logical consistency.
 
 @cindex structural consistency
@@ -1347,9 +1347,9 @@ Usually this implies that structural consistency is observed as well.
 For as long as the program is free from memory management errors and
 each opened database is properly closed before the program terminates,
 structural consistency is maintained.  Maintaining logical consistency
-is more complex task and its maintenance is entirely on the
-responsibility of application programmer.  @xref{Crash Tolerance}, for
-a detailed discussion.
+is more complex task and its maintenance is entirely the
+responsibility of the application programmer.  @xref{Crash Tolerance},
+for a detailed discussion.
 
 Both consistency aspects can suffer as a result of both application
 errors that cause the program to terminate prematurely without properly
@@ -1364,11 +1364,11 @@ consistency of a database.
 @chapter Recovering structural consistency
 
 Certain errors (such as write error when saving stored key) can leave
-database file in @dfn{inconsistent state}.  When such a critical error
-occurs, the database file is marked as needing recovery.  Subsequent
-calls to any GDBM functions for that database file (except
-@code{gdbm_recover}), will return immediately with GDBM error value
-@code{GDBM_NEED_RECOVERY}.
+database file in @dfn{structurally inconsistent state}.  When such a
+critical error occurs, the database file is marked as needing
+recovery.  Subsequent calls to any GDBM functions for that database
+file (except @code{gdbm_recover}), will return immediately with GDBM
+error value @code{GDBM_NEED_RECOVERY}.
 
 To escape from this state and bring the database back to operational
 state, use the following function:
@@ -1498,10 +1498,10 @@ be enabled automatically by the @command{configure} script when
 building the package.
 
 The crash-tolerance mechanism, when used correctly, guarantees that a
-consistent recent state of application data can be recovered following
-a crash.  Specifically, it guarantees that the state of the database
-file corresponding to the most recent successful @code{gdbm_sync} call
-can be recovered.
+logically consistent (@pxref{Database consistency}) recent state of
+application data can be recovered following a crash.  Specifically, it
+guarantees that the state of the database file corresponding to the
+most recent successful @code{gdbm_sync} call can be recovered.
 
 If the new mechanism is used correctly, crashes such as power
 outages, OS kernel panics, and (some) application process crashes
