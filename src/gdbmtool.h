@@ -171,9 +171,11 @@ int interactive (void);
 int input_context_push (instream_t);
 int input_context_pop (void);
 
-struct handler_param;
-void input_history_handler (struct handler_param *param);
-int input_history_begin (struct handler_param *param, size_t *exp_count);
+struct command_param;
+struct command_environ;
+void input_history_handler (struct command_param *param, struct command_environ *cenv);
+int input_history_begin (struct command_param *param,
+			 struct command_environ *cenv, size_t *exp_count);
 
 void print_prompt_at_bol (void);
 char *command_generator (const char *text, int state);
@@ -239,17 +241,15 @@ struct gdbmarglist
   struct gdbmarg *head, *tail;
 };
 
-struct handler_param
+struct command_param
 {
   size_t argc;
   size_t argmax;
   struct gdbmarg **argv;
   struct gdbmarg *vararg;
-  FILE *fp;
-  void *data;
 };
-
-#define HANDLER_PARAM_INITIALIZER { 0, 0, NULL, NULL, NULL, NULL }
+  
+#define HANDLER_PARAM_INITIALIZER { 0, 0, NULL, NULL }
 
 #define PARAM_STRING(p,n) ((p)->argv[n]->v.string)
 #define PARAM_DATUM(p,n)  ((p)->argv[n]->v.dat)
@@ -265,6 +265,14 @@ struct gdbmarg *gdbmarg_kvpair (struct kvpair *kvl, struct locus *);
 
 int gdbmarg_free (struct gdbmarg *arg);
 void gdbmarg_destroy (struct gdbmarg **parg);
+
+struct command_environ
+{
+  FILE *fp;
+  void *data;
+};
+
+#define COMMAND_ENVIRON_INITIALIZER { NULL, NULL }
 
 struct command;
 int command_lookup (const char *str, struct locus *loc, struct command **pcmd);

@@ -70,7 +70,9 @@ struct history_param
 };
   
 int
-input_history_begin (struct handler_param *param, size_t *exp_count)
+input_history_begin (struct command_param *param,
+		     struct command_environ *cenv GDBM_ARG_UNUSED,
+		     size_t *exp_count)
 {
   struct history_param *p;
   int from = 0, count = history_length;
@@ -100,19 +102,20 @@ input_history_begin (struct handler_param *param, size_t *exp_count)
   p = emalloc (sizeof *p);
   p->from = from;
   p->count = count;
-  param->data = p;
+  cenv->data = p;
   if (exp_count)
     *exp_count = count;
   return 0;
 }
 
 void
-input_history_handler (struct handler_param *param)
+input_history_handler (struct command_param *param GDBM_ARG_UNUSED,
+		       struct command_environ *cenv)
 {
-  struct history_param *p = param->data;
+  struct history_param *p = cenv->data;
   int i;
   HIST_ENTRY **hlist;
-  FILE *fp = param->fp;
+  FILE *fp = cenv->fp;
   
   hlist = history_list ();
   for (i = 0; i < p->count; i++)
