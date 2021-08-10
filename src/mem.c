@@ -71,4 +71,37 @@ estrdup (const char *str)
   return p;
 }
 
+void *
+e2nrealloc (void *p, size_t *pn, size_t s)
+{
+  size_t n = *pn;
+  char *newp;
+	
+  if (!p)
+    {
+      if (!n)
+	{
+	  /* The approximate size to use for initial small
+	     allocation requests, when the invoking code
+	     specifies an old size of zero.  64 bytes is
+	     the largest "small" request for the
+	     GNU C library malloc.  */
+	  enum { DEFAULT_MXFAST = 64 };
+	  
+	  n = DEFAULT_MXFAST / s;
+	  n += !n;
+	}
+    }
+  else if ((size_t) -1 / 3 * 2 / s <= n)
+    {
+      ealloc_die ();
+    }
+  else
+    n += (n + 1) / 2;
+
+  newp = erealloc (p, n * s);
+  *pn = n;
+  return newp;
+}
+
   

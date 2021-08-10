@@ -122,12 +122,12 @@ input_history_handler (struct handler_param *param)
 #define HISTFILE_PREFIX "~/."
 #define HISTFILE_SUFFIX "_history"
 
+static char *history_file_name;
+
 static char *
 get_history_file_name (void)
 {
-  static char *filename = NULL;
-
-  if (!filename)
+  if (!history_file_name)
     {
       char *hname;
 
@@ -136,10 +136,10 @@ get_history_file_name (void)
       strcpy (hname, HISTFILE_PREFIX);
       strcat (hname, rl_readline_name);
       strcat (hname, HISTFILE_SUFFIX);
-      filename = tildexpand (hname);
+      history_file_name = tildexpand (hname);
       free (hname);
     }
-  return filename;
+  return history_file_name;
 }
  
 static char **
@@ -165,13 +165,19 @@ input_init (void)
   rl_readline_name = (char *) progname;
   rl_attempted_completion_function = shell_completion;
   rl_pre_input_hook = pre_input;
-  read_history (get_history_file_name ());
+  if (interactive ())
+    read_history (get_history_file_name ());
 }
 
 void
 input_done (void)
 {
-  write_history (get_history_file_name ());
+  if (history_file_name)
+    {
+      write_history (history_file_name);
+      free (history_file_name);
+      history_file_name = NULL;
+    }
 }
 
 static void

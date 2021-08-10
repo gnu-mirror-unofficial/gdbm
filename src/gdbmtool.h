@@ -165,9 +165,11 @@ void input_done (void);
 instream_t instream_stdin_create (void);
 instream_t instream_argv_create (int argc, char **argv);
 instream_t instream_file_create (char const *name);
+instream_t instream_null_create (void);
 
 int interactive (void);
 int input_context_push (instream_t);
+int input_context_pop (void);
 
 struct handler_param;
 void input_history_handler (struct handler_param *param);
@@ -239,12 +241,15 @@ struct gdbmarglist
 
 struct handler_param
 {
-  int argc;
+  size_t argc;
+  size_t argmax;
   struct gdbmarg **argv;
   struct gdbmarg *vararg;
   FILE *fp;
   void *data;
 };
+
+#define HANDLER_PARAM_INITIALIZER { 0, 0, NULL, NULL, NULL, NULL }
 
 #define PARAM_STRING(p,n) ((p)->argv[n]->v.string)
 #define PARAM_DATUM(p,n)  ((p)->argv[n]->v.dat)
@@ -342,6 +347,7 @@ void begin_def (void);
 void end_def (void);
 
 int yylex (void);
+int yylex_destroy (void);
 int yyerror (char const *s);
 int yyparse (void);
 

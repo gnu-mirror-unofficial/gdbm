@@ -1165,9 +1165,10 @@ list_handler (struct handler_param *param)
 void
 quit_handler (struct handler_param *param GDBM_ARG_UNUSED)
 {
-  closedb ();
-  input_done ();
-  exit (EXIT_OK);
+  while (!input_context_pop ())
+    ;
+  if (input_context_push (instream_null_create ()))
+    exit (EXIT_FATAL);
 }
 
 /* export FILE [truncate] - export to a flat file format */
@@ -1871,8 +1872,6 @@ struct gdbm_option optab[] = {
   { 0 }
 };
 
-#define ARGINC 16
-
 
 struct gdbmarg *
 gdbmarg_string (char *string, struct locus *loc)
@@ -2082,17 +2081,52 @@ gdbmarglist_free (struct gdbmarglist *lst)
   lst->head = lst->tail = NULL;
 }
 
-struct handler_param param;
-size_t argmax;
-
-void
-param_free_argv (struct handler_param *p, int n)
+static void
+param_expand (struct handler_param *p)
 {
-  int i;
+  if (p->argc == p->argmax)
+    p->argv = e2nrealloc (p->argv, &p->argmax, sizeof (p->argv[0]));
+}
 
-  for (i = 0; i < n; i++)
+static void
+param_free_argv (struct handler_param *p)
+{
+  size_t i;
+
+  for (i = 0; i < p->argc; i++)
     gdbmarg_destroy (&p->argv[i]);
   p->argc = 0;
+}
+
+static void
+param_free (struct handler_param *p)
+{
+  param_free_argv (p);
+  free (p->argv);
+  p->argv = NULL;
+  p->argmax = 0;
+}
+
+static struct gdbmarg *coerce (struct gdbmarg *arg, struct argdef *def);
+
+static int
+param_push_arg (struct handler_param *p, struct gdbmarg *arg,
+		struct argdef *def)
+{
+  param_expand (p);
+  if ((p->argv[p->argc] = coerce (arg, def)) == NULL)
+    {
+      return 1;
+    }
+  p->argc++;
+  return 0;
+}
+
+static void
+param_term (struct handler_param *p)
+{
+  param_expand (p);
+  p->argv[p->argc] = NULL;
 }
 
 typedef struct gdbmarg *(*coerce_type_t) (struct gdbmarg *arg,
@@ -2141,7 +2175,7 @@ coerce_type_t coerce_tab[GDBM_ARG_MAX][GDBM_ARG_MAX] = {
 
 char *argtypestr[] = { "string", "datum", "k/v pair" };
   
-struct gdbmarg *
+static struct gdbmarg *
 coerce (struct gdbmarg *arg, struct argdef *def)
 {
   if (!coerce_tab[def->type][arg->type])
@@ -2190,22 +2224,17 @@ run_command (struct command *cmd, struct gdbmarglist *arglist)
   char argbuf[128];
   size_t expected_lines, *expected_lines_ptr;
   FILE *pagfp = NULL;
-
+  struct handler_param param = HANDLER_PARAM_INITIALIZER;
+    
   variable_get ("pager", VART_STRING, (void**) &pager);
   
   arg = arglist ? arglist->head : NULL;
 
   for (i = 0; cmd->args[i].name && arg; i++, arg = arg->next)
     {
-      if (i >= argmax)
+      if (param_push_arg (&param, arg, &cmd->args[i]))
 	{
-	  argmax += ARGINC;
-	  param.argv = erealloc (param.argv,
-				 sizeof (param.argv[0]) * argmax);
-	}
-      if ((param.argv[i] = coerce (arg, &cmd->args[i])) == NULL)
-	{
-	  param_free_argv (&param, i);
+	  param_free (&param);
 	  return 1;
 	}
     }
@@ -2222,6 +2251,7 @@ run_command (struct command *cmd, struct gdbmarglist *arglist)
       if (!interactive ())
 	{
 	  terror (_("%s: not enough arguments"), cmd->name);
+	  param_free (&param);
 	  return 1;
 	}
       printf ("%s? ", argname);
@@ -2233,18 +2263,12 @@ run_command (struct command *cmd, struct gdbmarglist *arglist)
 	}
 
       trimnl (argbuf);
-      if (i >= argmax)
-	{
-	  argmax += ARGINC;
-	  param.argv = erealloc (param.argv,
-				 sizeof (param.argv[0]) * argmax);
-	}
-
+      
       t = gdbmarg_string (estrdup (argbuf), &yylloc);
-      if ((param.argv[i] = coerce (t, &cmd->args[i])) == NULL)
+      if (param_push_arg (&param, t, &cmd->args[i]))
 	{
+	  param_free (&param);
 	  gdbmarg_free (t);
-	  param_free_argv (&param, i);
 	  return 1;
 	}
     }
@@ -2252,17 +2276,12 @@ run_command (struct command *cmd, struct gdbmarglist *arglist)
   if (arg && !cmd->variadic)
     {
       terror (_("%s: too many arguments"), cmd->name);
+      param_free (&param);
       return 1;
     }
 
   /* Prepare for calling the handler */
-  param.argc = i;
-  if (!param.argv)
-    {
-      argmax = ARGINC;
-      param.argv = ecalloc (argmax, sizeof (param.argv[0]));
-    }
-  param.argv[i] = NULL;
+  param_term (&param);
   param.vararg = arg;
   param.fp = NULL;
   param.data = NULL;
@@ -2298,8 +2317,8 @@ run_command (struct command *cmd, struct gdbmarglist *arglist)
 	pclose (pagfp);
     }
 
-  param_free_argv (&param, param.argc);
-
+  param_free (&param);
+  
   last_cmd = cmd;
   if (arglist->head != last_args.head)
     {
@@ -2391,7 +2410,6 @@ main (int argc, char *argv[])
   variable_set ("open", VART_STRING, "wrcreat");
   variable_set ("pager", VART_STRING, getenv ("PAGER"));
   
-  input_init ();
   lex_trace (0);
   
   for (opt = parseopt_first (argc, argv, optab);
@@ -2504,15 +2522,14 @@ main (int argc, char *argv[])
 
   signal (SIGPIPE, SIG_IGN);
 
-  memset (&param, 0, sizeof (param));
-  argmax = 0;
-
   if (!norc)
     source_rcfile ();
 
   if (!input)
     input = instream_stdin_create ();
   
+  input_init ();
+
   /* Welcome message. */
   if (instream_interactive (input) && !variable_is_true ("quiet"))
     printf (_("\nWelcome to the gdbm tool.  Type ? for help.\n\n"));
@@ -2520,7 +2537,8 @@ main (int argc, char *argv[])
   if (input_context_push (input))
     exit (EXIT_FATAL);
   res = yyparse ();
-  closedb ();
+  yylex_destroy ();
   input_done ();
+  closedb ();
   return res;
 }

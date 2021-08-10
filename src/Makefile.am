@@ -100,6 +100,7 @@ gdbmtool_SOURCES = \
  gram.y\
  input-argv.c\
  input-file.c\
+ input-null.c\
  lex.l\
  gdbmtool.h\
  gdbmtool.c\
