@@ -33,7 +33,7 @@ instream_argv_read (instream_t istr, char *buf, size_t size)
 {
   size_t total = 0;
   struct instream_argv *i = (struct instream_argv*)istr;
-  char const specials[] = " \"\t\n[]{},=";
+  char const specials[] = " \"\t\n[]{},";
   char const escapable[] = "\\\"";
   
   while (total < size)
