@@ -174,15 +174,16 @@ _gdbm_finish_transfer (GDBM_FILE dbf, GDBM_FILE new_dbf,
 
   dbf->file_size = -1;
   
+  dbf->mapped_size_max   = new_dbf->mapped_size_max;    
+  dbf->mapped_region	 = new_dbf->mapped_region;      
+  dbf->mapped_size	 = new_dbf->mapped_size;        
+  dbf->mapped_pos	 = new_dbf->mapped_pos;         
+  dbf->mapped_off	 = new_dbf->mapped_off;         
+  dbf->mmap_preread      = new_dbf->mmap_preread;        
+    
   free (new_dbf->name);
   free (new_dbf);
    
- #if HAVE_MMAP
-  /* Re-initialize mapping if required */
-  if (dbf->memory_mapping)
-    _gdbm_mapped_init (dbf);
- #endif
-
   /* Make sure the new database is all on disk. */
   gdbm_file_sync (dbf);
   
