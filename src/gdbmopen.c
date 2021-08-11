@@ -290,6 +290,7 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
     {
       if (flags & GDBM_CLOERROR)
 	close (fd);
+      _gdbm_cache_free (dbf);
       free (dbf);
       GDBM_SET_ERRNO2 (NULL, GDBM_MALLOC_ERROR, FALSE, GDBM_DEBUG_OPEN);
       return NULL;
@@ -326,10 +327,9 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
   /* Zero-length file can't be a reader... */
   if (((flags & GDBM_OPENMASK) == GDBM_READER) && (file_stat.st_size == 0))
     {
-      if (flags & GDBM_CLOERROR)
-	close (dbf->desc);
-      free (dbf->name);
-      free (dbf);
+      if (!(flags & GDBM_CLOERROR))
+	dbf->desc = -1;
+      gdbm_close (dbf);
       GDBM_SET_ERRNO2 (NULL, GDBM_EMPTY_DATABASE, FALSE, GDBM_DEBUG_OPEN);
       return NULL;
     }
@@ -342,10 +342,9 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
     {
       if (_gdbm_lock_file (dbf) == -1)
 	{
-	  if (flags & GDBM_CLOERROR)
-	    close (dbf->desc);
-	  free (dbf->name);
-	  free (dbf);
+	  if (!(flags & GDBM_CLOERROR))
+	    dbf->desc = -1;
+	  SAVE_ERRNO (gdbm_close (dbf));
           GDBM_SET_ERRNO2 (NULL,
 			   (flags & GDBM_OPENMASK) == GDBM_READER
 			     ? GDBM_CANT_BE_READER : GDBM_CANT_BE_WRITER,
@@ -371,10 +370,9 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
 
       if (gdbm_last_errno (dbf))
 	{
-	  if (flags & GDBM_CLOERROR)
-	    close (dbf->desc);
-	  free (dbf->name);
-	  free (dbf);
+	  if (!(flags & GDBM_CLOERROR))
+	    dbf->desc = -1;
+	  SAVE_ERRNO (gdbm_close (dbf));
 	  return NULL;
 	}
     }
@@ -594,6 +592,7 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
 	{
 	  if (!(flags & GDBM_CLOERROR))
 	    dbf->desc = -1;
+	  gdbm_close (dbf);
 	  GDBM_SET_ERRNO2 (NULL, GDBM_BAD_HEADER, FALSE, GDBM_DEBUG_OPEN);
 	  return NULL;
 	}
