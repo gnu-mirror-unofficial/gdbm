@@ -72,7 +72,8 @@ vgetyn (const char *prompt, va_list ap)
 {
   int state = 0;
   int c, resp;
-
+  va_list aq;
+  
   do
     {
       switch (state)
@@ -104,7 +105,9 @@ vgetyn (const char *prompt, va_list ap)
 	    break;
 	  
 	case 0:
-	  vfprintf (stdout, prompt, ap);
+	  va_copy (aq, ap);
+	  vfprintf (stdout, prompt, aq);
+	  va_end (aq);
 	  fprintf (stdout, " [y/n]?");
 	  fflush (stdout);
 	  state = 1;

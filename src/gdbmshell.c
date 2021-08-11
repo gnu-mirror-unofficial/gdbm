@@ -39,6 +39,12 @@ static GDBM_FILE gdbm_file = NULL;   /* Database to operate upon */
 static datum key_data;               /* Current key */
 static datum return_data;            /* Current data */
 
+static void
+datum_free (datum *dp)
+{
+  free (dp->dptr);
+  dp->dptr = NULL;
+}
 
 static void
 closedb (void)
@@ -52,13 +58,8 @@ closedb (void)
       file_descr = -1;
     }
 
-  free (key_data.dptr);
-  key_data.dptr = NULL;
-  key_data.dsize = 0;
-  
-  free (return_data.dptr);
-  return_data.dptr = NULL;
-  return_data.dsize = 0;
+  datum_free (&key_data);
+  datum_free (&return_data);
 }
 
 static int
@@ -441,7 +442,7 @@ fetch_handler (struct command_param *param, struct command_environ *cenv)
     {
       datum_format (cenv->fp, &return_data, dsdef[DS_CONTENT]);
       fputc ('\n', cenv->fp);
-      free (return_data.dptr);
+      datum_free (&return_data);
     }
   else if (gdbm_errno == GDBM_ITEM_NOT_FOUND)
     terror ("%s", _("No such item found."));
@@ -465,8 +466,7 @@ store_handler (struct command_param *param,
 static void
 firstkey_handler (struct command_param *param, struct command_environ *cenv)
 {
-  if (key_data.dptr != NULL)
-    free (key_data.dptr);
+  datum_free (&key_data);
   key_data = gdbm_firstkey (gdbm_file);
   if (key_data.dptr != NULL)
     {
@@ -477,7 +477,7 @@ firstkey_handler (struct command_param *param, struct command_environ *cenv)
       datum_format (cenv->fp, &return_data, dsdef[DS_CONTENT]);
       fputc ('\n', cenv->fp);
 
-      free (return_data.dptr);
+      datum_free (&return_data);
     }
   else if (gdbm_errno == GDBM_ITEM_NOT_FOUND)
     fprintf (cenv->fp, _("No such item found.\n"));
@@ -491,8 +491,7 @@ nextkey_handler (struct command_param *param, struct command_environ *cenv)
 {
   if (param->argc == 1)
     {
-      if (key_data.dptr != NULL)
-	free (key_data.dptr);
+      datum_free (&key_data);
       key_data.dptr = emalloc (PARAM_DATUM (param, 0).dsize);
       key_data.dsize = PARAM_DATUM (param, 0).dsize;
       memcpy (key_data.dptr, PARAM_DATUM (param, 0).dptr, key_data.dsize);
@@ -500,7 +499,7 @@ nextkey_handler (struct command_param *param, struct command_environ *cenv)
   return_data = gdbm_nextkey (gdbm_file, key_data);
   if (return_data.dptr != NULL)
     {
-      free (key_data.dptr);
+      datum_free (&key_data);
       key_data = return_data;
       datum_format (cenv->fp, &key_data, dsdef[DS_KEY]);
       fputc ('\n', cenv->fp);
@@ -509,13 +508,12 @@ nextkey_handler (struct command_param *param, struct command_environ *cenv)
       datum_format (cenv->fp, &return_data, dsdef[DS_CONTENT]);
       fputc ('\n', cenv->fp);
 
-      free (return_data.dptr);
+      datum_free (&return_data);
     }
   else if (gdbm_errno == GDBM_ITEM_NOT_FOUND)
     {
       terror ("%s", _("No such item found."));
-      free (key_data.dptr);
-      key_data.dptr = NULL;
+      datum_free (&key_data);
     }
   else
     terror (_("Can't find key: %s"), gdbm_strerror (gdbm_errno));
@@ -2376,6 +2374,9 @@ gdbmshell_run (int (*init) (void *, instream_t *), void *data)
   variable_set ("open", VART_STRING, "wrcreat");
   variable_set ("pager", VART_STRING, getenv ("PAGER"));
 
+  last_cmd = NULL;
+  gdbmarglist_init (&last_args, NULL);
+  
   lex_trace (0);
 
   rc = init (data, &instream);
@@ -2403,6 +2404,8 @@ gdbmshell_run (int (*init) (void *, instream_t *), void *data)
       else
 	instream_close (instream);
     }
+
+  gdbmarglist_free (&last_args);
 
   for (i = 0; i < DS_MAX; i++)
     {
