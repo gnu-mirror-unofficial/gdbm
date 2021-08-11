@@ -108,7 +108,7 @@ opendb (char *dbname, int fd)
     abort ();
 
   if (fd > 0)
-    db = gdbm_fd_open (fd, dbname, block_size, open_mode | flags, NULL);
+    db = gdbm_fd_open (fd, dbname, block_size, open_mode | flags | GDBM_CLOERROR, NULL);
   else
     db = gdbm_open (dbname, block_size, open_mode | flags, filemode, NULL);
 
