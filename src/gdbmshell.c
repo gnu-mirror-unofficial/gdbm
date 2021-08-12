@@ -67,6 +67,7 @@ closedb (void)
 
   datum_free (&key_data);
   datum_free (&return_data);
+  variable_unset ("fd");
 }
 
 static int

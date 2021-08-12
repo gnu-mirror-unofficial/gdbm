@@ -3487,25 +3487,43 @@ See also @code{first}, above.
 @end deffn
 
 @deffn {command verb} open @var{filename}
-Open the database file @var{filename}.  If successful, any previously
-open database is closed.  Otherwise, if the operation fails, the
-currently opened database remains unchanged.
+@deffnx {command verb} open
+Open the database file @var{filename}.  If used without arguments, the
+database name is taken from the variable @code{filename}.
+
+If successful, any previously open database is closed and the
+@code{filename} variable is updated.  Otherwise, if the operation
+fails, the currently opened database remains unchanged.
 
 This command takes additional information from the following
 variables:
 
-@table @samp
+@table @code
+@item filename
+Name of the database to open, if no argument is given.
+
+@item fd
+File descriptor to use.  If set, this must be an open file descriptor
+referring to a valid database file.  The database will be opened using
+@code{gdbm_fd_open} (@pxref{gdbm_fd_open}).  The file descriptor will
+be closed upon closing the database.
+
+@item filemode
+Specifies the permissions to use in case a new file is created.
+
 @item open
 The database access mode.  @xref{openvar,, The @var{open} variable},
 for a list of its values.
+
 @item lock
 Whether or not to lock the database.  Default is @code{on}.
+
 @item mmap
 Use the memory mapping.  Default is @code{on}.
+
 @item sync
 Synchronize after each write.  Default is @code{off}.
-@item filemode
-Specifies the permissions to use in case a new file is created.
+
 @end table
 
 @xref{open parameters}, for a detailed description of these variables.

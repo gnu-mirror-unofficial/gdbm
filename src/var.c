@@ -567,6 +567,8 @@ open_typeconv (struct variable *var, int type, void **retptr)
 static int
 format_sethook (struct variable *var, union value *v)
 {
+  if (!v)
+    return VAR_OK;
   return _gdbm_str2fmt (v->string) == -1 ? VAR_ERR_BADVALUE : VAR_OK;
 }
 
@@ -584,6 +586,8 @@ format_typeconv (struct variable *var, int type, void **retptr)
 static int
 fd_sethook (struct variable *var, union value *v)
 {
+  if (!v)
+    return VAR_OK;
   if (v->num < 0)
     return VAR_ERR_BADVALUE;
   return VAR_OK;
@@ -592,6 +596,8 @@ fd_sethook (struct variable *var, union value *v)
 static int
 cachesize_sethook (struct variable *var, union value *v)
 {
+  if (!v)
+    return VAR_OK;
   if (v->num < 0)
     return VAR_ERR_BADVALUE;
   return gdbmshell_setopt ("GDBM_SETCACHESIZE", GDBM_SETCACHESIZE, v->num) == 0
@@ -601,6 +607,8 @@ cachesize_sethook (struct variable *var, union value *v)
 static int
 centfree_sethook (struct variable *var, union value *v)
 {
+  if (!v)
+    return VAR_OK;
   return gdbmshell_setopt ("GDBM_SETCENTFREE", GDBM_SETCENTFREE, v->bool) == 0
          ? VAR_OK : VAR_ERR_BADVALUE;
 }
@@ -608,6 +616,8 @@ centfree_sethook (struct variable *var, union value *v)
 static int
 coalesce_sethook (struct variable *var, union value *v)
 {
+  if (!v)
+    return VAR_OK;
   return gdbmshell_setopt ("GDBM_SETCOALESCEBLKS", GDBM_SETCOALESCEBLKS, v->bool) == 0
          ? VAR_OK : VAR_ERR_BADVALUE;
 }
