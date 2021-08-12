@@ -47,6 +47,9 @@ static int open_typeconv (struct variable *var, int type, void **retptr);
 static int format_sethook (struct variable *, union value *);
 static int format_typeconv (struct variable *var, int type, void **retptr);
 static int fd_sethook (struct variable *, union value *);
+static int centfree_sethook (struct variable *var, union value *v);
+static int coalesce_sethook (struct variable *var, union value *v);
+static int cachesize_sethook (struct variable *var, union value *v);
 
 static struct variable vartab[] = {
   /* Top-level prompt */
@@ -86,7 +89,8 @@ static struct variable vartab[] = {
   {
     .name = "cachesize",
     .type = VART_INT,
-    .flags = VARF_DFL
+    .flags = VARF_DFL,
+    .sethook = cachesize_sethook
   },
   {
     .name = "blocksize",
@@ -122,13 +126,15 @@ static struct variable vartab[] = {
     .name = "coalesce",
     .type = VART_BOOL,
     .flags = VARF_INIT,
-    .init = { .bool = 0 }
+    .init = { .bool = 0 },
+    .sethook = coalesce_sethook
   },
   {
     .name = "centfree",
     .type = VART_BOOL,
     .flags = VARF_INIT,
-    .init = { .bool = 0 }
+    .init = { .bool = 0 },
+    .sethook = centfree_sethook
   },
   {
     .name = "filemode",
@@ -486,7 +492,7 @@ variables_init (void)
 
   for (vp = vartab; vp->name; vp++)
     {
-      if (vp->flags & VARF_INIT)
+      if (!(vp->flags & VARF_SET) && (vp->flags & VARF_INIT))
 	{
 	  if (vp->type == VART_STRING)
 	    variable_set (vp->name, vp->type, vp->init.string);
@@ -583,6 +589,26 @@ fd_sethook (struct variable *var, union value *v)
   return VAR_OK;
 }
 
-  
+static int
+cachesize_sethook (struct variable *var, union value *v)
+{
+  if (v->num < 0)
+    return VAR_ERR_BADVALUE;
+  return gdbmshell_setopt ("GDBM_SETCACHESIZE", GDBM_SETCACHESIZE, v->num) == 0
+         ? VAR_OK : VAR_ERR_BADVALUE;
+}
 
+static int
+centfree_sethook (struct variable *var, union value *v)
+{
+  return gdbmshell_setopt ("GDBM_SETCENTFREE", GDBM_SETCENTFREE, v->bool) == 0
+         ? VAR_OK : VAR_ERR_BADVALUE;
+}
+
+static int
+coalesce_sethook (struct variable *var, union value *v)
+{
+  return gdbmshell_setopt ("GDBM_SETCOALESCEBLKS", GDBM_SETCOALESCEBLKS, v->bool) == 0
+         ? VAR_OK : VAR_ERR_BADVALUE;
+}
     

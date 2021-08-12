@@ -41,6 +41,21 @@ datum_free (datum *dp)
   dp->dptr = NULL;
 }
 
+
+int
+gdbmshell_setopt (char *name, int opt, int val)
+{
+  if (gdbm_file)
+    {
+      if (gdbm_setopt (gdbm_file, opt, &val, sizeof (val)) == -1)
+	{
+	  terror (_("%s failed: %s"), name, gdbm_strerror (gdbm_errno));
+	  return 1;
+	}
+    }
+  return 0;
+}
+
 static void
 closedb (void)
 {
@@ -131,15 +146,11 @@ opendb (char *dbname, int fd)
 
   if (variable_is_true ("coalesce"))
     {
-      int t = 1;
-      if (gdbm_setopt (db, GDBM_SETCOALESCEBLKS, &t, sizeof (t)) == -1)
-	terror (_("gdbm_setopt failed: %s"), gdbm_strerror (gdbm_errno));
+      gdbmshell_setopt ("GDBM_SETCOALESCEBLKS", GDBM_SETCOALESCEBLKS, 1);
     }
   if (variable_is_true ("centfree"))
     {
-      int t = 1;
-      if (gdbm_setopt (db, GDBM_SETCENTFREE, &t, sizeof (t)) == -1)
-	terror (_("gdbm_setopt failed: %s"), gdbm_strerror (gdbm_errno));
+      gdbmshell_setopt ("GDBM_SETCENTFREE", GDBM_SETCENTFREE, 1);
     }
   
   if (gdbm_file)

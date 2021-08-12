@@ -372,6 +372,8 @@ int getnum (int *pnum, char *arg, char **endp);
 int gdbmshell (instream_t input);
 int gdbmshell_run (int (*init) (void *, instream_t *), void *data);
 
+int gdbmshell_setopt (char *name, int opt, int val);
+
 void variables_init (void);
 void variables_free (void);
 
