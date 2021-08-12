@@ -136,8 +136,7 @@ gdbmtool_init (void *data, instream_t *pinstr)
     switch (opt)
       {
       case 'd':
-	file_descr = atoi (optarg);
-	if (file_descr <= 0)
+	if (variable_set ("fd", VART_STRING, optarg) != VAR_OK)
 	  {
 	    terror (_("invalid file descriptor: %s"), optarg);
 	    exit (EXIT_USAGE);
@@ -182,9 +181,9 @@ gdbmtool_init (void *data, instream_t *pinstr)
       case 'b':
 	variable_set ("blocksize", VART_STRING, optarg);
 	break;
-	
+
       case 'g':
-	file_name = estrdup (optarg);
+	variable_set ("filename", VART_STRING, optarg);
 	break;
 
       case 'q':
@@ -222,7 +221,7 @@ gdbmtool_init (void *data, instream_t *pinstr)
   
   if (argc >= 1)
     {
-      file_name = estrdup (argv[0]);
+      variable_set ("filename", VART_STRING, argv[0]);
       argc--;
       argv++;
       if (argc)

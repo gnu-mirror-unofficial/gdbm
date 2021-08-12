@@ -1,6 +1,6 @@
 gdbmtool_start
 gdbmtool_test "status" \
-    "No database name" \
+    "Database file: junk.gdbm" \
     "Database is not open" \
     "define key string" \
     "define content string"

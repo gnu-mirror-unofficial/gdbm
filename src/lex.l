@@ -503,7 +503,9 @@ lerror (struct locus *loc, const char *fmt, ...)
 static struct slist *
 pe_file_name (void)
 {
-  return file_name ? slist_new (file_name) : NULL;
+  char *name = NULL;
+  variable_get ("filename", VART_STRING, (void**) &name);
+  return name ? slist_new (name) : NULL;
 }
 
 static struct slist *

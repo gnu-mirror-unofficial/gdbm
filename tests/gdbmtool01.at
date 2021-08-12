@@ -28,7 +28,7 @@ quit
 gdbmtool < input | sed 's/^GDBM version.*/GDBM version/'
 ],
 [0],
-[No database name
+[Database file: junk.gdbm
 Database is not open
 define key string
 define content string

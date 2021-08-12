@@ -30,11 +30,6 @@
 # include <locale.h>
 #endif
 
-char *file_name = NULL;       /* Database file name */
-int file_descr = -1;          /* Database file descriptor */
-int open_mode;                /* Default open mode */
-int open_format;              /* Default format for the open command */
-
 static GDBM_FILE gdbm_file = NULL;   /* Database to operate upon */
 static datum key_data;               /* Current key */
 static datum return_data;            /* Current data */
@@ -53,9 +48,6 @@ closedb (void)
     {
       gdbm_close (gdbm_file);
       gdbm_file = NULL;
-      free (file_name);
-      file_name = NULL;
-      file_descr = -1;
     }
 
   datum_free (&key_data);
@@ -67,9 +59,10 @@ opendb (char *dbname, int fd)
 {
   int cache_size = 0;
   int block_size = 0;
-  int flags = open_format;
+  int flags;
   int filemode;
   GDBM_FILE db;
+  int n;
   
   switch (variable_get ("cachesize", VART_INT, (void**) &cache_size))
     {
@@ -88,14 +81,10 @@ opendb (char *dbname, int fd)
       abort ();
     }
   
-  if (!variable_is_true ("lock"))
-    flags |= GDBM_NOLOCK;
-  if (!variable_is_true ("mmap"))
-    flags |= GDBM_NOMMAP;
-  if (variable_is_true ("sync"))
-    flags |= GDBM_SYNC;
+  if (variable_get ("open", VART_INT, (void**) &flags) != VAR_OK)
+    abort ();
   
-  if (open_mode == GDBM_NEWDB)
+  if (flags == GDBM_NEWDB)
     {
       if (interactive () && variable_is_true ("confirm") &&
 	  access (dbname, F_OK) == 0)
@@ -104,14 +93,30 @@ opendb (char *dbname, int fd)
 	    return 1;
 	}
     }
+
+  if (variable_get ("format", VART_INT, (void**) &n) != VAR_OK)
+    abort ();
+
+  flags |= n;
+  
+  if (!variable_is_true ("lock"))
+    flags |= GDBM_NOLOCK;
+  if (!variable_is_true ("mmap"))
+    flags |= GDBM_NOMMAP;
+  if (variable_is_true ("sync"))
+    flags |= GDBM_SYNC;
   
   if (variable_get ("filemode", VART_INT, (void**) &filemode))
     abort ();
 
   if (fd > 0)
-    db = gdbm_fd_open (fd, dbname, block_size, open_mode | flags | GDBM_CLOERROR, NULL);
+    db = gdbm_fd_open (fd, dbname, block_size, flags | GDBM_CLOERROR, NULL);
   else
-    db = gdbm_open (dbname, block_size, open_mode | flags, filemode, NULL);
+    {
+      char *name = tildexpand (dbname);
+      db = gdbm_open (name, block_size, flags, filemode, NULL);
+      free (name);
+    }
 
   if (db == NULL)
     {
@@ -149,12 +154,11 @@ checkdb (void)
 {
   if (!gdbm_file)
     {
-      if (!file_name)
-	{
-	  file_name = estrdup (GDBMTOOL_DEFFILE);
-	  terror (_("warning: using default database file %s"),	file_name);
-	}
-      return opendb (file_name, file_descr);
+      char *filename;
+      int fd = -1;
+      variable_get ("filename", VART_STRING, (void**) &filename);
+      variable_get ("fd", VART_INT, (void**) &fd);
+      return opendb (filename, fd);
     }
   return 0;
 }
@@ -357,12 +361,27 @@ static void
 open_handler (struct command_param *param,
 	      struct command_environ *cenv GDBM_ARG_UNUSED)
 {
-  char *name = tildexpand (PARAM_STRING (param, 0));
+  char *filename;
+  int fd = -1;
+
   closedb ();
-  if (opendb (name, -1) == 0)
-    file_name = name;
+
+  if (param->argc == 1)
+    filename = PARAM_STRING (param, 0);
   else
-    free (name);
+    {
+      variable_get ("filename", VART_STRING, (void**) &filename);
+      variable_get ("fd", VART_INT, (void**) &fd);
+    }
+  
+  if (opendb (filename, fd) == 0)
+    {
+      variable_set ("filename", VART_STRING, filename);
+      if (fd >= 0)
+	variable_set ("fd", VART_INT, &fd);
+      else
+	variable_unset ("fd");
+    }
 }
 
 /* Close database */
@@ -1270,7 +1289,8 @@ import_handler (struct command_param *param,
   int meta_mask = 0;
   int i;
   int rc;
-
+  char *file_name;
+  
   for (i = 0; i < param->argc; i++)
     {
       if (strcmp (PARAM_STRING (param, i), "replace") == 0)
@@ -1289,12 +1309,16 @@ import_handler (struct command_param *param,
 		   meta_mask, &err_line);
   if (rc && gdbm_errno == GDBM_NO_DBNAME)
     {
-      int t = open_mode;
+      char *save_mode;
 
-      open_mode = GDBM_NEWDB;
+      variable_get ("open", VART_STRING, (void**) &save_mode);
+      save_mode = estrdup (save_mode);
+      variable_set ("open", VART_STRING, "newdb");
+
       rc = checkdb ();
-      open_mode = t;
-
+      variable_set ("open", VART_STRING, save_mode);
+      free (save_mode);
+      
       if (rc)
 	 return;
 
@@ -1325,6 +1349,11 @@ import_handler (struct command_param *param,
   free (file_name);
   if (gdbm_setopt (gdbm_file, GDBM_GETDBNAME, &file_name, sizeof (file_name)))
     terror (_("gdbm_setopt failed: %s"), gdbm_strerror (gdbm_errno));
+  else
+    {
+      variable_set ("filename", VART_STRING, file_name);
+      variable_unset ("fd");
+    }
 }
 
 /* status - print current program status */
@@ -1332,10 +1361,10 @@ static void
 status_handler (struct command_param *param GDBM_ARG_UNUSED,
 		struct command_environ *cenv)
 {
-  if (file_name)
-    fprintf (cenv->fp, _("Database file: %s\n"), file_name);
-  else
-    fprintf (cenv->fp, "%s\n", _("No database name"));
+  char *file_name;
+
+  variable_get ("filename", VART_STRING, (void**) &file_name);
+  fprintf (cenv->fp, _("Database file: %s\n"), file_name);
   if (gdbm_file)
     fprintf (cenv->fp, "%s\n", _("Database is open"));
   else
@@ -1723,7 +1752,7 @@ static struct command command_tab[] = {
     N_("close the database") },
   { S(open), T_CMD,
     NULL, open_handler, NULL,
-    { { "FILE", GDBM_ARG_STRING }, { NULL } },
+    { { "[FILE]", GDBM_ARG_STRING }, { NULL } },
     FALSE,
     REPEAT_NEVER,
     N_("open new database") },

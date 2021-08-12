@@ -38,75 +38,136 @@ struct variable
   int flags;
   union value init;
   union value v;
-  int (*hook) (struct variable *, union value *);
+  int (*sethook) (struct variable *, union value *);
+  int (*typeconv) (struct variable *, int, void **);
 };
 
-static int open_hook (struct variable *, union value *);
-static int format_hook (struct variable *, union value *);
+static int open_sethook (struct variable *, union value *);
+static int open_typeconv (struct variable *var, int type, void **retptr);
+static int format_sethook (struct variable *, union value *);
+static int format_typeconv (struct variable *var, int type, void **retptr);
+static int fd_sethook (struct variable *, union value *);
 
 static struct variable vartab[] = {
   /* Top-level prompt */
-  { "ps1", VART_STRING, VARF_INIT, { .string = "%p>%_" } },
+  {
+    .name = "ps1",
+    .type = VART_STRING,
+    .flags = VARF_INIT,
+    .init = { .string = "%p>%_" }
+  },
   /* Second-level prompt (used within "def" block) */
-  { "ps2", VART_STRING, VARF_INIT, { .string = "%_>%_" } },
+  {
+    .name = "ps2",
+    .type = VART_STRING,
+    .flags = VARF_INIT,
+    .init = { .string = "%_>%_" }
+  },
   /* This delimits array members */
-  { "delim1", VART_STRING, VARF_INIT|VARF_PROT, { .string = "," } },
+  {
+    .name = "delim1",
+    .type = VART_STRING,
+    .flags = VARF_INIT|VARF_PROT,
+    .init = { .string = "," }
+  },
   /* This delimits structure members */
-  { "delim2", VART_STRING, VARF_INIT|VARF_PROT, { .string = "," } },
-  { "confirm", VART_BOOL, VARF_INIT, { .bool = 1 } },
-  { "cachesize", VART_INT, VARF_DFL },
-  { "blocksize", VART_INT, VARF_DFL },
-  { "open", VART_STRING, VARF_DFL, { NULL }, { NULL }, open_hook },
-  { "lock", VART_BOOL, VARF_INIT, { .bool = 1 } },
-  { "mmap", VART_BOOL, VARF_INIT, { .bool = 1 } },
-  { "sync", VART_BOOL, VARF_INIT, { .bool = 0 } },
-  { "coalesce", VART_BOOL, VARF_INIT, { .bool = 0 } },
-  { "centfree", VART_BOOL, VARF_INIT, { .bool = 0 } },
-  { "filemode", VART_INT, VARF_INIT|VARF_OCTAL|VARF_PROT, { .num = 0644 } },
-  { "format", VART_STRING, VARF_INIT, { .string = "standard" }, { NULL }, format_hook },
-  { "pager", VART_STRING, VARF_DFL },
-  { "quiet", VART_BOOL, VARF_DFL },
+  {
+    .name = "delim2",
+    .type = VART_STRING,
+    .flags = VARF_INIT|VARF_PROT,
+    .init = { .string = "," }
+  },
+  {
+    .name = "confirm",
+    .type = VART_BOOL,
+    .flags = VARF_INIT,
+    .init = { .bool = 1 }
+  },
+  {
+    .name = "cachesize",
+    .type = VART_INT,
+    .flags = VARF_DFL
+  },
+  {
+    .name = "blocksize",
+    .type = VART_INT,
+    .flags = VARF_DFL
+  },
+  {
+    .name = "open",
+    .type = VART_STRING,
+    .flags = VARF_DFL,
+    .sethook = open_sethook,
+    .typeconv = open_typeconv
+  },
+  {
+    .name = "lock",
+    .type = VART_BOOL,
+    .flags = VARF_INIT,
+    .init = { .bool = 1 }
+  },
+  {
+    .name = "mmap",
+    .type = VART_BOOL,
+    .flags = VARF_INIT,
+    .init = { .bool = 1 }
+  },
+  {
+    .name = "sync",
+    .type = VART_BOOL,
+    .flags = VARF_INIT,
+    .init = { .bool = 0 }
+  },
+  {
+    .name = "coalesce",
+    .type = VART_BOOL,
+    .flags = VARF_INIT,
+    .init = { .bool = 0 }
+  },
+  {
+    .name = "centfree",
+    .type = VART_BOOL,
+    .flags = VARF_INIT,
+    .init = { .bool = 0 }
+  },
+  {
+    .name = "filemode",
+    .type = VART_INT,
+    .flags = VARF_INIT|VARF_OCTAL|VARF_PROT,
+    .init = { .num = 0644 }
+  },
+  {
+    .name = "format",
+    .type = VART_STRING,
+    .flags = VARF_INIT,
+    .init = { .string = "standard" },
+    .sethook = format_sethook,
+    .typeconv = format_typeconv
+  },
+  {
+    .name = "pager",
+    .type = VART_STRING,
+    .flags = VARF_DFL
+  },
+  {
+    .name = "quiet",
+    .type = VART_BOOL,
+    .flags = VARF_DFL
+  },
+  {
+    .name = "filename",
+    .type = VART_STRING,
+    .flags = VARF_INIT|VARF_PROT,
+    { .string = GDBMTOOL_DEFFILE }
+  },
+  {
+    .name = "fd",
+    .type = VART_INT,
+    .flags = VARF_DFL,
+    .sethook = fd_sethook
+  },
   { NULL }
 };
-
-static int
-open_hook (struct variable *var, union value *v)
-{
-  static struct {
-    char *s;
-    int t;
-  } trans[] = {
-    { "newdb", GDBM_NEWDB },
-    { "wrcreat", GDBM_WRCREAT },
-    { "rw", GDBM_WRCREAT },
-    { "reader", GDBM_READER },
-    { "readonly", GDBM_READER },
-    { NULL }
-  };
-  int i;
-
-  if (!v)
-    return VAR_ERR_BADVALUE;
-  
-  for (i = 0; trans[i].s; i++)
-    if (strcmp (trans[i].s, v->string) == 0)
-      {
-	open_mode = trans[i].t;
-	return VAR_OK;
-      }
-
-  return VAR_ERR_BADVALUE;
-}
-
-static int
-format_hook (struct variable *var, union value *v)
-{
-  int n = _gdbm_str2fmt (v->string);
-  if (n == -1)
-    return VAR_ERR_BADVALUE;
-  open_format = n;
-  return VAR_OK;
-}
 
 static struct variable *
 varfind (const char *name)
@@ -248,7 +309,7 @@ variable_set (const char *name, int type, void *val)
       valp = NULL;
     }
   
-  if (vp->hook && (rc = vp->hook (vp, valp)) != VAR_OK)
+  if (vp->sethook && (rc = vp->sethook (vp, valp)) != VAR_OK)
     return rc;
 
   if (vp->type == VART_STRING && (vp->flags & VARF_SET))
@@ -278,7 +339,7 @@ variable_unset (const char *name)
   if (vp->flags & VARF_PROT)
     return VAR_ERR_BADVALUE;
 
-  if (vp->hook && (rc = vp->hook (vp, NULL)) != VAR_OK)
+  if (vp->sethook && (rc = vp->sethook (vp, NULL)) != VAR_OK)
     return rc;
 
   vp->flags &= ~VARF_SET;
@@ -294,12 +355,19 @@ variable_get (const char *name, int type, void **val)
   if (!vp)
     return VAR_ERR_NOTDEF;
   
-  if (type != vp->type)
-    return VAR_ERR_BADTYPE;
-
   if (!VAR_IS_SET (vp))
     return VAR_ERR_NOTSET;
-  
+
+  if (type != vp->type)
+    {
+      if (vp->typeconv)
+	{
+	  return vp->typeconv (vp, type, val);
+	}
+      else
+	return VAR_ERR_BADTYPE;
+    }
+      
   switch (vp->type)
     {
     case VART_STRING:
@@ -427,5 +495,94 @@ variables_init (void)
 	}
     }
 }
+
+struct kwtrans
+{
+  char *s;
+  int t;
+};
+
+static int
+string_to_int (char const *s, struct kwtrans *t)
+{
+  int i;
+
+  for (i = 0; t[i].s; i++)
+    if (strcmp (t[i].s, s) == 0)
+      return t[i].t;
+  return -1;
+}
+
+#if 0
+static char const *
+int_to_string (int n, struct kwtrans *t)
+{
+  int i;
+
+  for (i = 0; t[i].s; i++)
+    if (t[i].t == n)
+      return t[i].s;
+  return NULL;
+}
+#endif
+
+static struct kwtrans db_open_flags[] = {
+    { "newdb", GDBM_NEWDB },
+    { "wrcreat", GDBM_WRCREAT },
+    { "rw", GDBM_WRCREAT },
+    { "reader", GDBM_READER },
+    { "readonly", GDBM_READER },
+    { NULL }
+};
+
+static int
+open_sethook (struct variable *var, union value *v)
+{
+  int n;
+  if (!v)
+    return VAR_ERR_BADVALUE;
+  n = string_to_int (v->string, db_open_flags);
+  if (n == -1)
+    return VAR_ERR_BADVALUE;
+  return VAR_OK;
+}
+
+static int
+open_typeconv (struct variable *var, int type, void **retptr)
+{
+  if (type == VART_INT)
+    {
+      *(int*) retptr = string_to_int (var->v.string, db_open_flags);
+      return VAR_OK;
+    }
+  return VAR_ERR_BADTYPE;
+}
+
+static int
+format_sethook (struct variable *var, union value *v)
+{
+  return _gdbm_str2fmt (v->string) == -1 ? VAR_ERR_BADVALUE : VAR_OK;
+}
+
+static int
+format_typeconv (struct variable *var, int type, void **retptr)
+{
+  if (type == VART_INT)
+    {
+      *(int*) retptr = _gdbm_str2fmt (var->v.string);
+      return VAR_OK;
+    }
+  return VAR_ERR_BADTYPE;
+}
+
+static int
+fd_sethook (struct variable *var, union value *v)
+{
+  if (v->num < 0)
+    return VAR_ERR_BADVALUE;
+  return VAR_OK;
+}
+
+  
 
     

@@ -107,11 +107,6 @@ void terror (const char *fmt, ...)
 
 char *make_prompt (void);
 
-extern char *file_name;
-extern int file_descr;
-extern int open_mode;
-extern int open_format;
-
 #define GDBMTOOLRC ".gdbmtoolrc"
 #define GDBMTOOL_DEFFILE "junk.gdbm"
 
