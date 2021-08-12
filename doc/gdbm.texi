@@ -3205,7 +3205,34 @@ Sets the block size.  @xref{Open, block_size}.  Unset by default.
 
 @deftypevr {gdbmtool variable} numeric cachesize
 Sets the cache size.  @xref{Options, GDBM_SETCACHESIZE}.
-By default this variable is not set.
+
+This variable affects the currently opened database immediately.  It
+is also used by @command{open} command.
+
+To enable automatic cache size selection, unset this variable.  This
+is the default.
+@end deftypevr
+
+@deftypevr {gdbmtool variable} string filename
+Name of the database file.  If the @code{open} command is called
+without argument (e.g. called implicitly), this variable names the
+database file to open.  If @code{open} is called with file name
+argument, upon successful opening of the database the @code{filename}
+variable is initialized with its file name.
+
+This variable cannot be unset.
+@end deftypevr
+
+@deftypevr {gdbmtool variable} number fd
+File descriptor of the database file to open.  If this variable is
+set, its value must be an open file descriptor referring to a
+@command{GDBM} database file.  The @code{open} command will use
+@code{gdbm_fd_open} function to use this file (@pxref{gdbm_fd_open}).
+When this database is closed, the descriptor will be closed as well
+and the @code{fd} variable will be unset.
+
+See also the @option{-d} (@option{--db-descriptor}) command line
+option in @ref{invocation}.
 @end deftypevr
 
 @anchor{format variable}
@@ -3288,16 +3315,16 @@ effective memory management at the cost of slight increase in
 execution time when calling @code{gdbm_delete}. @xref{Options,
 GDBM_SETCOALESCEBLKS}.
 
-This variable affects the @command{open} command and should be set
-before invoking it.
+This variable affects the currently opened database immediately and
+will be used by @command{open} command, when it is invoked.
 @end deftypevr
 
 @deftypevr {gdbmtool variable} bool centfree
 Set to @code{true}, enables the use of central free block pool in
 newly opened databases. @xref{Options, GDBM_SETCENTFREE}.
 
-This variable affects the @command{open} command and should be set
-before invoking it.
+This variable affects the currently opened database immediately and
+will be used by @command{open} command, when it is invoked.
 @end deftypevr
 
 The following commands are used to list or modify the variables:
@@ -3315,19 +3342,25 @@ For example:
 
 @example
 @group
-ps1="%p>%_"
-ps2="%_>%_"
+# blocksize is unset
+# cachesize is unset
+nocentfree
+nocoalesce
+confirm
 delim1=","
 delim2=","
-confirm
-# cachesize is unset
-# blocksize is unset
-open="wrcreat"
+# fd is unset
+filemode=644
+filename="junk.gdbm"
+format="standard"
 lock
 mmap
-nosync
+open="wrcreat"
 pager="less"
+ps1="%p>%_"
+ps2="%_>%_"
 # quiet is unset
+nosync
 @end group
 @end example
 
@@ -3506,7 +3539,7 @@ Name of the database to open, if no argument is given.
 File descriptor to use.  If set, this must be an open file descriptor
 referring to a valid database file.  The database will be opened using
 @code{gdbm_fd_open} (@pxref{gdbm_fd_open}).  The file descriptor will
-be closed upon closing the database.
+be closed and the variable unset upon closing the database.
 
 @item filemode
 Specifies the permissions to use in case a new file is created.
