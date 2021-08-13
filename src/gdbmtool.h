@@ -104,6 +104,8 @@ void lerror (struct locus *loc, const char *fmt, ...)
 
 void terror (const char *fmt, ...)
 	   GDBM_PRINTFLIKE (1, 2);
+void dberror (char const *fmt, ...)
+	   GDBM_PRINTFLIKE (1, 2);
 
 char *make_prompt (void);
 

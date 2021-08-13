@@ -388,6 +388,26 @@ terror (const char *fmt, ...)
   va_end (ap);
 }
 
+/* gdbmshell-specific version of gdbm_perror */
+void
+dberror (char const *fmt, ...)
+{
+  int ec = errno;
+  va_list ap;
+  
+  if (!interactive ())
+    fprintf (stderr, "%s: ", progname);
+  YY_LOCATION_PRINT (stderr, yylloc);
+  fprintf (stderr, ": ");
+  va_start (ap, fmt);
+  vfprintf (stderr, fmt, ap);
+  va_end (ap);
+  fprintf (stderr, ": %s", gdbm_strerror (gdbm_errno));
+  if (gdbm_check_syserr (gdbm_errno))
+    fprintf (stderr, ": %s", strerror (ec));
+  fputc ('\n', stderr);
+}
+
 int
 yyerror (char const *s)
 {

@@ -49,7 +49,7 @@ gdbmshell_setopt (char *name, int opt, int val)
     {
       if (gdbm_setopt (gdbm_file, opt, &val, sizeof (val)) == -1)
 	{
-	  terror (_("%s failed: %s"), name, gdbm_strerror (gdbm_errno));
+	  dberror (_("%s failed"), name);
 	  return 1;
 	}
     }
@@ -136,14 +136,13 @@ opendb (char *dbname, int fd)
 
   if (db == NULL)
     {
-      terror (_("cannot open database %s: %s"), dbname,
-	      gdbm_strerror (gdbm_errno));
+      dberror (_("cannot open database %s"), dbname);
       return 1;
     }
 
   if (cache_size &&
       gdbm_setopt (db, GDBM_CACHESIZE, &cache_size, sizeof (int)) == -1)
-    terror (_("gdbm_setopt failed: %s"), gdbm_strerror (gdbm_errno));
+    dberror (_("%s failed"), "GDBM_CACHESIZE");
 
   if (variable_is_true ("coalesce"))
     {
@@ -303,7 +302,7 @@ static void
 _gdbm_print_avail_list (FILE *fp, GDBM_FILE dbf)
 {
   if (gdbm_avail_traverse (dbf, avail_list_print, fp))
-    terror ("%s", gdbm_strerror (gdbm_errno));
+    dberror (_("%s failed"), "gdbm_avail_traverse");
 }
 
 static void
@@ -402,7 +401,7 @@ close_handler (struct command_param *param GDBM_ARG_UNUSED,
 	       struct command_environ *cenv GDBM_ARG_UNUSED)
 {
   if (!gdbm_file)
-    terror (_("nothing to close"));
+    terror ("%s", _("nothing to close"));
   else
     closedb ();
 }
@@ -434,14 +433,14 @@ count_handler (struct command_param *param GDBM_ARG_UNUSED,
   gdbm_count_t count;
 
   if (gdbm_count (gdbm_file, &count))
-    terror ("gdbm_count: %s", gdbm_strerror (gdbm_errno));
+    dberror (_("%s failed"), "gdbm_count");
   else
     {
       char buf[128];
       char *p = count_to_str (count, buf, sizeof buf);
 
       if (!p)
-	terror (_("count buffer overflow"));
+	terror ("%s", _("count buffer overflow"));
       else
 	fprintf (cenv->fp, 
 		 ngettext ("There is %s item in the database.\n",
@@ -458,9 +457,9 @@ delete_handler (struct command_param *param, struct command_environ *cenv)
   if (gdbm_delete (gdbm_file, PARAM_DATUM (param, 0)) != 0)
     {
       if (gdbm_errno == GDBM_ITEM_NOT_FOUND)
-	terror (_("Item not found"));
+	terror ("%s", _("No such item found"));
       else
-	terror (_("Can't delete: %s"), gdbm_strerror (gdbm_errno));
+	dberror ("%s", _("Can't delete"));
     }
 }
 
@@ -476,9 +475,9 @@ fetch_handler (struct command_param *param, struct command_environ *cenv)
       datum_free (&return_data);
     }
   else if (gdbm_errno == GDBM_ITEM_NOT_FOUND)
-    terror ("%s", _("No such item found."));
+    terror ("%s", _("No such item found"));
   else
-    terror (_("Can't fetch data: %s"), gdbm_strerror (gdbm_errno));
+    dberror ("%s", _("Can't fetch data"));
 }
 
 /* store KEY DATA - store data */
@@ -489,7 +488,7 @@ store_handler (struct command_param *param,
   if (gdbm_store (gdbm_file,
 		  PARAM_DATUM (param, 0), PARAM_DATUM (param, 1),
 		  GDBM_REPLACE) != 0)
-    terror (_("Item not inserted: %s."), gdbm_db_strerror (gdbm_file));
+    dberror ("%s", _("Item not inserted"));
 }
 
 /* first - begin iteration */
@@ -513,7 +512,7 @@ firstkey_handler (struct command_param *param, struct command_environ *cenv)
   else if (gdbm_errno == GDBM_ITEM_NOT_FOUND)
     fprintf (cenv->fp, _("No such item found.\n"));
   else
-    terror (_("Can't find key: %s"), gdbm_strerror (gdbm_errno));
+    dberror ("%s", _("Can't find first key"));
 }
 
 /* next [KEY] - next key */
@@ -543,11 +542,11 @@ nextkey_handler (struct command_param *param, struct command_environ *cenv)
     }
   else if (gdbm_errno == GDBM_ITEM_NOT_FOUND)
     {
-      terror ("%s", _("No such item found."));
+      terror ("%s", _("No such item found"));
       datum_free (&key_data);
     }
   else
-    terror (_("Can't find key: %s"), gdbm_strerror (gdbm_errno));
+    dberror ("%s", _("Can't find next key"));
 }
 
 /* reorganize */
@@ -556,7 +555,7 @@ reorganize_handler (struct command_param *param GDBM_ARG_UNUSED,
 		    struct command_environ *cenv)
 {
   if (gdbm_reorganize (gdbm_file))
-    terror ("%s", _("Reorganization failed."));
+    dberror ("%s", _("Reorganization failed"));
   else
     fprintf (cenv->fp, "%s\n", _("Reorganization succeeded."));
 }
@@ -608,7 +607,7 @@ recover_handler (struct command_param *param, struct command_environ *cenv)
 	  rcvr.max_failures = strtoul (arg + 13, &p, 10);
 	  if (*p)
 	    {
-	      printf (_("not a number (stopped near %s)\n"), p);
+	      terror (_("not a number (stopped near %s)"), p);
 	      return;
 	    }
 	  flags |= GDBM_RCVR_MAX_FAILURES;
@@ -618,7 +617,7 @@ recover_handler (struct command_param *param, struct command_environ *cenv)
 	  rcvr.max_failed_keys = strtoul (arg + 16, &p, 10);
 	  if (*p)
 	    {
-	      printf (_("not a number (stopped near %s)\n"), p);
+	      terror (_("not a number (stopped near %s)"), p);
 	      return;
 	    }
 	  flags |= GDBM_RCVR_MAX_FAILED_KEYS;
@@ -628,7 +627,7 @@ recover_handler (struct command_param *param, struct command_environ *cenv)
 	  rcvr.max_failures = strtoul (arg + 19, &p, 10);
 	  if (*p)
 	    {
-	      printf (_("not a number (stopped near %s)\n"), p);
+	      terror (_("not a number (stopped near %s)"), p);
 	      return;
 	    }
 	  flags |= GDBM_RCVR_MAX_FAILED_BUCKETS;
@@ -669,10 +668,7 @@ recover_handler (struct command_param *param, struct command_environ *cenv)
     }
   else
     {
-      fprintf (stderr, _("Recovery failed: %s"), gdbm_strerror (gdbm_errno));
-      if (gdbm_syserr[gdbm_errno])
-	fprintf (stderr, ": %s", strerror (errno));
-      fputc ('\n', stderr);
+      dberror ("%s", _("Recovery failed"));
     }
 }  
 
@@ -740,7 +736,7 @@ getnum (int *pnum, char *arg, char **endp)
   unsigned long x = strtoul (arg, &p, 10);
   if (*p && !isspace (*p))
     {
-      printf (_("not a number (stopped near %s)\n"), p);
+      terror (_("not a number (stopped near %s)"), p);
       return 1;
     }
   while (*p && isspace (*p))
@@ -749,7 +745,7 @@ getnum (int *pnum, char *arg, char **endp)
     *endp = p;
   else if (*p)
     {
-      printf (_("not a number (stopped near %s)\n"), p);
+      terror (_("not a number (stopped near %s)"), p);
       return 1;
     }
   *pnum = x;
@@ -773,12 +769,13 @@ print_bucket_begin (struct command_param *param,
 
   if (temp >= GDBM_DIR_COUNT (gdbm_file))
     {
-      terror (_("Not a bucket."));
+      terror (_("bucket number out of range (0..%lu)"),
+	      GDBM_DIR_COUNT (gdbm_file));
       return 1;
     }
   if (_gdbm_get_bucket (gdbm_file, temp))
     {
-      terror ("%s", gdbm_db_strerror (gdbm_file));
+      dberror (_("%s failed"), "_gdbm_get_bucket");
       return 1;
     }
   if (exp_count)
@@ -806,7 +803,7 @@ bucket_count (void)
 
   if (gdbm_bucket_count (gdbm_file, &count))
     {
-      terror ("gdbm_bucket_count: %s", gdbm_strerror (gdbm_errno));
+      dberror ("%s", "gdbm_bucket_count");
     }
   return count;
 }
@@ -915,7 +912,7 @@ sync_handler (struct command_param *param GDBM_ARG_UNUSED,
 	      struct command_environ *cenv GDBM_ARG_UNUSED)
 {
   if (gdbm_sync (gdbm_file))
-    terror ("%s", gdbm_db_strerror (gdbm_file));
+    dberror ("%s", "gdbm_sync");
 }
 
 static void
@@ -923,7 +920,7 @@ upgrade_handler (struct command_param *param GDBM_ARG_UNUSED,
 		 struct command_environ *cenv GDBM_ARG_UNUSED)
 {
   if (gdbm_convert (gdbm_file, GDBM_NUMSYNC))
-    terror ("%s", gdbm_db_strerror (gdbm_file));
+    dberror ("%s", "gdbm_convert");
 }
 
 static void
@@ -931,7 +928,7 @@ downgrade_handler (struct command_param *param GDBM_ARG_UNUSED,
 		   struct command_environ *cenv GDBM_ARG_UNUSED)
 {
   if (gdbm_convert (gdbm_file, 0))
-    terror ("%s", gdbm_db_strerror (gdbm_file));
+    dberror ("%s", "gdbm_convert");
 }
 
 struct snapshot_status_info
@@ -1230,7 +1227,8 @@ list_handler (struct command_param *param GDBM_ARG_UNUSED,
       data = gdbm_fetch (gdbm_file, key);
       if (!data.dptr)
 	 {
-	   terror (_("%s; the key was:"), gdbm_db_strerror (gdbm_file));
+	   dberror ("%s", "gdbm_fetch");
+	   terror ("%s", _("the key was:"));
 	   datum_format (stderr, &key, dsdef[DS_KEY]);
 	 }
       else
@@ -1286,8 +1284,7 @@ export_handler (struct command_param *param,
     abort ();
   if (gdbm_dump (gdbm_file, PARAM_STRING (param, 0), format, flags, filemode))
     {
-      terror (_("error dumping database: %s"),
-	      gdbm_strerror (gdbm_errno));
+      dberror ("%s", _("error dumping database"));
     }
 }
 
@@ -1343,24 +1340,21 @@ import_handler (struct command_param *param,
 	 {
 	 case GDBM_ERR_FILE_OWNER:
 	 case GDBM_ERR_FILE_MODE:
-	   terror (_("error restoring metadata: %s (%s)"),
-			 gdbm_strerror (gdbm_errno), strerror (errno));
+	   dberror ("%s", _("error restoring metadata"));
 	   break;
 
 	 default:
 	   if (err_line)
-	     terror ("%s:%lu: %s", PARAM_STRING (param, 0), err_line,
-		     gdbm_strerror (gdbm_errno));
+	     dberror ("%s:%lu", PARAM_STRING (param, 0), err_line);
 	   else
-	     terror (_("cannot load from %s: %s"), PARAM_STRING (param, 0),
-		     gdbm_strerror (gdbm_errno));
+	     dberror (_("cannot load from %s"), PARAM_STRING (param, 0));
 	 }
       return;
     }
 
   free (file_name);
   if (gdbm_setopt (gdbm_file, GDBM_GETDBNAME, &file_name, sizeof (file_name)))
-    terror (_("gdbm_setopt failed: %s"), gdbm_strerror (gdbm_errno));
+    dberror ("%s", "GDBM_GETDBNAME");
   else
     {
       variable_set ("filename", VART_STRING, file_name);
@@ -1492,16 +1486,16 @@ shell_handler (struct command_param *param,
 
   rc = waitpid (pid, &status, 0);
   if (rc == -1)
-    terror ("waitpid: %s\n", strerror (errno));
+    terror ("waitpid: %s", strerror (errno));
   else if (!interactive ())
     {
       if (WIFEXITED (status))
 	{
 	  if (WEXITSTATUS (status) != 0)
-	    terror ("command failed with status %d", WEXITSTATUS (status));
+	    terror (_("command failed with status %d"), WEXITSTATUS (status));
 	}
       else if (WIFSIGNALED (status))
-	terror ("command terminated on signal %d", WTERMSIG (status));
+	terror (_("command terminated on signal %d"), WTERMSIG (status));
     }
 }
 
@@ -1533,6 +1527,7 @@ input_history_begin (struct command_param *param,
 
   if (hlen == -1)
     {
+      /* TRANSLATORS: %s is the stream name */
       terror (_("input history is not available for %s input stream"),
 	      input_stream_name ());
       return 1;
