@@ -175,12 +175,17 @@ instream_t instream_stdin_create (void);
 instream_t instream_argv_create (int argc, char **argv);
 instream_t instream_file_create (char const *name);
 instream_t instream_null_create (void);
+#ifdef WITH_READLINE
+instream_t instream_readline_create (void);
+#endif
 
 int interactive (void);
 int input_context_push (instream_t);
 int input_context_pop (void);
 int input_history_size (void);
 const char *input_history_get (int n);
+const char *input_stream_name (void);
+
 
 void print_prompt_at_bol (void);
 char *command_generator (const char *text, int state);

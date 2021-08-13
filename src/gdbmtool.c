@@ -112,6 +112,12 @@ struct gdbm_option optab[] = {
   { 0 }
 };
 
+#ifdef WITH_READLINE
+# define instream_default_create   instream_readline_create
+#else
+# define instream_default_create   instream_stdin_create
+#endif
+
 struct gdbmtool_closure
 {
   int argc;
@@ -241,7 +247,7 @@ gdbmtool_init (void *data, instream_t *pinstr)
     source_rcfile ();
 
   if (!input)
-    input = instream_stdin_create ();
+    input = instream_default_create ();
 
   *pinstr = input;
 

@@ -91,6 +91,7 @@ libgdbmapp_a_SOURCES =\
  input-argv.c\
  input-file.c\
  input-null.c\
+ input-std.c\
  lex.l\
  gdbmshell.c\
  var.c\
@@ -98,8 +99,6 @@ libgdbmapp_a_SOURCES =\
 
 if GDBM_COND_READLINE
   libgdbmapp_a_SOURCES += input-rl.c
-else
-  libgdbmapp_a_SOURCES += input-std.c
 endif
 
 # Programs

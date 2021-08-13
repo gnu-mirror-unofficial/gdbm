@@ -103,7 +103,7 @@ shell_completion (const char *text, int start, int end)
 }
 
 static void
-instream_stdin_close (instream_t istr)
+instream_readline_close (instream_t istr)
 {
   if (history_file_name)
     {
@@ -168,7 +168,7 @@ stdin_read_readline (instream_t istr, char *buf, size_t size)
 } 
 
 static ssize_t
-instream_stdin_read (instream_t istr, char *buf, size_t size)
+instream_readline_read (instream_t istr, char *buf, size_t size)
 {
   if (istr->in_inter)
     return stdin_read_readline (istr, buf, size);
@@ -176,19 +176,19 @@ instream_stdin_read (instream_t istr, char *buf, size_t size)
 }
 
 static int
-instream_stdin_eq (instream_t a, instream_t b)
+instream_readline_eq (instream_t a, instream_t b)
 {
   return 0;
 }
 
 static int
-instream_stdin_history_size (instream_t istr)
+instream_readline_history_size (instream_t istr)
 {
   return history_length;
 }
 
 static const char *
-instream_stdin_history_get (instream_t instr, int n)
+instream_readline_history_get (instream_t instr, int n)
 {
   if (n < history_length)
     return history_list ()[n]->line;
@@ -196,25 +196,28 @@ instream_stdin_history_get (instream_t instr, int n)
 }
 
 instream_t
-instream_stdin_create (void)
-{
+instream_readline_create (void)
+{  
   struct instream *istr;
 
-  istr = emalloc (sizeof *istr);
-  istr->in_name = "stdin";
-  istr->in_inter = isatty (fileno (stdin));
-  istr->in_read = instream_stdin_read;
-  istr->in_close = instream_stdin_close;
-  istr->in_eq = instream_stdin_eq;
-  istr->in_history_size = instream_stdin_history_size;
-  istr->in_history_get = instream_stdin_history_get;
+  if (isatty (fileno (stdin)))
+    {
+      istr = emalloc (sizeof *istr);
+      istr->in_name = "stdin";
+      istr->in_inter = 1;
+      istr->in_read = instream_readline_read;
+      istr->in_close = instream_readline_close;
+      istr->in_eq = instream_readline_eq;
+      istr->in_history_size = instream_readline_history_size;
+      istr->in_history_get = instream_readline_history_get;
   
-  /* Allow conditional parsing of the ~/.inputrc file. */
-  rl_readline_name = (char *) progname;
-  rl_attempted_completion_function = shell_completion;
-  rl_pre_input_hook = pre_input;
-  if (istr->in_inter)
-    read_history (get_history_file_name ());
-  
+      /* Allow conditional parsing of the ~/.inputrc file. */
+      rl_readline_name = (char *) progname;
+      rl_attempted_completion_function = shell_completion;
+      rl_pre_input_hook = pre_input;
+      read_history (get_history_file_name ());
+    }
+  else
+    istr = instream_stdin_create ();
   return istr;
 }

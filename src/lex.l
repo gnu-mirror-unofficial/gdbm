@@ -85,6 +85,12 @@ input_history_get (int n)
   return context_tos ? instream_history_get (context_tos->input, n) : NULL;
 }
 
+const char *
+input_stream_name (void)
+{
+  return context_tos ? context_tos->input->in_name : "NULL";
+}
+ 
 static struct context *
 input_context_lookup (instream_t istr)
 {

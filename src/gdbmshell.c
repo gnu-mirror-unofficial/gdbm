@@ -1533,7 +1533,8 @@ input_history_begin (struct command_param *param,
 
   if (hlen == -1)
     {
-      terror ("%s", _("input history is not implemented"));
+      terror (_("input history is not available for %s input stream"),
+	      input_stream_name ());
       return 1;
     }
   
