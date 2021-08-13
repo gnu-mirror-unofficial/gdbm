@@ -1515,6 +1515,75 @@ source_handler (struct command_param *param,
   if (istr && input_context_push (istr) == 0)
     yyparse ();
 }
+
+struct history_param
+{
+  int from;
+  int count;
+};
+  
+static int
+input_history_begin (struct command_param *param,
+		     struct command_environ *cenv GDBM_ARG_UNUSED,
+		     size_t *exp_count)
+{
+  struct history_param *p;
+  int hlen = input_history_size ();
+  int from = 0, count = hlen;
+
+  if (hlen == -1)
+    {
+      terror ("%s", _("input history is not implemented"));
+      return 1;
+    }
+  
+  switch (param->argc)
+    {
+    case 1:
+      if (getnum (&count, param->argv[0]->v.string, NULL))
+	return 1;
+      if (count > hlen)
+	count = hlen;
+      else
+	from = hlen - count;
+      break;
+
+    case 2:
+      if (getnum (&from, param->argv[0]->v.string, NULL))
+	return 1;
+      if (from)
+	--from;
+      if (getnum (&count, param->argv[1]->v.string, NULL))
+	return 1;
+
+      if (count > hlen)
+	count = hlen;
+    }
+  p = emalloc (sizeof *p);
+  p->from = from;
+  p->count = count;
+  cenv->data = p;
+  if (exp_count)
+    *exp_count = count;
+  return 0;
+}
+
+static void
+input_history_handler (struct command_param *param GDBM_ARG_UNUSED,
+		       struct command_environ *cenv)
+{
+  struct history_param *p = cenv->data;
+  int i;
+  FILE *fp = cenv->fp;
+  
+  for (i = 0; i < p->count; i++)
+    {
+      const char *s = input_history_get (p->from + i);
+      if (!s)
+	break;
+      fprintf (fp, "%4d) %s\n", p->from + i + 1, s);
+    }
+}
 
 
 static void help_handler (struct command_param *, struct command_environ *);
@@ -1768,7 +1837,6 @@ static struct command command_tab[] = {
     FALSE,
     REPEAT_NEVER,
     N_("open new database") },
-#ifdef WITH_READLINE
   { S(history), T_CMD,
     input_history_begin, input_history_handler, NULL,
     { { N_("[FROM]"), GDBM_ARG_STRING },
@@ -1777,7 +1845,6 @@ static struct command command_tab[] = {
     FALSE,
     REPEAT_NEVER,
     N_("show input history") },
-#endif
   { S(debug), T_CMD,
     NULL, debug_handler, NULL,
     { { NULL } },
@@ -2435,10 +2502,8 @@ gdbmshell_run (int (*init) (void *, instream_t *), void *data)
 	  /* Welcome message. */
 	  if (instream_interactive (instream) && !variable_is_true ("quiet"))
 	    printf (_("\nWelcome to the gdbm tool.  Type ? for help.\n\n"));
-	  input_init ();
 	  rc = yyparse ();
 	  yylex_destroy ();
-	  input_done ();
 	  closedb ();
 	  sigaction (SIGPIPE, &old_act, NULL);
 	}

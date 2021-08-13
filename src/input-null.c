@@ -45,6 +45,8 @@ instream_null_create (void)
   istr->in_read = instream_null_read;
   istr->in_close = instream_null_close;
   istr->in_eq = instream_null_eq;
+  istr->in_history_size = NULL;
+  istr->in_history_get = NULL;  
 
   return istr;
 }

@@ -63,65 +63,6 @@ retrieve_history (char *str)
   return 0;
 }
 
-struct history_param
-{
-  int from;
-  int count;
-};
-  
-int
-input_history_begin (struct command_param *param,
-		     struct command_environ *cenv GDBM_ARG_UNUSED,
-		     size_t *exp_count)
-{
-  struct history_param *p;
-  int from = 0, count = history_length;
-
-  switch (param->argc)
-    {
-    case 1:
-      if (getnum (&count, param->argv[0]->v.string, NULL))
-	return 1;
-      if (count > history_length)
-	count = history_length;
-      else
-	from = history_length - count;
-      break;
-
-    case 2:
-      if (getnum (&from, param->argv[0]->v.string, NULL))
-	return 1;
-      if (from)
-	--from;
-      if (getnum (&count, param->argv[1]->v.string, NULL))
-	return 1;
-
-      if (count > history_length)
-	count = history_length;
-    }
-  p = emalloc (sizeof *p);
-  p->from = from;
-  p->count = count;
-  cenv->data = p;
-  if (exp_count)
-    *exp_count = count;
-  return 0;
-}
-
-void
-input_history_handler (struct command_param *param GDBM_ARG_UNUSED,
-		       struct command_environ *cenv)
-{
-  struct history_param *p = cenv->data;
-  int i;
-  HIST_ENTRY **hlist;
-  FILE *fp = cenv->fp;
-  
-  hlist = history_list ();
-  for (i = 0; i < p->count; i++)
-    fprintf (fp, "%4d) %s\n", p->from + i + 1, hlist[p->from + i]->line);
-}
-
 #define HISTFILE_PREFIX "~/."
 #define HISTFILE_SUFFIX "_history"
 
@@ -160,20 +101,9 @@ shell_completion (const char *text, int start, int end)
 
   return (matches);
 }
-
-void
-input_init (void)
-{
-  /* Allow conditional parsing of the ~/.inputrc file. */
-  rl_readline_name = (char *) progname;
-  rl_attempted_completion_function = shell_completion;
-  rl_pre_input_hook = pre_input;
-  if (interactive ())
-    read_history (get_history_file_name ());
-}
-
-void
-input_done (void)
+
+static void
+instream_stdin_close (instream_t istr)
 {
   if (history_file_name)
     {
@@ -181,11 +111,6 @@ input_done (void)
       free (history_file_name);
       history_file_name = NULL;
     }
-}
-
-static void
-instream_stdin_close (instream_t istr)
-{
   free (istr);
 }
 
@@ -256,6 +181,20 @@ instream_stdin_eq (instream_t a, instream_t b)
   return 0;
 }
 
+static int
+instream_stdin_history_size (instream_t istr)
+{
+  return history_length;
+}
+
+static const char *
+instream_stdin_history_get (instream_t instr, int n)
+{
+  if (n < history_length)
+    return history_list ()[n]->line;
+  return NULL;
+}
+
 instream_t
 instream_stdin_create (void)
 {
@@ -267,6 +206,15 @@ instream_stdin_create (void)
   istr->in_read = instream_stdin_read;
   istr->in_close = instream_stdin_close;
   istr->in_eq = instream_stdin_eq;
-
+  istr->in_history_size = instream_stdin_history_size;
+  istr->in_history_get = instream_stdin_history_get;
+  
+  /* Allow conditional parsing of the ~/.inputrc file. */
+  rl_readline_name = (char *) progname;
+  rl_attempted_completion_function = shell_completion;
+  rl_pre_input_hook = pre_input;
+  if (istr->in_inter)
+    read_history (get_history_file_name ());
+  
   return istr;
 }

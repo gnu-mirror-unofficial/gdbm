@@ -72,7 +72,19 @@ interactive (void)
 {
   return context_tos && instream_interactive (context_tos->input);
 }
- 
+
+int
+input_history_size (void)
+{
+  return context_tos ? instream_history_size (context_tos->input) : 0;
+}
+
+const char *
+input_history_get (int n)  
+{
+  return context_tos ? instream_history_get (context_tos->input, n) : NULL;
+}
+
 static struct context *
 input_context_lookup (instream_t istr)
 {

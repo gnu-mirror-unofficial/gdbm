@@ -80,6 +80,8 @@ instream_file_create (char const *name)
   istr->base.in_read = instream_file_read;
   istr->base.in_close = instream_file_close;
   istr->base.in_eq = instream_file_eq;
+  istr->base.in_history_size = NULL;
+  istr->base.in_history_get = NULL;  
   istr->fp = fp;
   istr->dev = st.st_dev;
   istr->ino = st.st_ino;

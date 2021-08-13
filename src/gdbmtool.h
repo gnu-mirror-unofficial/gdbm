@@ -123,6 +123,10 @@ struct instream
   int (*in_eq) (instream_t, instream_t);
                            /* Return true if both streams refer to the
 			      same input */
+  int (*in_history_size) (instream_t);
+                           /* Return size of the history buffer (entries) */
+  const char *(*in_history_get) (instream_t, int);
+                           /* Get Nth line from the history buffer */
 };
 
 static inline char const *
@@ -155,8 +159,17 @@ instream_eq (instream_t a, instream_t b)
   return a->in_eq (a, b);
 }
 
-void input_init (void);
-void input_done (void);
+static inline int
+instream_history_size (instream_t in)
+{
+  return in->in_history_size ? in->in_history_size (in) : -1;
+}
+
+static inline const char *
+instream_history_get (instream_t in, int n)
+{
+  return in->in_history_get ? in->in_history_get (in, n) : NULL;
+}
 
 instream_t instream_stdin_create (void);
 instream_t instream_argv_create (int argc, char **argv);
@@ -166,13 +179,9 @@ instream_t instream_null_create (void);
 int interactive (void);
 int input_context_push (instream_t);
 int input_context_pop (void);
+int input_history_size (void);
+const char *input_history_get (int n);
 
-struct command_param;
-struct command_environ;
-void input_history_handler (struct command_param *param, struct command_environ *cenv);
-int input_history_begin (struct command_param *param,
-			 struct command_environ *cenv, size_t *exp_count);
-
 void print_prompt_at_bol (void);
 char *command_generator (const char *text, int state);
 

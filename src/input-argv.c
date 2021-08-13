@@ -117,7 +117,9 @@ instream_argv_create (int argc, char **argv)
   istr->base.in_read = instream_argv_read;
   istr->base.in_close = instream_argv_close;
   istr->base.in_eq = instream_argv_eq;
-  
+  istr->base.in_history_size = NULL;
+  istr->base.in_history_get = NULL;  
+    
   istr->argc = argc;
   istr->argv = argv;
   istr->idx = 0;

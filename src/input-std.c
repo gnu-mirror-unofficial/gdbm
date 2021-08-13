@@ -49,19 +49,9 @@ instream_stdin_create (void)
   istr->in_read = instream_stdin_read;
   istr->in_close = instream_stdin_close;
   istr->in_eq = instream_stdin_eq;
+  istr->in_history_size = NULL;
+  istr->in_history_get = NULL;  
 
   return istr;
-}
-
-void
-input_init (void)
-{
-  /* nothing */
-}
-
-void
-input_done (void)
-{
-  /* nothing */
 }
 

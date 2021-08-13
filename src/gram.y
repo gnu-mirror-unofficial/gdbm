@@ -315,6 +315,10 @@ asgn      : T_IDENT
 		  lerror (&@1, _("%s is not a boolean variable"), varname);
 		  break;
 
+		case VAR_ERR_BADVALUE:
+		  lerror (&@1, _("%s: setting is not allowed"), $1);
+		  break;
+		  
 		default:
 		  lerror (&@1, _("unexpected error setting %s: %d"), $1, rc);
 		}
