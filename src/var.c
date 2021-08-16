@@ -730,6 +730,11 @@ errormask_sethook (struct variable *var, union value *v)
 	      val = 0;
 	      t++;
 	    }
+	  else if (t[0] == '+')
+	    {
+	      val = 1;
+	      t++;
+	    }
 	  else
 	    {
 	      val = 1;
