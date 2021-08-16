@@ -74,12 +74,17 @@ stmtlist  : stmt
 
 stmt      : /* empty */ eol
             {
-	      run_last_command ();
+	      if (run_last_command () && variable_is_set ("errorexit"))
+		{
+		  YYABORT;
+		}
 	    }
           | command arglist eol
             {
-	      if (run_command ($1, &$2) && !interactive ())
-		exit (EXIT_USAGE);
+	      if (run_command ($1, &$2) && variable_is_set ("errorexit"))
+		{
+		  YYABORT;
+		}
 	    }
           | set eol
           | defn eol
@@ -394,7 +399,9 @@ dberror (char const *fmt, ...)
 {
   int ec = errno;
   va_list ap;
-  
+
+  if (gdbm_error_is_masked (gdbm_errno))
+    return;
   if (!interactive ())
     fprintf (stderr, "%s: ", progname);
   YY_LOCATION_PRINT (stderr, yylloc);

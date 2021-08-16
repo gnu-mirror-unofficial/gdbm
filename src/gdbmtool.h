@@ -184,6 +184,7 @@ instream_t instream_readline_create (void);
 int interactive (void);
 int input_context_push (instream_t);
 int input_context_pop (void);
+void input_context_drain (void);
 int input_history_size (void);
 const char *input_history_get (int n);
 const char *input_stream_name (void);
@@ -290,7 +291,7 @@ struct command;
 int command_lookup (const char *str, struct locus *loc, struct command **pcmd);
 
 int run_command (struct command *cmd, struct gdbmarglist *arglist);
-void run_last_command (void);
+int run_last_command (void);
 
 struct xdatum;
 void xd_expand (struct xdatum *xd, size_t size);
@@ -359,7 +360,11 @@ int variable_unset(const char *name);
 int variable_is_set (const char *name);
 int variable_is_true (const char *name);
 void variable_print_all (FILE *fp);
-
+static inline int
+gdbm_error_is_masked (int e)
+{
+  return variable_get ("errormask", VART_INT, (void**)&e) == VAR_OK && e == 1;
+}
 
 int unescape (int c);
 int escape (int c);

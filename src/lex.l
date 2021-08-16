@@ -164,6 +164,13 @@ input_context_pop (void)
   return 0;
 }
 
+void
+input_context_drain (void)
+{
+   while (!input_context_pop ())
+    ;
+}
+
 static int
 t_num (int base)
 {

@@ -50,6 +50,9 @@ static int fd_sethook (struct variable *, union value *);
 static int centfree_sethook (struct variable *var, union value *v);
 static int coalesce_sethook (struct variable *var, union value *v);
 static int cachesize_sethook (struct variable *var, union value *v);
+static int errormask_sethook (struct variable *var, union value *v);
+static int errormask_typeconv (struct variable *var, int type, void **retptr);
+static int errorexit_sethook (struct variable *var, union value *v);
 
 static struct variable vartab[] = {
   /* Top-level prompt */
@@ -171,6 +174,17 @@ static struct variable vartab[] = {
     .type = VART_INT,
     .flags = VARF_DFL,
     .sethook = fd_sethook
+  },
+  {
+    .name = "errorexit",
+    .type = VART_BOOL,
+    .sethook = errorexit_sethook
+  },
+  {
+    .name = "errormask",
+    .type = VART_STRING,
+    .sethook = errormask_sethook,
+    .typeconv = errormask_typeconv
   },
   { NULL }
 };
@@ -621,4 +635,149 @@ coalesce_sethook (struct variable *var, union value *v)
   return gdbmshell_setopt ("GDBM_SETCOALESCEBLKS", GDBM_SETCOALESCEBLKS, v->bool) == 0
          ? VAR_OK : VAR_ERR_BADVALUE;
 }
-    
+
+const char * const errname[_GDBM_MAX_ERRNO+1] = {
+  [GDBM_NO_ERROR]               = "GDBM_NO_ERROR",
+  [GDBM_MALLOC_ERROR]           = "GDBM_MALLOC_ERROR",
+  [GDBM_BLOCK_SIZE_ERROR]       = "GDBM_BLOCK_SIZE_ERROR",
+  [GDBM_FILE_OPEN_ERROR]        = "GDBM_FILE_OPEN_ERROR",
+  [GDBM_FILE_WRITE_ERROR]       = "GDBM_FILE_WRITE_ERROR",
+  [GDBM_FILE_SEEK_ERROR]        = "GDBM_FILE_SEEK_ERROR",
+  [GDBM_FILE_READ_ERROR]        = "GDBM_FILE_READ_ERROR",
+  [GDBM_BAD_MAGIC_NUMBER]       = "GDBM_BAD_MAGIC_NUMBER",
+  [GDBM_EMPTY_DATABASE]         = "GDBM_EMPTY_DATABASE",
+  [GDBM_CANT_BE_READER]         = "GDBM_CANT_BE_READER",
+  [GDBM_CANT_BE_WRITER]         = "GDBM_CANT_BE_WRITER",
+  [GDBM_READER_CANT_DELETE]     = "GDBM_READER_CANT_DELETE",
+  [GDBM_READER_CANT_STORE]      = "GDBM_READER_CANT_STORE",
+  [GDBM_READER_CANT_REORGANIZE] = "GDBM_READER_CANT_REORGANIZE",
+  [GDBM_UNKNOWN_ERROR]          = "GDBM_UNKNOWN_ERROR",
+  [GDBM_ITEM_NOT_FOUND]         = "GDBM_ITEM_NOT_FOUND",
+  [GDBM_REORGANIZE_FAILED]      = "GDBM_REORGANIZE_FAILED",
+  [GDBM_CANNOT_REPLACE]         = "GDBM_CANNOT_REPLACE",
+  [GDBM_MALFORMED_DATA]         = "GDBM_MALFORMED_DATA",
+  [GDBM_OPT_ALREADY_SET]        = "GDBM_OPT_ALREADY_SET",
+  [GDBM_OPT_BADVAL]             = "GDBM_OPT_BADVAL",
+  [GDBM_BYTE_SWAPPED]           = "GDBM_BYTE_SWAPPED",
+  [GDBM_BAD_FILE_OFFSET]        = "GDBM_BAD_FILE_OFFSET",
+  [GDBM_BAD_OPEN_FLAGS]         = "GDBM_BAD_OPEN_FLAGS",
+  [GDBM_FILE_STAT_ERROR]        = "GDBM_FILE_STAT_ERROR",
+  [GDBM_FILE_EOF]               = "GDBM_FILE_EOF",
+  [GDBM_NO_DBNAME]              = "GDBM_NO_DBNAME",
+  [GDBM_ERR_FILE_OWNER]         = "GDBM_ERR_FILE_OWNER",
+  [GDBM_ERR_FILE_MODE]          = "GDBM_ERR_FILE_MODE",
+  [GDBM_NEED_RECOVERY]          = "GDBM_NEED_RECOVERY",
+  [GDBM_BACKUP_FAILED]          = "GDBM_BACKUP_FAILED",
+  [GDBM_DIR_OVERFLOW]           = "GDBM_DIR_OVERFLOW",
+  [GDBM_BAD_BUCKET]             = "GDBM_BAD_BUCKET",
+  [GDBM_BAD_HEADER]             = "GDBM_BAD_HEADER",
+  [GDBM_BAD_AVAIL]              = "GDBM_BAD_AVAIL",
+  [GDBM_BAD_HASH_TABLE]         = "GDBM_BAD_HASH_TABLE",
+  [GDBM_BAD_DIR_ENTRY]          = "GDBM_BAD_DIR_ENTRY",
+  [GDBM_FILE_CLOSE_ERROR]       = "GDBM_FILE_CLOSE_ERROR",
+  [GDBM_FILE_SYNC_ERROR]        = "GDBM_FILE_SYNC_ERROR",
+  [GDBM_FILE_TRUNCATE_ERROR]    = "GDBM_FILE_TRUNCATE_ERROR",
+  [GDBM_BUCKET_CACHE_CORRUPTED] = "GDBM_BUCKET_CACHE_CORRUPTED",
+  [GDBM_BAD_HASH_ENTRY]         = "GDBM_BAD_HASH_ENTRY",
+  [GDBM_ERR_SNAPSHOT_CLONE]     = "GDBM_ERR_SNAPSHOT_CLONE",
+  [GDBM_ERR_REALPATH]           = "GDBM_ERR_REALPATH",
+  [GDBM_ERR_USAGE]              = "GDBM_ERR_USAGE",
+};
+
+static int
+str2errcode (char const *str)
+{
+  int i;
+#define GDBM_PREFIX "GDBM_"
+#define GDBM_PREFIX_LEN (sizeof (GDBM_PREFIX) - 1)
+  
+  if (strncasecmp (str, GDBM_PREFIX, GDBM_PREFIX_LEN) == 0)
+    str += GDBM_PREFIX_LEN;
+  
+  for (i = 0; i < ARRAY_SIZE (errname); i++)
+    if (strcasecmp (errname[i] + GDBM_PREFIX_LEN, str) == 0)
+      return i;
+
+  return -1;
+}
+
+static char gdbmshell_errmask[_GDBM_MAX_ERRNO+1];
+
+static int
+errormask_sethook (struct variable *var, union value *v)
+{
+  if (!v)
+    {
+      memset (gdbmshell_errmask, 0, sizeof (gdbmshell_errmask));
+    }
+  else
+    {
+      char *t;
+
+      for (t = strtok (v->string, ","); t; t = strtok (NULL, ","))
+	{
+	  int len, val, e;
+
+	  while (t[0] == ' ' || t[0] == '\t')
+	    t++;
+	  len = strlen (t);
+	  while (len > 0 && (t[len-1] == ' ' || t[len-1] == '\t'))
+	    len--;
+	  t[len] = 0;
+	  
+	  if (t[0] == '-')
+	    {
+	      val = 0;
+	      t++;
+	    }
+	  else
+	    {
+	      val = 1;
+	    }
+	  if (strcmp (t, "all") == 0)
+	    {
+	      for (e = 1; e < ARRAY_SIZE (gdbmshell_errmask); e++)
+		gdbmshell_errmask[e] = val;
+	    }
+	  else
+	    {
+	      e = str2errcode (t);
+	      if (e == -1)
+		terror (_("unrecognized error code: %s"), t);
+	      else
+		gdbmshell_errmask[e] = val;
+	    }
+	}	  
+    }
+  return VAR_OK;
+}
+
+static int
+errormask_typeconv (struct variable *var, int type, void **retptr)
+{
+  if (type == VART_INT)
+    {
+      int n = *(int*) retptr;
+      if (n >= 0 && n < ARRAY_SIZE (gdbmshell_errmask))
+	{
+	  *(int*) retptr = gdbmshell_errmask[n];
+	  return VAR_OK;
+	}
+      else
+	return VAR_ERR_BADVALUE;
+    }
+  return VAR_ERR_BADTYPE;
+}
+
+static int
+errorexit_sethook (struct variable *var, union value *v)
+{
+  if (v)
+    {
+      if (interactive ())
+	{
+	  return VAR_ERR_BADVALUE;
+	}
+    }
+  return VAR_OK;
+}
