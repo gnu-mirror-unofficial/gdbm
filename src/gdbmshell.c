@@ -2499,7 +2499,8 @@ run_command (struct command *cmd, struct gdbmarglist *arglist)
       
   expected_lines = 0;
   expected_lines_ptr = (interactive () && pager) ? &expected_lines : NULL;
-  if (!(cmd->begin && cmd->begin (&param, &cenv, expected_lines_ptr)))
+  rc = 0;
+  if (!(cmd->begin && (rc = cmd->begin (&param, &cenv, expected_lines_ptr)) != 0))
     {
       if (pager && expected_lines > get_screen_lines ())
 	{
