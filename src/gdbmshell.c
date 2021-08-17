@@ -2430,6 +2430,49 @@ run_last_command (void)
   (((now).tv_sec - (then).tv_sec) \
    + ((double)((now).tv_usec - (then).tv_usec))/1000000)
 
+static void
+format_arg (struct gdbmarg *arg, struct argdef *def, FILE *fp)
+{
+  switch (arg->type)
+    {
+    case GDBM_ARG_STRING:
+      fprintf (fp, " %s", arg->v.string);
+      break;
+
+    case GDBM_ARG_DATUM:
+      if (def && def->type == GDBM_ARG_DATUM)
+	{
+	  fputc (' ', fp);
+	  datum_format (fp, &arg->v.dat, dsdef[def->ds]);
+	}
+      else
+	/* Shouldn't happen */
+	terror ("%s:%d: INTERNAL ERROR: unexpected data type in arglist",
+		__FILE__, __LINE__);
+      break;
+		
+    case GDBM_ARG_KVPAIR:
+      {
+	struct kvpair *kvp = arg->v.kvpair;
+	fprintf (fp, " %s ", kvp->key);
+	switch (kvp->type)
+	  {
+	  case KV_STRING:
+	    fprintf (fp, "%s", kvp->val.s);
+	    break;
+	    
+	  case KV_LIST:
+	    {
+	      struct slist *p = kvp->val.l;
+	      fprintf (fp, "%s", p->str);
+	      while ((p = p->next) != NULL)
+		fprintf (fp, ", %s", p->str);
+	    }
+	  }
+      }
+    }
+}  
+
 int
 run_command (struct command *cmd, struct gdbmarglist *arglist)
 {
@@ -2502,7 +2545,24 @@ run_command (struct command *cmd, struct gdbmarglist *arglist)
   param_term (&param);
   param.vararg = arg;
   pagfp = NULL;
-      
+  
+  if (variable_is_true ("trace"))
+    {
+      fprintf (stdout, "+ %s", cmd->name);
+      for (i = 0; i < param.argc; i++)
+	{
+	  format_arg (param.argv[i], &cmd->args[i], stdout);
+	}
+
+      if (param.vararg)
+	{
+	  struct gdbmarg *arg;
+	  for (arg = param.vararg; arg; arg = arg->next)
+	    format_arg (arg, NULL, stdout);
+	}
+      fputc ('\n', stdout);
+    }
+  
   expected_lines = 0;
   expected_lines_ptr = (interactive () && pager) ? &expected_lines : NULL;
   rc = 0;
@@ -2535,7 +2595,7 @@ run_command (struct command *cmd, struct gdbmarglist *arglist)
       if (variable_is_true ("timing"))
 	{
 	  double t = DIFFTIME (stop, start);
-	  fprintf (cenv.fp, "[t=%0.9f]\n", t);	  
+	  fprintf (cenv.fp, "[%s t=%0.9f]\n", cmd->name, t);	  
 	}
       
       if (pagfp)

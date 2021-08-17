@@ -190,6 +190,10 @@ static struct variable vartab[] = {
     .name = "timing",
     .type = VART_BOOL
   },
+  {
+    .name = "trace",
+    .type = VART_BOOL
+  },
   { NULL }
 };
 
