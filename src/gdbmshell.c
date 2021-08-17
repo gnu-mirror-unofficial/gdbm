@@ -24,6 +24,7 @@
 #include <pwd.h>
 #include <sys/ioctl.h>
 #include <sys/wait.h>
+#include <sys/time.h>
 #include <termios.h>
 #include <stdarg.h>
 #ifdef HAVE_LOCALE_H
@@ -2425,6 +2426,10 @@ run_last_command (void)
   return 0;
 }
 
+#define DIFFTIME(now,then)\
+  (((now).tv_sec - (then).tv_sec) \
+   + ((double)((now).tv_usec - (then).tv_usec))/1000000)
+
 int
 run_command (struct command *cmd, struct gdbmarglist *arglist)
 {
@@ -2437,6 +2442,7 @@ run_command (struct command *cmd, struct gdbmarglist *arglist)
   struct command_param param = HANDLER_PARAM_INITIALIZER;
   struct command_environ cenv = COMMAND_ENVIRON_INITIALIZER;
   int rc = 0;
+  struct timeval start, stop;
   
   variable_get ("pager", VART_STRING, (void**) &pager);
   
@@ -2517,13 +2523,21 @@ run_command (struct command *cmd, struct gdbmarglist *arglist)
 	}
       else
 	cenv.fp = stdout;
-  
+
+      gettimeofday (&start, NULL);
       rc = cmd->handler (&param, &cenv);
+      gettimeofday (&stop, NULL);
       if (cmd->end)
 	cmd->end (cenv.data);
       else if (cenv.data)
 	free (cenv.data);
 
+      if (variable_is_true ("timing"))
+	{
+	  double t = DIFFTIME (stop, start);
+	  fprintf (cenv.fp, "[t=%0.9f]\n", t);	  
+	}
+      
       if (pagfp)
 	pclose (pagfp);
     }

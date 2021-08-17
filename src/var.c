@@ -186,6 +186,10 @@ static struct variable vartab[] = {
     .sethook = errormask_sethook,
     .typeconv = errormask_typeconv
   },
+  {
+    .name = "timing",
+    .type = VART_BOOL
+  },
   { NULL }
 };
 
