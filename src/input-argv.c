@@ -86,7 +86,6 @@ instream_argv_read (instream_t istr, char *buf, size_t size)
 	  if (total + 2 > size)
 	    break;
 	  buf[total++] = '\\';
-	  i->cur++;
 	}
       buf[total++] = *i->cur++;
     }
