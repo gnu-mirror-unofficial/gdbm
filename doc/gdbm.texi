@@ -3015,6 +3015,16 @@ Disable file locking.
 @itemx --no-mmap
 Disable memory mapping.
 
+@item -T
+@itemx --timing
+Print time spent in each command.  This is equivalent to setting the
+@code{timing} variable.  @xref{variables, timing}.
+
+@item -t
+@itemx --trace
+Enable command tracing.  This is equivalent to setting the
+@code{trace} variable.  @xref{variables, trace}.
+
 @anchor{-q option}
 @item -q
 @itemx --quiet
@@ -3190,6 +3200,28 @@ This prompt is displayed before reading the second and subsequent
 lines of a multi-line command.
 
 The default value is @samp{%_>%_}.
+@end deftypevr
+
+@deftypevr {gdbmtool variable} bool timing
+When each command terminates, print an additional line listing times
+spent in that command.  The line is formatted as follows:
+
+@example
+[reorganize r=0.070481 u=0.000200 s=0.000033]
+@end example
+
+@noindent
+Here, @samp{reorganize} is the name of the command that finished, the
+number after @samp{r=} is real time spent executing the command, the
+number after @samp{u=} is the user CPU time used and the number after
+@samp{s=} is the system CPU time used.
+@end deftypevr
+
+@deftypevr {gdbmtool variable} bool trace
+Enable command tracing.  This is similar to the shell @option{-t}
+option: before executing each command, @command{gdbmtool} will print
+on standard error a line starting with a plus sign and followed by the
+command name and its arguments.
 @end deftypevr
 
 @anchor{quiet}
@@ -3563,6 +3595,26 @@ Synchronize after each write.  Default is @code{off}.
 @end table
 
 @xref{open parameters}, for a detailed description of these variables.
+@end deffn
+
+@deffn {command verb} perror [@var{code}]
+Describe the given GDBM error code.
+
+The descripion occupies one or two lines.  The second line is present
+if the system error number should be checked when handling this code.
+In this case, the second line states @samp{Examine errno}.
+
+If @var{code} is omitted, the latest error that occurred in the
+current database is described.  Second line of the output (if
+present), contains description of the latest system error.
+
+Example:
+
+@example
+gdbmtool> perror 3
+GDBM error code 3: "File open error"
+Examine errno.
+@end example
 @end deffn
 
 @deffn {command verb} quit

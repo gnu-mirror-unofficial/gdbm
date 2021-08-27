@@ -105,6 +105,8 @@ struct gdbm_option optab[] = {
     N_("open database at the given file descriptor") },
   { 'x', "extended",   NULL,       N_("extended format (numsync)") },
   {   0, "numsync",    NULL,       NULL, PARSEOPT_ALIAS },
+  { 't', "trace",      NULL,       N_("enable trace mode") },
+  { 'T', "timing",     NULL,       N_("print timing after each command") },
 #if GDBMTOOL_DEBUG    
   { OPT_LEX_TRACE, "lex-trace", NULL, N_("enable lexical analyzer traces") },
   { OPT_GRAM_TRACE, "gram-trace", NULL, N_("enable grammar traces") },
@@ -192,6 +194,16 @@ gdbmtool_init (void *data, instream_t *pinstr)
 	variable_set ("filename", VART_STRING, optarg);
 	break;
 
+      case 't':
+	bv = 1;
+	variable_set ("trace", VART_BOOL, &bv);
+	break;
+
+      case 'T':
+	bv = 1;
+	variable_set ("timing", VART_BOOL, &bv);
+	break;
+	
       case 'q':
 	bv = 1;
 	variable_set ("quiet", VART_BOOL, &bv);

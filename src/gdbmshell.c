@@ -25,6 +25,7 @@
 #include <sys/ioctl.h>
 #include <sys/wait.h>
 #include <sys/time.h>
+#include <sys/resource.h>
 #include <termios.h>
 #include <stdarg.h>
 #ifdef HAVE_LOCALE_H
@@ -1591,6 +1592,37 @@ source_handler (struct command_param *param,
   return 0;
 }
 
+static int
+perror_handler (struct command_param *param, struct command_environ *cenv)
+{
+  int n;
+
+  if (param->argc)
+    {
+      if (getnum (&n, PARAM_STRING (param, 0), NULL))
+	return 1;
+    }
+  else if (checkdb ())
+    {
+      return 1;
+    }
+  else
+    {
+      n = gdbm_last_errno (gdbm_file);
+    }
+  fprintf (cenv->fp, "GDBM error code %d: \"%s\"\n", n, gdbm_strerror (n));
+  if (gdbm_check_syserr (n))
+    {
+      if (param->argc)
+	fprintf (cenv->fp, "Examine errno.\n");
+      else
+	fprintf (cenv->fp, "System error code %d: \"%s\"\n",
+		 gdbm_last_syserr (gdbm_file),
+		 strerror (gdbm_last_syserr (gdbm_file)));
+    }
+  return 0;
+}
+
 struct history_param
 {
   int from;
@@ -1934,7 +1966,14 @@ static struct command command_tab[] = {
     { { NULL } },
     TRUE,
     REPEAT_NEVER,
-    N_("invoke the shell") },          
+    N_("invoke the shell") },
+  { S(perror), T_CMD,
+    NULL, perror_handler, NULL,
+    { { "[CODE]", GDBM_ARG_STRING },
+      { NULL } },
+    TRUE,
+    REPEAT_NEVER,
+    N_("describe GDBM error code") },
 #undef S
   { NULL }
 };
@@ -2426,10 +2465,6 @@ run_last_command (void)
   return 0;
 }
 
-#define DIFFTIME(now,then)\
-  (((now).tv_sec - (then).tv_sec) \
-   + ((double)((now).tv_usec - (then).tv_usec))/1000000)
-
 static void
 format_arg (struct gdbmarg *arg, struct argdef *def, FILE *fp)
 {
@@ -2472,6 +2507,52 @@ format_arg (struct gdbmarg *arg, struct argdef *def, FILE *fp)
       }
     }
 }  
+
+struct timing
+{
+  struct timeval real;
+  struct timeval user;
+  struct timeval sys;
+};
+
+void
+timing_start (struct timing *t)
+{
+  struct rusage r;
+  gettimeofday (&t->real, NULL);
+  getrusage (RUSAGE_SELF, &r);
+  t->user  = r.ru_utime;
+  t->sys = r.ru_stime;
+}
+
+static inline struct timeval
+timeval_sub (struct timeval a, struct timeval b)
+{
+  struct timeval diff;
+
+  diff.tv_sec = a.tv_sec - b.tv_sec;
+  diff.tv_usec = a.tv_usec - b.tv_usec;
+  if (diff.tv_usec < 0)
+    {
+      --diff.tv_sec;
+      diff.tv_usec += 1000000;
+    }
+
+  return diff;
+}
+
+void
+timing_stop (struct timing *t)
+{	   
+  struct rusage r;
+  struct timeval now;
+  
+  gettimeofday (&now, NULL);
+  getrusage (RUSAGE_SELF, &r);
+  t->real = timeval_sub (now, t->real);
+  t->user = timeval_sub (r.ru_utime, t->user);
+  t->sys = timeval_sub (r.ru_stime, t->sys);
+}
 
 int
 run_command (struct command *cmd, struct gdbmarglist *arglist)
@@ -2485,7 +2566,7 @@ run_command (struct command *cmd, struct gdbmarglist *arglist)
   struct command_param param = HANDLER_PARAM_INITIALIZER;
   struct command_environ cenv = COMMAND_ENVIRON_INITIALIZER;
   int rc = 0;
-  struct timeval start, stop;
+  struct timing tm;
   
   variable_get ("pager", VART_STRING, (void**) &pager);
   
@@ -2548,19 +2629,19 @@ run_command (struct command *cmd, struct gdbmarglist *arglist)
   
   if (variable_is_true ("trace"))
     {
-      fprintf (stdout, "+ %s", cmd->name);
+      fprintf (stderr, "+ %s", cmd->name);
       for (i = 0; i < param.argc; i++)
 	{
-	  format_arg (param.argv[i], &cmd->args[i], stdout);
+	  format_arg (param.argv[i], &cmd->args[i], stderr);
 	}
 
       if (param.vararg)
 	{
 	  struct gdbmarg *arg;
 	  for (arg = param.vararg; arg; arg = arg->next)
-	    format_arg (arg, NULL, stdout);
+	    format_arg (arg, NULL, stderr);
 	}
-      fputc ('\n', stdout);
+      fputc ('\n', stderr);
     }
   
   expected_lines = 0;
@@ -2584,9 +2665,9 @@ run_command (struct command *cmd, struct gdbmarglist *arglist)
       else
 	cenv.fp = stdout;
 
-      gettimeofday (&start, NULL);
+      timing_start (&tm);
       rc = cmd->handler (&param, &cenv);
-      gettimeofday (&stop, NULL);
+      timing_stop (&tm);
       if (cmd->end)
 	cmd->end (cenv.data);
       else if (cenv.data)
@@ -2594,8 +2675,11 @@ run_command (struct command *cmd, struct gdbmarglist *arglist)
 
       if (variable_is_true ("timing"))
 	{
-	  double t = DIFFTIME (stop, start);
-	  fprintf (cenv.fp, "[%s t=%0.9f]\n", cmd->name, t);	  
+	  fprintf (cenv.fp, "[%s r=%lu.%06lu u=%lu.%06lu s=%lu.%06lu]\n",
+		   cmd->name,
+		   tm.real.tv_sec, tm.real.tv_usec,
+		   tm.user.tv_sec, tm.user.tv_usec,
+		   tm.sys.tv_sec, tm.sys.tv_usec);
 	}
       
       if (pagfp)
