@@ -14,9 +14,28 @@
 # You should have received a copy of the GNU General Public License
 # along with GDBM. If not, see <http://www.gnu.org/licenses/>. */
 
-force=0
+force=
+get_po_only=
+no_po=
 
 refdir=po/.reference
+
+usage() {
+    cat <<EOF
+Usage: $0 [--force] [--no-po]
+   or: $0 --get-po
+Bootstraps the GNU dbm project from git repository and/or updates translation
+files.
+
+Options are:
+
+  --force     force bootstrapping overriding the safety checks
+  --no-po     don't download translation files
+  --get-po    only update translation files, don't bootstrap
+
+See README-hacking for details.
+EOF
+}
 
 get_po() {
   test -d $refdir || mkdir $refdir
@@ -41,34 +60,57 @@ get_po() {
 
 ################
 
-if test $# -eq 0; then
-  :;
-elif test $# -eq 1; then
-  case $1 in
-  --force) force=1;;
-  --help|-h)
-     cat <<EOT
-usage: bootstrap [--force]
-bootstraps GDBM package
-EOT
-     ;;
-  *) echo >&2 "$0: unrecognized option"
-     exit 1;;
-  esac
+while [ $# -gt 0 ]
+do
+    case $1 in
+	--force)
+	    force=1
+	    ;;
+
+	--get-po)
+	    get_po_only=1
+	    ;;
+
+	--no-po)
+	    no_po=1
+	    ;;
+	
+	--help|-h)
+	    usage
+	    exit 0
+	    ;;
+
+	*) echo >&2 "$0: unrecognized argument"
+	   usage >&2
+	   exit 1
+    esac
+    shift
+done
+
+if [ -n "$get_po_only" ]; then
+    if [ -n "$force$no_po" ]; then
+	echo >&2 "$0: conflicting arguments"
+	usage >&2
+	exit 1
+    fi
+    get_po
 else
-  echo >&2 "$0: too many arguments"
-  exit 1
-fi
+    if ! test -f README-hacking && test -z "$force"; then
+	echo >&2 "$0: bootstrapping from a non-checked-out distribution is risky"
+	echo >&2 "$0: use --force if you really want it"
+	exit 1
+    fi
 
-if ! test -f README-hacking && test $force -eq 0; then
-  echo >&2 "$0: bootstrapping from a non-checked-out distribution is risky"
-  exit 1
-fi
-
-get_po
-
-test -d m4 || mkdir m4
-test -f ChangeLog || cat > ChangeLog <<EOF
+    if [ -z "$no_po" ]; then
+	get_po
+    fi
+    
+    test -d m4 || mkdir m4
+    if [ -f ChangeLog ]; then
+	cat > ChangeLog <<EOF
 # This file is a placeholder.  Run make to generate actual ChangeLog.
 EOF
-autoreconf -f -i -s
+    fi
+
+    autoreconf -f -i -s
+fi
