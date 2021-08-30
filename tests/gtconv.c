@@ -300,7 +300,10 @@ main (int argc, char **argv)
       dump_avail (av_saved, "av_saved", stderr);
       dump_avail (av_new, "av_new", stderr);
     }
-  
+
+  free (av_saved);
+  free (av_new);
+  free (keys);
   gdbm_close (dbf);
   return rc;
 }
