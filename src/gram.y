@@ -74,14 +74,14 @@ stmtlist  : stmt
 
 stmt      : /* empty */ eol
             {
-	      if (run_last_command () && variable_is_set ("errorexit"))
+	      if (run_last_command ())
 		{
 		  YYABORT;
 		}
 	    }
           | command arglist eol
             {
-	      if (run_command ($1, &$2) && variable_is_set ("errorexit"))
+	      if (run_command ($1, &$2))
 		{
 		  YYABORT;
 		}
@@ -322,6 +322,10 @@ asgn      : T_IDENT
 
 		case VAR_ERR_BADVALUE:
 		  lerror (&@1, _("%s: setting is not allowed"), $1);
+		  break;
+
+		case VAR_ERR_GDBM:
+		  dberror ("%s", _("can't set variable"));
 		  break;
 		  
 		default:

@@ -38,6 +38,7 @@ struct variable
   int flags;
   union value init;
   union value v;
+  void *data;
   int (*sethook) (struct variable *, union value *);
   int (*typeconv) (struct variable *, int, void **);
 };
@@ -177,8 +178,9 @@ static struct variable vartab[] = {
   },
   {
     .name = "errorexit",
-    .type = VART_BOOL,
-    .sethook = errorexit_sethook
+    .type = VART_STRING,
+    .sethook = errorexit_sethook,
+    .typeconv = errormask_typeconv
   },
   {
     .name = "errormask",
@@ -370,6 +372,11 @@ variable_unset (const char *name)
   if (vp->sethook && (rc = vp->sethook (vp, NULL)) != VAR_OK)
     return rc;
 
+  if (vp->type == VART_STRING)
+    {
+      free (vp->v.string);
+      vp->v.string = NULL;
+    }
   vp->flags &= ~VARF_SET;
 
   return VAR_OK;
@@ -623,7 +630,7 @@ cachesize_sethook (struct variable *var, union value *v)
   if (v->num < 0)
     return VAR_ERR_BADVALUE;
   return gdbmshell_setopt ("GDBM_SETCACHESIZE", GDBM_SETCACHESIZE, v->num) == 0
-         ? VAR_OK : VAR_ERR_BADVALUE;
+         ? VAR_OK : VAR_ERR_GDBM;
 }
 
 static int
@@ -632,7 +639,7 @@ centfree_sethook (struct variable *var, union value *v)
   if (!v)
     return VAR_OK;
   return gdbmshell_setopt ("GDBM_SETCENTFREE", GDBM_SETCENTFREE, v->bool) == 0
-         ? VAR_OK : VAR_ERR_BADVALUE;
+         ? VAR_OK : VAR_ERR_GDBM;
 }
 
 static int
@@ -641,7 +648,7 @@ coalesce_sethook (struct variable *var, union value *v)
   if (!v)
     return VAR_OK;
   return gdbmshell_setopt ("GDBM_SETCOALESCEBLKS", GDBM_SETCOALESCEBLKS, v->bool) == 0
-         ? VAR_OK : VAR_ERR_BADVALUE;
+         ? VAR_OK : VAR_ERR_GDBM;
 }
 
 const char * const errname[_GDBM_MAX_ERRNO+1] = {
@@ -709,58 +716,76 @@ str2errcode (char const *str)
   return -1;
 }
 
-static char gdbmshell_errmask[_GDBM_MAX_ERRNO+1];
+#define ERROR_MASK_SIZE (_GDBM_MAX_ERRNO+1)
 
 static int
 errormask_sethook (struct variable *var, union value *v)
 {
-  if (!v)
+  char *errmask = var->data;
+  
+  if (!v || strcmp (v->string, "false") == 0)
     {
-      memset (gdbmshell_errmask, 0, sizeof (gdbmshell_errmask));
+      if (var->data)
+	memset (errmask, 0, ERROR_MASK_SIZE);
     }
   else
     {
       char *t;
 
-      for (t = strtok (v->string, ","); t; t = strtok (NULL, ","))
+      if (!errmask)
 	{
-	  int len, val, e;
-
-	  while (t[0] == ' ' || t[0] == '\t')
-	    t++;
-	  len = strlen (t);
-	  while (len > 0 && (t[len-1] == ' ' || t[len-1] == '\t'))
-	    len--;
-	  t[len] = 0;
-	  
-	  if (t[0] == '-')
+	  errmask = calloc (ERROR_MASK_SIZE, sizeof (char));
+	  var->data = errmask;
+	}
+      
+      if (strcmp (v->string, "true") == 0)
+	{
+	  memset (errmask, 1, ERROR_MASK_SIZE);
+	  free (v->string);
+	  v->string = estrdup ("all");
+	}
+      else
+	{
+	  for (t = strtok (v->string, ","); t; t = strtok (NULL, ","))
 	    {
-	      val = 0;
-	      t++;
-	    }
-	  else if (t[0] == '+')
-	    {
-	      val = 1;
-	      t++;
-	    }
-	  else
-	    {
-	      val = 1;
-	    }
-	  if (strcmp (t, "all") == 0)
-	    {
-	      for (e = 1; e < ARRAY_SIZE (gdbmshell_errmask); e++)
-		gdbmshell_errmask[e] = val;
-	    }
-	  else
-	    {
-	      e = str2errcode (t);
-	      if (e == -1)
-		terror (_("unrecognized error code: %s"), t);
+	      int len, val, e;
+	      
+	      while (t[0] == ' ' || t[0] == '\t')
+		t++;
+	      len = strlen (t);
+	      while (len > 0 && (t[len-1] == ' ' || t[len-1] == '\t'))
+		len--;
+	      t[len] = 0;
+	      
+	      if (t[0] == '-')
+		{
+		  val = 0;
+		  t++;
+		}
+	      else if (t[0] == '+')
+		{
+		  val = 1;
+		  t++;
+		}
 	      else
-		gdbmshell_errmask[e] = val;
+		{
+		  val = 1;
+		}
+	      if (strcmp (t, "all") == 0)
+		{
+		  for (e = 1; e < ERROR_MASK_SIZE; e++)
+		    errmask[e] = val;
+		}
+	      else
+		{
+		  e = str2errcode (t);
+		  if (e == -1)
+		    terror (_("unrecognized error code: %s"), t);
+		  else
+		    errmask[e] = val;
+		}
 	    }
-	}	  
+	}
     }
   return VAR_OK;
 }
@@ -768,12 +793,14 @@ errormask_sethook (struct variable *var, union value *v)
 static int
 errormask_typeconv (struct variable *var, int type, void **retptr)
 {
+  char *errmask = var->data;
+
   if (type == VART_INT)
     {
       int n = *(int*) retptr;
-      if (n >= 0 && n < ARRAY_SIZE (gdbmshell_errmask))
+      if (n >= 0 && n < ERROR_MASK_SIZE)
 	{
-	  *(int*) retptr = gdbmshell_errmask[n];
+	  *(int*) retptr = errmask ? errmask[n] : 0;
 	  return VAR_OK;
 	}
       else
@@ -785,12 +812,9 @@ errormask_typeconv (struct variable *var, int type, void **retptr)
 static int
 errorexit_sethook (struct variable *var, union value *v)
 {
-  if (v)
+  if (interactive ())
     {
-      if (interactive ())
-	{
-	  return VAR_ERR_BADVALUE;
-	}
+      return VAR_ERR_BADVALUE;
     }
-  return VAR_OK;
+  return errormask_sethook (var, v);
 }

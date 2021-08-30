@@ -36,6 +36,16 @@ static GDBM_FILE gdbm_file = NULL;   /* Database to operate upon */
 static datum key_data;               /* Current key */
 static datum return_data;            /* Current data */
 
+/* Return values for hanlders: */
+enum
+  {
+    GDBMSHELL_OK,       /* Success */
+    GDBMSHELL_GDBM_ERR, /* GDBM error */
+    GDBMSHELL_SYNTAX,   /* Syntax error (invalid argument etc) */
+    GDBMSHELL_ERR,      /* Other error */
+    GDBMSHELL_CANCEL    /* Operation canceled */
+  };
+
 static void
 datum_free (datum *dp)
 {
@@ -65,11 +75,11 @@ closedb (void)
     {
       gdbm_close (gdbm_file);
       gdbm_file = NULL;
+      variable_unset ("fd");
     }
 
   datum_free (&key_data);
   datum_free (&return_data);
-  variable_unset ("fd");
 }
 
 static int
@@ -108,7 +118,7 @@ opendb (char *dbname, int fd)
 	  access (dbname, F_OK) == 0)
 	{
 	  if (!getyn (_("database %s already exists; overwrite"), dbname))
-	    return 1;
+	    return GDBMSHELL_CANCEL;
 	}
     }
 
@@ -139,7 +149,7 @@ opendb (char *dbname, int fd)
   if (db == NULL)
     {
       dberror (_("cannot open database %s"), dbname);
-      return 1;
+      return GDBMSHELL_GDBM_ERR;
     }
 
   if (cache_size &&
@@ -159,7 +169,7 @@ opendb (char *dbname, int fd)
     gdbm_close (gdbm_file);
   
   gdbm_file = db;
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 static int
@@ -173,7 +183,7 @@ checkdb (void)
       variable_get ("fd", VART_INT, (void**) &fd);
       return opendb (filename, fd);
     }
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 static int
@@ -306,7 +316,7 @@ _gdbm_print_avail_list (FILE *fp, GDBM_FILE dbf)
   int rc = gdbm_avail_traverse (dbf, avail_list_print, fp);
   if (rc)
     dberror (_("%s failed"), "gdbm_avail_traverse");
-  return rc;
+  return GDBMSHELL_GDBM_ERR;
 }
 
 static void
@@ -378,7 +388,8 @@ open_handler (struct command_param *param,
 {
   char *filename;
   int fd = -1;
-
+  int rc;
+  
   closedb ();
 
   if (param->argc == 1)
@@ -389,16 +400,15 @@ open_handler (struct command_param *param,
       variable_get ("fd", VART_INT, (void**) &fd);
     }
   
-  if (opendb (filename, fd) == 0)
+  if ((rc = opendb (filename, fd)) == GDBMSHELL_OK)
     {
       variable_set ("filename", VART_STRING, filename);
       if (fd >= 0)
 	variable_set ("fd", VART_INT, &fd);
       else
 	variable_unset ("fd");
-      return 0;
     }
-  return 1;
+  return rc;
 }
 
 /* Close database */
@@ -410,7 +420,7 @@ close_handler (struct command_param *param GDBM_ARG_UNUSED,
     terror ("%s", _("nothing to close"));
   else
     closedb ();
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 static char *
@@ -442,7 +452,7 @@ count_handler (struct command_param *param GDBM_ARG_UNUSED,
   if (gdbm_count (gdbm_file, &count))
     {
       dberror (_("%s failed"), "gdbm_count");
-      return 1;
+      return GDBMSHELL_GDBM_ERR;
     }
   else
     {
@@ -458,7 +468,7 @@ count_handler (struct command_param *param GDBM_ARG_UNUSED,
 			   count),
 		 p);
     }
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 /* delete KEY - delete a key*/
@@ -474,9 +484,9 @@ delete_handler (struct command_param *param, struct command_environ *cenv)
 	}
       else
 	dberror ("%s", _("Can't delete"));
-      return 1;
+      return GDBMSHELL_GDBM_ERR;
     }
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 /* fetch KEY - fetch a record by its key */
@@ -489,7 +499,7 @@ fetch_handler (struct command_param *param, struct command_environ *cenv)
       datum_format (cenv->fp, &return_data, dsdef[DS_CONTENT]);
       fputc ('\n', cenv->fp);
       datum_free (&return_data);
-      return 0;
+      return GDBMSHELL_OK;
     }
   else if (gdbm_errno == GDBM_ITEM_NOT_FOUND)
     {
@@ -498,7 +508,7 @@ fetch_handler (struct command_param *param, struct command_environ *cenv)
     }
   else
     dberror ("%s", _("Can't fetch data"));
-  return 1;
+  return GDBMSHELL_GDBM_ERR;
 }
 
 /* store KEY DATA - store data */
@@ -511,9 +521,9 @@ store_handler (struct command_param *param,
 		  GDBM_REPLACE) != 0)
     {
       dberror ("%s", _("Item not inserted"));
-      return 1;
+      return GDBMSHELL_GDBM_ERR;
     }
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 /* first - begin iteration */
@@ -533,7 +543,7 @@ firstkey_handler (struct command_param *param, struct command_environ *cenv)
       fputc ('\n', cenv->fp);
 
       datum_free (&return_data);
-      return 0;
+      return GDBMSHELL_OK;
     }
   else if (gdbm_errno == GDBM_ITEM_NOT_FOUND)
     {
@@ -542,7 +552,7 @@ firstkey_handler (struct command_param *param, struct command_environ *cenv)
     }
   else
     dberror ("%s", _("Can't find first key"));
-  return 1;
+  return GDBMSHELL_GDBM_ERR;
 }
 
 /* next [KEY] - next key */
@@ -569,7 +579,7 @@ nextkey_handler (struct command_param *param, struct command_environ *cenv)
       fputc ('\n', cenv->fp);
 
       datum_free (&return_data);
-      return 0;
+      return GDBMSHELL_OK;
     }
   else if (gdbm_errno == GDBM_ITEM_NOT_FOUND)
     {
@@ -579,7 +589,7 @@ nextkey_handler (struct command_param *param, struct command_environ *cenv)
     }
   else
     dberror ("%s", _("Can't find next key"));
-  return 1;
+  return GDBMSHELL_GDBM_ERR;
 }
 
 /* reorganize */
@@ -590,11 +600,11 @@ reorganize_handler (struct command_param *param GDBM_ARG_UNUSED,
   if (gdbm_reorganize (gdbm_file))
     {
       dberror ("%s", _("Reorganization failed"));
-      return 1;
+      return GDBMSHELL_GDBM_ERR;
     }
   else
     fprintf (cenv->fp, "%s\n", _("Reorganization succeeded."));
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 static void
@@ -672,7 +682,7 @@ recover_handler (struct command_param *param, struct command_environ *cenv)
       else
 	{
 	  terror (_("unrecognized argument: %s"), arg);
-	  return 1;
+	  return GDBMSHELL_SYNTAX;
 	}
     }
 
@@ -706,6 +716,7 @@ recover_handler (struct command_param *param, struct command_environ *cenv)
   else
     {
       dberror ("%s", _("Recovery failed"));
+      rc = GDBMSHELL_GDBM_ERR;
     }
   return rc;
 }  
@@ -716,11 +727,13 @@ avail_begin (struct command_param *param GDBM_ARG_UNUSED,
 	     struct command_environ *cenv GDBM_ARG_UNUSED,
 	     size_t *exp_count)
 {
-  if (checkdb ())
-    return 1;
-  if (exp_count)
-    *exp_count = _gdbm_avail_list_size (gdbm_file, SIZE_T_MAX);
-  return 0;
+  int rc = checkdb ();
+  if (rc == GDBMSHELL_OK)
+    {
+      if (exp_count)
+	*exp_count = _gdbm_avail_list_size (gdbm_file, SIZE_T_MAX);
+    }
+  return rc;
 }
 
 static int
@@ -736,15 +749,16 @@ print_current_bucket_begin (struct command_param *param GDBM_ARG_UNUSED,
 			    struct command_environ *cenv GDBM_ARG_UNUSED,
 			    size_t *exp_count)
 {
-  if (checkdb ())
-    return 1;
-  if (!gdbm_file->bucket)
-    return 0;
-  if (exp_count)
-    *exp_count = gdbm_file->bucket
+  int rc = checkdb ();
+
+  if (rc == GDBMSHELL_OK)
+    {
+      if (exp_count)
+	*exp_count = gdbm_file->bucket
                        ? bucket_print_lines (gdbm_file->bucket) + 3
                        : 1;
-  return 0;
+    }
+  return rc;
 }
 
 static int
@@ -765,7 +779,7 @@ print_current_bucket_handler (struct command_param *param,
       fprintf (cenv->fp, _(" current bucket address  = %lu.\n"),
 	       (unsigned long) gdbm_file->cache_entry->ca_adr);
     }
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 int
@@ -798,28 +812,29 @@ print_bucket_begin (struct command_param *param,
 		    struct command_environ *cenv GDBM_ARG_UNUSED,
 		    size_t *exp_count)
 {
+  int rc;
   int temp;
 
-  if (checkdb ())
-    return 1;
+  if ((rc = checkdb ()) != GDBMSHELL_OK)
+    return rc;
   
   if (getnum (&temp, PARAM_STRING (param, 0), NULL))
-    return 1;
+    return GDBMSHELL_SYNTAX;
 
   if (temp >= GDBM_DIR_COUNT (gdbm_file))
     {
       terror (_("bucket number out of range (0..%lu)"),
 	      GDBM_DIR_COUNT (gdbm_file));
-      return 1;
+      return GDBMSHELL_SYNTAX;
     }
   if (_gdbm_get_bucket (gdbm_file, temp))
     {
       dberror (_("%s failed"), "_gdbm_get_bucket");
-      return 1;
+      return GDBMSHELL_GDBM_ERR;
     }
   if (exp_count)
     *exp_count = bucket_print_lines (gdbm_file->bucket) + 3;
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 /* dir - print hash directory */
@@ -828,11 +843,14 @@ print_dir_begin (struct command_param *param GDBM_ARG_UNUSED,
 		 struct command_environ *cenv GDBM_ARG_UNUSED,
 		 size_t *exp_count)
 {
-  if (checkdb ())
-    return 1;
-  if (exp_count)
-    *exp_count = GDBM_DIR_COUNT (gdbm_file) + 3;
-  return 0;
+  int rc;
+  
+  if ((rc = checkdb ()) == GDBMSHELL_OK)
+    {
+      if (exp_count)
+	*exp_count = GDBM_DIR_COUNT (gdbm_file) + 3;
+    }
+  return rc;
 }
 
 static size_t
@@ -862,7 +880,7 @@ print_dir_handler (struct command_param *param GDBM_ARG_UNUSED,
     fprintf (cenv->fp, "  %10d:  %12lu\n",
 	     i, (unsigned long) gdbm_file->dir[i]);
 
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 /* header - print file handler */
@@ -871,10 +889,11 @@ print_header_begin (struct command_param *param GDBM_ARG_UNUSED,
 		    struct command_environ *cenv GDBM_ARG_UNUSED,
 		    size_t *exp_count)
 {
+  int rc;
   int n;
   
-  if (checkdb ())
-    return 1;
+  if ((rc = checkdb ()) != GDBMSHELL_OK)
+    return rc;
 
   switch (gdbm_file->header->header_magic)
     {
@@ -894,7 +913,7 @@ print_header_begin (struct command_param *param GDBM_ARG_UNUSED,
   if (exp_count)
     *exp_count = n;
   
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 static int
@@ -947,37 +966,43 @@ print_header_handler (struct command_param *param GDBM_ARG_UNUSED,
       fprintf (fp, _("       numsync = %u\n"), gdbm_file->xheader->numsync);
     }
 
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 static int
 sync_handler (struct command_param *param GDBM_ARG_UNUSED,
 	      struct command_environ *cenv GDBM_ARG_UNUSED)
 {
-  int rc = gdbm_sync (gdbm_file);
-  if (rc)
-    dberror ("%s", "gdbm_sync");
-  return rc;
+  if (gdbm_sync (gdbm_file))
+    {
+      dberror ("%s", "gdbm_sync");
+      return GDBMSHELL_GDBM_ERR;
+    }
+  return GDBMSHELL_OK;
 }
 
 static int
 upgrade_handler (struct command_param *param GDBM_ARG_UNUSED,
 		 struct command_environ *cenv GDBM_ARG_UNUSED)
 {
-  int rc = gdbm_convert (gdbm_file, GDBM_NUMSYNC);
-  if (rc)
-    dberror ("%s", "gdbm_convert");
-  return rc;
+  if (gdbm_convert (gdbm_file, GDBM_NUMSYNC))
+    {
+      dberror ("%s", "gdbm_convert");
+      return GDBMSHELL_GDBM_ERR;
+    }
+  return GDBMSHELL_OK;
 }
 
 static int
 downgrade_handler (struct command_param *param GDBM_ARG_UNUSED,
 		   struct command_environ *cenv GDBM_ARG_UNUSED)
 {
-  int rc = gdbm_convert (gdbm_file, 0);
-  if (rc)
-    dberror ("%s", "gdbm_convert");
-  return rc;
+  if (gdbm_convert (gdbm_file, 0))
+    {
+      dberror ("%s", "gdbm_convert");
+      return GDBMSHELL_GDBM_ERR;
+    }
+  return GDBMSHELL_OK;
 }
 
 struct snapshot_status_info
@@ -1187,9 +1212,9 @@ snapshot_handler (struct command_param *param, struct command_environ *cenv)
   else
     {
       terror (_("unexpected error code: %d"), rc);
-      return 1;
+      return GDBMSHELL_ERR;
     }
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 
@@ -1212,7 +1237,7 @@ hash_handler (struct command_param *param GDBM_ARG_UNUSED,
     fprintf (cenv->fp, _("hash value = %x"),
 	     _gdbm_hash (PARAM_DATUM (param, 0)));
   fprintf (cenv->fp, ".\n");
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 /* cache - print the bucket cache */
@@ -1221,11 +1246,14 @@ print_cache_begin (struct command_param *param GDBM_ARG_UNUSED,
 		   struct command_environ *cenv GDBM_ARG_UNUSED,
 		   size_t *exp_count)
 {
-  if (checkdb ())
-    return 1;
-  if (exp_count)
-    *exp_count = gdbm_file->cache_num + 1;
-  return 0;
+  int rc;
+  
+  if ((rc = checkdb ()) == GDBMSHELL_OK)
+    {
+      if (exp_count)
+	*exp_count = gdbm_file->cache_num + 1;
+    }
+  return rc;
 }
 
 static int
@@ -1233,7 +1261,7 @@ print_cache_handler (struct command_param *param GDBM_ARG_UNUSED,
 		     struct command_environ *cenv)
 {
   _gdbm_print_bucket_cache (cenv->fp, gdbm_file);
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 /* version - print GDBM version */
@@ -1242,7 +1270,7 @@ print_version_handler (struct command_param *param GDBM_ARG_UNUSED,
 		       struct command_environ *cenv)
 {
   fprintf (cenv->fp, "%s\n", gdbm_version);
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 /* list - List all entries */
@@ -1251,21 +1279,24 @@ list_begin (struct command_param *param GDBM_ARG_UNUSED,
 	    struct command_environ *cenv GDBM_ARG_UNUSED,
 	    size_t *exp_count)
 {
-  if (checkdb ())
-    return 1;
-  if (exp_count)
+  int rc;
+  
+  if ((rc = checkdb ()) == GDBMSHELL_OK)
     {
-      gdbm_count_t count;
-
-      if (gdbm_count (gdbm_file, &count))
-	*exp_count = 0;
-      else if (count > SIZE_T_MAX)
-	*exp_count = SIZE_T_MAX;
-      else
-	*exp_count = count;
+      if (exp_count)
+	{
+	  gdbm_count_t count;
+	  
+	  if (gdbm_count (gdbm_file, &count))
+	    *exp_count = 0;
+	  else if (count > SIZE_T_MAX)
+	    *exp_count = SIZE_T_MAX;
+	  else
+	    *exp_count = count;
+	}
     }
 
-  return 0;
+  return rc;
 }
 
 static int
@@ -1274,17 +1305,17 @@ list_handler (struct command_param *param GDBM_ARG_UNUSED,
 {
   datum key;
   datum data;
-  int rc = 0;
+  int rc = GDBMSHELL_OK;
   
   key = gdbm_firstkey (gdbm_file);
   if (!key.dptr && gdbm_errno != GDBM_ITEM_NOT_FOUND)
     {
       dberror ("%s", "gdbm_firstkey");
-      return 1;
+      return GDBMSHELL_GDBM_ERR;
     }
   while (key.dptr)
     {
-      datum nextkey = gdbm_nextkey (gdbm_file, key);
+      datum nextkey;
 
       data = gdbm_fetch (gdbm_file, key);
       if (!data.dptr)
@@ -1292,7 +1323,7 @@ list_handler (struct command_param *param GDBM_ARG_UNUSED,
 	   dberror ("%s", "gdbm_fetch");
 	   terror ("%s", _("the key was:"));
 	   datum_format (stderr, &key, dsdef[DS_KEY]);
-	   rc = 1;
+	   rc = GDBMSHELL_GDBM_ERR;
 	 }
       else
 	 {
@@ -1302,13 +1333,14 @@ list_handler (struct command_param *param GDBM_ARG_UNUSED,
 	   fputc ('\n', cenv->fp);
 	   free (data.dptr);
 	 }
+      nextkey = gdbm_nextkey (gdbm_file, key);
       free (key.dptr);
       key = nextkey;
     }
   if (gdbm_errno != GDBM_ITEM_NOT_FOUND)
     {
-      dberror ("%s", "gdbm_firstkey");
-      rc = 1;
+      dberror ("%s", "gdbm_nextkey");
+      rc = GDBMSHELL_GDBM_ERR;
     }
   return rc;
 }
@@ -1321,7 +1353,7 @@ quit_handler (struct command_param *param GDBM_ARG_UNUSED,
   input_context_drain ();
   if (input_context_push (instream_null_create ()))
     exit (EXIT_FATAL);
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 /* export FILE [truncate] - export to a flat file format */
@@ -1333,7 +1365,7 @@ export_handler (struct command_param *param,
   int flags = GDBM_WRCREAT;
   int i;
   int filemode;
-  int rc;
+  int rc = GDBMSHELL_OK;
   
   for (i = 1; i < param->argc; i++)
     {
@@ -1346,16 +1378,16 @@ export_handler (struct command_param *param,
       else
 	 {
 	   terror (_("unrecognized argument: %s"), PARAM_STRING (param, i));
-	   return 1;
+	   return GDBMSHELL_SYNTAX;
 	 }
     }
 
   if (variable_get ("filemode", VART_INT, (void**) &filemode))
     abort ();
-  rc = gdbm_dump (gdbm_file, PARAM_STRING (param, 0), format, flags, filemode);
-  if (rc)
+  if (gdbm_dump (gdbm_file, PARAM_STRING (param, 0), format, flags, filemode))
     {
       dberror ("%s", _("error dumping database"));
+      rc = GDBMSHELL_GDBM_ERR;
     }
   return rc;
 }
@@ -1369,7 +1401,7 @@ import_handler (struct command_param *param,
   unsigned long err_line;
   int meta_mask = 0;
   int i;
-  int rc;
+  int rc = GDBMSHELL_OK;
   char *file_name;
   
   for (i = 0; i < param->argc; i++)
@@ -1382,7 +1414,7 @@ import_handler (struct command_param *param,
 	 {
 	   terror (_("unrecognized argument: %s"),
 		   PARAM_STRING (param, i));
-	   return 1;
+	   return GDBMSHELL_SYNTAX;
 	 }
     }
 
@@ -1421,13 +1453,15 @@ import_handler (struct command_param *param,
 	   else
 	     dberror (_("cannot load from %s"), PARAM_STRING (param, 0));
 	 }
-      return rc;
+      return GDBMSHELL_GDBM_ERR;
     }
 
   free (file_name);
-  rc = gdbm_setopt (gdbm_file, GDBM_GETDBNAME, &file_name, sizeof (file_name));
-  if (rc)
-    dberror ("%s", "GDBM_GETDBNAME");
+  if (gdbm_setopt (gdbm_file, GDBM_GETDBNAME, &file_name, sizeof (file_name)))
+    {
+      dberror ("%s", "GDBM_GETDBNAME");
+      rc = GDBMSHELL_GDBM_ERR;
+    }
   else
     {
       variable_set ("filename", VART_STRING, file_name);
@@ -1451,7 +1485,7 @@ status_handler (struct command_param *param GDBM_ARG_UNUSED,
     fprintf (cenv->fp, "%s\n", _("Database is not open"));
   dsprint (cenv->fp, DS_KEY, dsdef[DS_KEY]);
   dsprint (cenv->fp, DS_CONTENT, dsdef[DS_CONTENT]);
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 #if GDBM_DEBUG_ENABLE
@@ -1523,7 +1557,7 @@ debug_handler (struct command_param *param, struct command_environ *cenv)
 #else
   terror ("%s", _("compiled without debug support"));
 #endif
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 static int
@@ -1552,7 +1586,7 @@ shell_handler (struct command_param *param,
   if (pid == -1)
     {
       terror ("fork: %s", strerror (errno));
-      return 1;
+      return GDBMSHELL_ERR;
     }
   if (pid == 0)
     {
@@ -1562,7 +1596,10 @@ shell_handler (struct command_param *param,
 
   rc = waitpid (pid, &status, 0);
   if (rc == -1)
-    terror ("waitpid: %s", strerror (errno));
+    {
+      terror ("waitpid: %s", strerror (errno));
+      rc = GDBMSHELL_ERR;
+    }
   else if (!interactive ())
     {
       if (WIFEXITED (status))
@@ -1573,7 +1610,7 @@ shell_handler (struct command_param *param,
       else if (WIFSIGNALED (status))
 	terror (_("command terminated on signal %d"), WTERMSIG (status));
     }
-  return 0;
+  return rc;
 }
 
 static int
@@ -1589,7 +1626,7 @@ source_handler (struct command_param *param,
       input_context_drain ();
       yylex_destroy ();
     }
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 static int
@@ -1600,11 +1637,11 @@ perror_handler (struct command_param *param, struct command_environ *cenv)
   if (param->argc)
     {
       if (getnum (&n, PARAM_STRING (param, 0), NULL))
-	return 1;
+	return GDBMSHELL_SYNTAX;
     }
-  else if (checkdb ())
+  else if ((n = checkdb ()) != GDBMSHELL_OK)
     {
-      return 1;
+      return n;
     }
   else
     {
@@ -1620,7 +1657,7 @@ perror_handler (struct command_param *param, struct command_environ *cenv)
 		 gdbm_last_syserr (gdbm_file),
 		 strerror (gdbm_last_syserr (gdbm_file)));
     }
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 struct history_param
@@ -1643,7 +1680,7 @@ input_history_begin (struct command_param *param,
       /* TRANSLATORS: %s is the stream name */
       terror (_("input history is not available for %s input stream"),
 	      input_stream_name ());
-      return 1;
+      return GDBMSHELL_OK;
     }
   
   switch (param->argc)
@@ -1663,7 +1700,7 @@ input_history_begin (struct command_param *param,
       if (from)
 	--from;
       if (getnum (&count, param->argv[1]->v.string, NULL))
-	return 1;
+	return GDBMSHELL_OK;
 
       if (count > hlen)
 	count = hlen;
@@ -1674,7 +1711,7 @@ input_history_begin (struct command_param *param,
   cenv->data = p;
   if (exp_count)
     *exp_count = count;
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 static int
@@ -1692,7 +1729,7 @@ input_history_handler (struct command_param *param GDBM_ARG_UNUSED,
 	break;
       fprintf (fp, "%4d) %s\n", p->from + i + 1, s);
     }
-  return 0;
+  return GDBMSHELL_OK;
 }
 
 
@@ -2838,6 +2875,11 @@ run_command (struct command *cmd, struct gdbmarglist *arglist)
       gdbmarglist_free (&last_args);
       last_args = *arglist;
     }
+
+  if (rc == GDBMSHELL_GDBM_ERR && variable_has_errno ("errorexit", gdbm_errno))
+    rc = 1;
+  else
+    rc = 0;
   
   return rc;
 }
