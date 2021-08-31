@@ -1,0 +1,31 @@
+# Run commands for gdbm_fuzzer
+# Copyright (C) 2021 Free Software Foundation, Inc.
+# License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+# This is free software: you are free to change and redistribute it.
+# There is NO WARRANTY, to the extent permitted by law.
+set errorexit
+open
+set noerrorexit
+set errormask
+avail 
+cache 
+count 
+dir 
+header 
+current 
+first 
+next 
+status 
+set coalesce 
+set centfree 
+recover 
+reorganize 
+fetch 1 
+delete 1 
+store 1 1 
+delete 1 
+bucket 1 
+upgrade 
+downgrade 
+close 
+quit
