@@ -1,10 +1,10 @@
-GNU dbm NEWS -- history of user-visible changes. 2021-08-27
+GNU dbm NEWS -- history of user-visible changes. 2021-09-02
 Copyright (C) 1990-2021 Free Software Foundation, Inc.
 See the end of file for copying conditions.
 
 Please send gdbm bug reports to <bug-gdbm@gnu.org>.
 
-Version 1.21 (git)
+Version 1.21, 2021-09-02
 
 * Crash tolerance
 
@@ -12,13 +12,13 @@ By default it is possible for an abrupt crash (e.g., power failure,
 OS kernel panic, or application process crash) to corrupt the gdbm
 database file.  A new Linux-only mechanism enables applications to
 recover the database state corresponding to the most recent
-successful gdbm_sync() call before the crash.  See the chapter 16
+successful gdbm_sync() call before the crash.  See the chapter 17
 "Crash Tolerance" in the GDBM manual.
 
 * New database file format: numsync
 
-To support crash tolerance, the "numsync" database format is
-introduced.  To create a database in numsync format, the gdbm_open 
+The new "numsync" database format is designed to better support
+crash tolerance.  To create a database in numsync format, the gdbm_open 
 (or gdbm_fd_open) function must be given the GDBM_NEWDB|GDBM_NUMSYNC
 flags.  The GDBM_NUMSYNC flag also takes effect when used together
 with GDBM_WRCREAT, provided that the new file is created.
@@ -56,7 +56,7 @@ The file descriptor to use can also be supplied using the
 ** The format variable
 
 Defines the format in which new databases will be created.  Allowed
-values are: "standard" (default) and numsync.
+values are: "standard" (default) and "numsync".
 
 ** New commands: upgrade and downgrade
 

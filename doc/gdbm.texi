@@ -1516,8 +1516,11 @@ tolerance in your application and what to do if a crash occurs.
 
 The design rationale of the crash tolerance mechanism is described in
 detail in the article, @cite{Crashproofing the Original NoSQL Key-Value
-Store}, by Terence Kelly, ACM _Queue_ magazine, July/August 2021,
-available from the ACM Digital Library: @uref{https://dl.acm.org}.
+Store}, by Terence Kelly, @cite{ACM Queue magazine}, July/August 2021,
+available from the @uref{https://queue.acm.org/DrillBits5/, ACM Digital Library}.
+If you have difficulty retrieving this paper, please contact the
+author at @email{tpkelly@@acm.org}, @email{tpkelly@@cs.princeton.edu},
+or @email{tpkelly@@eecs.umich.edu}.
 
 @node Filesystems supporting crash tolerance
 @section Using Proper Filesystem
@@ -4012,8 +4015,6 @@ this information by printing the variable @code{gdbm_version}
 Non-bug suggestions are always welcome as well.  If you have questions
 about things that are unclear in the documentation or are just obscure
 features, please report them too.
-
-@c SP: Check formatting!
 
 You may contact the authors and maintainers by e-mail:
 Philip Nelson @email{phil@@cs.wwu.edu},
