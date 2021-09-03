@@ -93,7 +93,7 @@ instream_string_create (char const *input, char const *name)
 
 static instream_t input;
 
-void
+static void
 fuzzer_exit (void)
 {
   struct instream_string *istr = (struct instream_string *)input;
