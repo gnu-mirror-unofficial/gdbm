@@ -23,6 +23,7 @@ src/gdbm_load.c
 src/gdbmerrno.c
 src/gdbmstore.c
 src/gdbmtool.c
+src/gdbmshell.c
 src/gram.y
 src/lex.l
 src/parseopt.c
