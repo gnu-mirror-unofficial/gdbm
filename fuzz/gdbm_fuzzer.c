@@ -93,6 +93,15 @@ instream_string_create (char const *input, char const *name)
 
 static instream_t input;
 
+void
+fuzzer_exit (void)
+{
+  struct instream_string *istr = (struct instream_string *)input;
+  free (istr->string);
+  free (input->in_name);
+  free (input);
+}
+
 int
 LLVMFuzzerInitialize (int *argc, char ***argv)
 {
@@ -139,8 +148,11 @@ LLVMFuzzerInitialize (int *argc, char ***argv)
   /* Set up the input stream */
   input = instream_string_create (input_buffer, file_name);
   free (file_name);
+  free (input_buffer);
   if (!input)
     exit (1);
+
+  atexit (fuzzer_exit);
 
   /* Disable usual gdbmshell output. */
   stdout = fopen ("/dev/null","w");
