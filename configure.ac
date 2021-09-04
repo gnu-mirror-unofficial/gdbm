@@ -93,7 +93,7 @@ AC_DEFINE_UNQUOTED([GDBM_THREAD_LOCAL],$gdbm_cv__thread,[TLS qualifier])
 
 dnl Internationalization macros.
 AM_GNU_GETTEXT([external], [need-ngettext])
-AM_GNU_GETTEXT_VERSION(0.18)
+AM_GNU_GETTEXT_REQUIRE_VERSION(0.18)
 
 AC_CHECK_HEADERS([sys/file.h string.h locale.h getopt.h])
 
