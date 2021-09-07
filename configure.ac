@@ -220,6 +220,7 @@ AM_CONDITIONAL([COND_GDBMTOOL_DEBUG], [test "$want_gdbmtool_debug" = yes])
 # Initialize the test suite.
 AC_CONFIG_TESTDIR(tests)
 AC_CONFIG_FILES([tests/Makefile tests/atlocal po/Makefile.in])
+AC_CONFIG_FILES([tests/gdbmtool/Makefile])
 AM_MISSING_PROG([AUTOM4TE], [autom4te])
 
 AC_CONFIG_COMMANDS([status],[
