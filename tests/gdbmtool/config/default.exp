@@ -2,6 +2,7 @@ verbose "STARTED" 1
 
 # Make sure we use POSIX locale
 set env(LC_ALL) "C"
+set env(TERM) ""
 
 set gdbmtool_prompt "gdbmtool> "
 
