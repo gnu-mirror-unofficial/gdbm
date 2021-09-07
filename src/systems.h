@@ -52,6 +52,13 @@
 # define STATBLKSIZE(st) 1024
 #endif
 
+#if ! HAVE_STRUCT_STAT_ST_MTIM
+# if HAVE_STRUCT_STAT_ST_MTIMESPEC
+#   define st_mtim st_mtimespec
+#   define HAVE_STRUCT_STAT_ST_MTIM 1
+# endif
+#endif
+
 #ifndef STDERR_FILENO
 # define STDERR_FILENO 2
 #endif

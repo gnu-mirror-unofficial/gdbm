@@ -108,7 +108,9 @@ then
 fi
 AC_TYPE_OFF_T
 AC_CHECK_SIZEOF(off_t)
-AC_CHECK_MEMBERS([struct stat.st_blksize])
+AC_CHECK_MEMBERS([struct stat.st_blksize, struct stat.st_mtim, struct stat.st_mtimespec],[],[],
+                 [#include <sys/types.h>
+	          #include <sys/stat.h>])
 
 AM_CONDITIONAL([COMPAT_OPT], [test "$want_compat" = yes])
 

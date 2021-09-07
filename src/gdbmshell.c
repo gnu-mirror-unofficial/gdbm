@@ -1084,7 +1084,11 @@ print_snapshot (char const *snapname, FILE *fp)
       fprintf (fp, "%s: ", snapname);
       fprintf (fp, "%03o %s ", st.st_mode & 0777,
 	       decode_mode (st.st_mode, buf));
+#if HAVE_STRUCT_STAT_ST_MTIM
       fprintf (fp, "%ld.%09ld", st.st_mtim.tv_sec, st.st_mtim.tv_nsec);
+#else
+      fprintf (fp, "%ld [%s]", st.st_mtime, _("insufficient precision"));
+#endif
       if (S_ISREG (st.st_mode))
 	{
 	  GDBM_FILE dbf;
