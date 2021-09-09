@@ -495,7 +495,7 @@ print_usage (void)
 	{
 	  struct gdbm_option *opt = option_tab + idxbuf[i];
 	  const char *arg = opt->opt_arg ? gettext (opt->opt_arg) : NULL;
-	  size_t len = 3 + strlen (opt->opt_long)
+	  size_t len = 5 + strlen (opt->opt_long)
 	                 + (arg ? 1 + strlen (arg) : 0);
 	  if (n + len > RMARGIN) FLUSH;
 	  buf[n++] = ' ';
