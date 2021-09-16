@@ -837,7 +837,7 @@ _gdbm_convert_to_numsync (GDBM_FILE dbf)
 
   /*
    * Move the modified avail block into its new place.  From now on,
-   * old_avail may not be use.  The database header is in consistent
+   * old_avail may not be used.  The database header is in consistent
    * state and all modifications should be applied to it directly.
    */
   memmove (dbf->avail, old_avail, dbf->avail_size);
