@@ -314,8 +314,8 @@ push_avail_block (GDBM_FILE dbf)
     else
       dbf->avail->av_table[index>>1] = dbf->avail->av_table[index];
 
-  /* Update the header avail count to previous size divided by 2. */
-  dbf->avail->count >>= 1;
+  /* Update the header avail count. */
+  dbf->avail->count -= temp->count;
 
   rc = 0;
   do
