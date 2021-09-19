@@ -26,12 +26,13 @@ gdbm_valid_key_p (GDBM_FILE dbf, char *key_ptr, int key_size, int elem_loc)
 {
   datum key;
   int hash, bucket, offset;
-
+  
   key.dptr = key_ptr;
   key.dsize = key_size;
   _gdbm_hash_key (dbf, key, &hash, &bucket, &offset);
-  if (hash == dbf->bucket->h_table[elem_loc].hash_value &&
-      dbf->dir[bucket] == dbf->dir[dbf->bucket_dir])
+  if (gdbm_dir_entry_valid_p (dbf, bucket) &&
+      dbf->dir[bucket] == dbf->dir[dbf->bucket_dir] &&
+      hash == dbf->bucket->h_table[elem_loc].hash_value)
     return 1;
   GDBM_SET_ERRNO (dbf, GDBM_BAD_HASH_ENTRY, TRUE);
   return 0;

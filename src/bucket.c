@@ -41,21 +41,6 @@ _gdbm_new_bucket (GDBM_FILE dbf, hash_bucket *bucket, int bits)
     bucket->h_table[index].hash_value = -1;
 }
 
-/* Return true if the directory entry at DIR_INDEX can be considered
-   valid. This means that DIR_INDEX is in the valid range for addressing
-   the dir array, and the offset stored in dir[DIR_INDEX] points past
-   first two blocks in file. This does not necessarily mean that there's
-   a valid bucket or data block at that offset. All this implies is that
-   it is safe to use the offset for look up in the bucket cache and to
-   attempt to read a block at that offset. */
-static inline int
-gdbm_dir_entry_valid_p (GDBM_FILE dbf, int dir_index)
-{
-  return dir_index >= 0
-         && dir_index < GDBM_DIR_COUNT (dbf)
-         && dbf->dir[dir_index] >= dbf->header->block_size;
-}
-
 static void
 set_cache_entry (GDBM_FILE dbf, cache_elem *elem)
 {
