@@ -22,7 +22,9 @@ AC_INIT([gdbm],
         _GDBM_VERSION_MAJOR._GDBM_VERSION_MINOR[]m4_ifdef([_GDBM_VERSION_PATCH],._GDBM_VERSION_PATCH),
 	[bug-gdbm@gnu.org],,
 	[http://www.gnu.org/software/gdbm])
-AC_PREREQ(2.69)
+
+dnl When switching to 2.70, see Internationalization macros below
+AC_PREREQ([2.69]) 
 AC_CONFIG_SRCDIR([src/gdbmdefs.h])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_HEADERS([autoconf.h])
@@ -37,14 +39,14 @@ AC_SUBST([GDBM_VERSION_MINOR], _GDBM_VERSION_MINOR)
 AC_SUBST([GDBM_VERSION_PATCH], m4_ifdef([_GDBM_VERSION_PATCH],_GDBM_VERSION_PATCH,0))
 
 AC_ARG_ENABLE([memory-mapped-io],
-  AC_HELP_STRING(
+  AS_HELP_STRING(
     [--enable-memory-mapped-io],
     [Use mmap(2) for disk I/O. (Default is YES.)]),
   [mapped_io=$enableval],
   [mapped_io=yes])
 
 AC_ARG_ENABLE([libgdbm-compat],
-  AC_HELP_STRING(
+  AS_HELP_STRING(
     [--enable-libgdbm-compat],
     [Build and install libgdbm_compat. (Default is NO.)]),
   [want_compat=$enableval],
@@ -53,7 +55,7 @@ AC_ARG_VAR([COMPATINCLUDEDIR],[installation directory for dbm.h and ndbm.h])
 test -z "$COMPATINCLUDEDIR" && COMPATINCLUDEDIR='$(includedir)'
 
 AC_ARG_ENABLE([gdbmtool-debug],
-  AC_HELP_STRING(
+  AS_HELP_STRING(
     [--enable-gdbmtool-debug],
     [instrument gdbmtool for additional debugging]),
     [want_gdbmtool_debug=$enableval],
@@ -63,9 +65,9 @@ dnl Check for programs
 AC_PROG_CC
 AC_PROG_CPP
 AC_PROG_INSTALL
-AC_PROG_LIBTOOL
+LT_INIT
 AC_PROG_YACC
-AC_PROG_LEX
+AC_PROG_LEX([noyywrap])
 
 AC_ARG_VAR([GZIP_BIN],[Absolute filename of the gzip binary])
 AC_PATH_PROG(GZIP_BIN,[gzip])
@@ -84,21 +86,42 @@ else
 fi
 
 AC_MSG_CHECKING([for TLS qualifier])
-AC_TRY_COMPILE([],
- [static __thread int x = 0;],
- [gdbm_cv__thread=__thread],
- [gdbm_cv__thread=])
+AC_COMPILE_IFELSE(
+  [AC_LANG_PROGRAM([],
+                   [static __thread int x = 0;])],
+  [gdbm_cv__thread=__thread],
+  [gdbm_cv__thread=])
 AC_MSG_RESULT($gdbm_cv__thread)
 AC_DEFINE_UNQUOTED([GDBM_THREAD_LOCAL],$gdbm_cv__thread,[TLS qualifier])
 
 dnl Internationalization macros.
 AM_GNU_GETTEXT([external], [need-ngettext])
-AM_GNU_GETTEXT_VERSION(0.18)
+AM_GNU_GETTEXT_REQUIRE_VERSION([0.19])
+dnl The following kludge is needed when using autoconf 2.69.
+dnl Observe the following:
+dnl 1. Autopoint (0.19.8.1) understands the AM_GNU_GETTEXT_REQUIRE_VERSION
+dnl    macro, but autoreconf 2.69 reports:
+dnl      configure.ac: AM_GNU_GETTEXT is used, but not AM_GNU_GETTEXT_VERSION
+dnl    and doesn't call autopoint at all.
+dnl 2. On the other hand, when both macros are used, autopoint warns:
+dnl      using AM_GNU_GETTEXT_REQUIRE_VERSION instead of AM_GNU_GETTEXT_VERSION
+dnl    (which it actually does).
+dnl
+dnl To make both happy, the following kludge is installed, which uses the fact
+dnl that autoreconf 2.69 looks for /^AM_GNU_GETTEXT_VERSION/ (see line 341),
+dnl and autopoint, when working with the file written for autoconf 2.69, uses a
+dnl simple sed logic to detect the presence of either macro.  The kludge below
+dnl easily fools that logic.  When working with autoconf 2.70 and later,
+dnl autopoint traces the m4 output, in which m4_if expands to nothing.
+dnl
+dnl When we finally switch to 2.70, this will be removed.
+dnl
+m4_if([
+AM_GNU_GETTEXT_VERSION
+])
 
 AC_CHECK_HEADERS([sys/file.h string.h locale.h getopt.h])
 
-AC_CHECK_LIB(dbm, main)
-AC_CHECK_LIB(ndbm, main)
 AC_CHECK_FUNCS([ftruncate flock lockf fsync setlocale getopt_long])
 
 if test x$mapped_io = xyes
@@ -123,7 +146,7 @@ done
 AC_SUBST(CURSES_LIBS)
 # Readline
 AC_ARG_WITH([readline],
-            AC_HELP_STRING([--without-readline],
+            AS_HELP_STRING([--without-readline],
                            [do not use readline]),
             [
 case "${withval}" in
@@ -165,7 +188,7 @@ AM_CONDITIONAL([GDBM_COND_READLINE], [test "$status_readline" = "yes"])
 
 # CoW crash tolerance support
 AC_ARG_ENABLE([crash-tolerance],
-  AC_HELP_STRING(
+  AS_HELP_STRING(
     [--enable-crash-tolerance],
     [Enable crash tolerance, based on clone/copy-on-write (needs support for FICLONE)]),
   [status_ficlone=$enableval],
@@ -189,7 +212,7 @@ fi
 
 # Additional debugging
 AC_ARG_ENABLE([debug],
-              AC_HELP_STRING([--enable-debug],
+              AS_HELP_STRING([--enable-debug],
                              [provide additional debugging information]),
               [status_debug=$withval],
 	      [status_debug=no])
