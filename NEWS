@@ -1,10 +1,37 @@
-GNU dbm NEWS -- history of user-visible changes. 2021-09-03
+GNU dbm NEWS -- history of user-visible changes. 2021-10-11
 Copyright (C) 1990-2021 Free Software Foundation, Inc.
 See the end of file for copying conditions.
 
 Please send gdbm bug reports to <bug-gdbm@gnu.org>.
 
 Version 1.21.90 (git)
+
+* Fix file header validation
+
+* Fix key verification in sequential access
+
+* Fix testing with DejaGNU 1.6.3
+
+* Fix stack overflow in print_usage
+
+* Fix a leak of avail entry on pushing a new avail block
+
+The leak would occur if the original avail table had odd number of entries.
+
+* New gdbmtool variables: errorexit, errormask, trace, timing
+
+"Errorexit" and "errormask" control which GDBM errors would cause the
+program termination and emitting a diagnostic message,
+correspondingly.  Both variables are comma-delimited lists of error
+codes.
+
+The "trace" variable enables tracing of the gdbmtool commands.
+
+The "timing" variable, when set, instructs gdbmtool to print time
+spent in each command it runs.
+
+* New gdbmtool options: -t (--trace), and -T (--timing)
+
 
 Version 1.21, 2021-09-02
 

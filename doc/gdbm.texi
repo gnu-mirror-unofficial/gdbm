@@ -3165,6 +3165,27 @@ A string used to delimit array items when printing a structured datum
 Default is @samp{,} (a comma).  This variable cannot be unset.
 @end deftypevr
 
+@deftypevr {gdbmtool variable} string errorexit
+@deftypevrx {gdbmtool variable} bool errorexit
+Comma-delimited list of @code{gdbm} error codes which cause program
+termination.  Error codes are specified via their canonical names
+(@pxref{Error codes}).  The @code{GDBM_} prefix can be omitted.  Code
+name comparison is case-insensitive.  Each error code can optionally
+be prefixed with minus sign, to indicate that it should be removed
+from the resulting list, or with plus sign (which is allowed for
+symmetry).  A special code @samp{all} stands for all available error codes.
+
+In boolean context, the @code{true} value is equivalent to @samp{all},
+and @code{false} (i.e. variable unset) is equivalent to @samp{-all}.
+@end deftypevr
+
+@deftypevr {gdbmtool variable} string errormask
+@deftypevrx {gdbmtool variable} bool errormask
+Comma-delimited list of @code{gdbm} error codes which are masked, i.e.
+which won't trigger a diagnostic message if they occur.  The syntax is
+the same as described for @code{errorexit}.
+@end deftypevr
+
 @deftypevr {gdbmtool variable} string pager
 The name and command line of the pager program to pipe output to.
 This program is used in interactive mode when the estimated number of
