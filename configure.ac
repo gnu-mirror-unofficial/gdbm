@@ -66,8 +66,8 @@ AC_PROG_CC
 AC_PROG_CPP
 AC_PROG_INSTALL
 LT_INIT
-AC_PATH_PROG([BISON],[bison],[$(SHELL) $(top_srcdir)/build-aux/missing bison])
-AC_PATH_PROG([FLEX],[flex],[$(SHELL) $(top_srcdir)/build-aux/missing flex])
+AC_PATH_PROG([BISON],[bison],[\$(SHELL) \$(top_srcdir)/build-aux/missing bison])
+AC_PATH_PROG([FLEX],[flex],[\$(SHELL) \$(top_srcdir)/build-aux/missing flex])
 
 AC_ARG_VAR([GZIP_BIN],[Absolute filename of the gzip binary])
 AC_PATH_PROG(GZIP_BIN,[gzip])
