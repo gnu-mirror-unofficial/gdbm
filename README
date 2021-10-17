@@ -72,19 +72,21 @@ on how to install this file.
   
 * Bug reporting
 
-Please report bugs to <bug-gdbm@gnu.org>
+Please report bugs via email to <bug-gdbm@gnu.org>.  You can also use
+bug-tracker at <https://puszcza.gnu.org.ua/bugs/?group=gdbm>.
 
 * Documentation, updates etc.
 
 For the latest updates, visit <http://www.gnu.org/software/gdbm>,
 
 In particular, a copy of GDBM documentation in various formats is
-available online at <http://www.gnu.org/software/gdbm/manual>.
+available online at <https://www.gnu.org/software/gdbm/manual>.
 
-Latest versions of GDBM can be downloaded from anonymous
-ftp://ftp.gnu.org/gnu/gdbm.
+Latest versions of GDBM can be downloaded from
+<https://ftp.gnu.org/gnu/gdbm>.  You can also use anonymous fpt at
+the same location, if you prefer.
 
-To track the development, visit 
+To track the development, visit
 <http://puszcza.gnu.org.ua/projects/gdbm>.
 
 

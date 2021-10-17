@@ -2366,8 +2366,8 @@ the value of its @var{block_size} argument is incorrect and the
 
 @defvr {Error Code} GDBM_FILE_OPEN_ERROR
 The library was not able to open a disk file.  This can be set by
-@code{gdbm_open} (@pxref{Open}), @code{gdbm_export} and
-@code{gdbm_import} functions (@pxref{Flat files}).
+@code{gdbm_open} (@pxref{Open}), @code{gdbm_dump} (@code{gdbm_export}) and
+@code{gdbm_load} (@code{gdbm_import}) functions (@pxref{Flat files}).
 
 Inspect the value of the system @code{errno} variable to get more
 detailed diagnostics.
@@ -2375,8 +2375,8 @@ detailed diagnostics.
 
 @defvr {Error Code} GDBM_FILE_WRITE_ERROR
 Writing to a disk file failed.  This can be set by
-@code{gdbm_open} (@pxref{Open}), @code{gdbm_export} and
-@code{gdbm_import} functions.
+@code{gdbm_open} (@pxref{Open}), @code{gdbm_dump} (@code{gdbm_export}) and
+@code{gdbm_load} (@code{gdbm_import}) functions.
 
 Inspect the value of the system @code{errno} variable to get more
 detailed diagnostics.
@@ -2392,8 +2392,8 @@ detailed diagnostics.
 
 @defvr {Error Code} GDBM_FILE_READ_ERROR
 Reading from a disk file failed.  This can be set by
-@code{gdbm_open} (@pxref{Open}), @code{gdbm_export} and
-@code{gdbm_import} functions.
+@code{gdbm_open} (@pxref{Open}), @code{gdbm_dump} (@code{gdbm_export}) and
+@code{gdbm_load} (@code{gdbm_import}) functions.
 
 Inspect the value of the system @code{errno} variable to get a more
 detailed diagnostics.
@@ -2498,8 +2498,8 @@ the file it tries to open has a wrong magic number.
 @end defvr
 
 @defvr {Error Code} GDBM_BAD_OPEN_FLAGS
-Set by the @code{gdbm_export} function if supplied an invalid
-@var{flags} argument.  @xref{Flat files}.
+Set by the @code{gdbm_dump} (@code{gdbm_export}) function if supplied
+an invalid @var{flags} argument.  @xref{Flat files}.
 @end defvr
 
 @defvr {Error Code} GDBM_FILE_STAT_ERROR
@@ -2517,9 +2517,9 @@ and usually means that the database is truncated or otherwise corrupted.
 
 This error can be set by any GDBM function that does I/O.  Some of
 these functions are: @code{gdbm_delete}, @code{gdbm_exists},
-@code{gdbm_fetch}, @code{gdbm_export}, @code{gdbm_import},
-@code{gdbm_reorganize}, @code{gdbm_firstkey}, @code{gdbm_nextkey},
-@code{gdbm_store}.
+@code{gdbm_fetch}, @code{gdbm_dump}, @code{gdbm_load},
+@code{gdbm_export}, @code{gdbm_import}, @code{gdbm_reorganize},
+@code{gdbm_firstkey}, @code{gdbm_nextkey}, @code{gdbm_store}.
 @end defvr
 
 @defvr {Error Code} GDBM_NO_DBNAME
@@ -2610,7 +2610,7 @@ Database recovery is needed (@pxref{Recovery}).
 
 @defvr {Error Code} GDBM_FILE_TRUNCATE_ERROR
 File cannot be truncated.  Examine the @code{errno} variable to get
-more info,
+more info.
 
 This error is set by @code{gdbm_open} and @code{gdbm_fd_open} when
 called with the @code{GDBM_NEWDB} flag.

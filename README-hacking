@@ -3,16 +3,18 @@ GDBM.
 
 * Requirements
 
-You need the following packages to build the CVS version of GNU
+You need the following packages to build the development version of GNU
 DBM.  We do not make any efforts to accommodate older versions of
 these packages, so please make sure that you have the latest stable
 version. 
 
-- Automake <http://www.gnu.org/software/automake/>
-- Autoconf <http://www.gnu.org/software/autoconf/>
-- Libtool <http://www.gnu.org/software/libtool/>
-- Gettext <http://www.gnu.org/software/gettext/>
-- Texinfo <http://www.gnu.org/software/texinfo>
+- Automake <https://www.gnu.org/software/automake/>
+- Autoconf <https://www.gnu.org/software/autoconf/>
+- Libtool <https://www.gnu.org/software/libtool/>
+- Gettext <https://www.gnu.org/software/gettext/>
+- Texinfo <https://www.gnu.org/software/texinfo/>
+- Bison <https://www.gnu.org/software/bison/>
+- Flex <https://github.com/westes/flex/>
 
 * Bootstrapping
 

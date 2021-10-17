@@ -4,13 +4,13 @@ See end of file for copying conditions.
 * Introduction
 
 This is a *pre-release* version, and not ready for production use yet.
-If you are taking source from CVS, you will need to have several
+If you are taking source from git repository, you will need to have several
 special tools to help contribute.  See the file README-hacking for more
 information.  See chapter `Building' for the detailed instructions on
 how to build the package.
 
 Please, note that the accompanying documentation may be inaccurate
-or incomplete. The ChangeLog file is the authoritative documentation of
+or incomplete.  The ChangeLog file is the authoritative documentation of
 all recent changes.
 
 Please, send comments and problem reports to <bug-gdbm@gnu.org>.
@@ -18,42 +18,24 @@ Please, send comments and problem reports to <bug-gdbm@gnu.org>.
 * Checking Out the Sources
 
 The following instructions apply if you wish to obtain sources from
-the repository.  There are several repositories:
-
-1. CVS at Puszcza.gnu.org.ua - master repository
-   <https://puszcza.gnu.org.ua/cvs/?group=gdbm>
-2. Git at Puszcza.gnu.org.ua - slave
-   <http://puszcza.gnu.org.ua/git/?group=gdbm>
-3. CVS at Savannah.gnu.org - slave
-   <http://savannah.gnu.org/cvs/?group=gdbm>
-4. Git at Savannah.gnu.org - slave
-   <http://savannah.gnu.org/git/?group=gdbm>
-
-Slave repositories are synchronized with the master 8 times a day.
-
-** CVS
-
-To checkout the source tree from CVS issue the following command:
-
-  cvs -d:pserver:anonymous@cvs.gnu.org.ua:/cvsroot/gdbm co gdbm
-
-Or, to checkout the sources from CVS mirror at Savannah, issue the
-following command:
-
-  cvs -d :pserver:anoncvs@cvs.savannah.gnu.org:/cvsroot/gdbm checkout gdbm
-
-** Git  
+the repository.
 
 To clone the Git repository, run:
 
-  git clone git://git.gnu.org.ua/gdbm.git
+  git clone https://git.gnu.org.ua/gdbm.git
 
-Or, to clone the secondary GDBM Git mirrror repo, run:
+This will create a directory named `gdbm' and populate it with
+the sources.
 
-  git clone git://git.savannah.gnu.org/gdbm.git
+If you are not interested in the entire development history, you can
+minimize the traffic using the `--depth' option.  For example,
 
-In all cases, this will give you read-only access.  If you think you need
-write access, contact <bug-gdbm@gnu.org>.
+  git clone --depth 1 https://git.gnu.org.ua/gdbm.git
+
+will clone only the most recent revision from the repository.
+
+For more information about git access, visit
+<https://puszcza.gnu.org.ua/git/?group=gdbm>.
 
 * Building
 
@@ -66,7 +48,6 @@ Usual procedures apply:
 See the files INSTALL and README for the detailed instructions.
 
 * Copyright information:
-Copyright information:
 
 Copyright (C) 1990-2021 Free Software Foundation, Inc.
 
