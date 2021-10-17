@@ -383,7 +383,8 @@ void end_def (void);
 
 int yylex (void);
 int yylex_destroy (void);
-int yyerror (char const *s);
+void yyerror (char const *s);
+#define YYERROR_IS_DECLARED 1
 int yyparse (void);
 
 void lex_trace (int n);

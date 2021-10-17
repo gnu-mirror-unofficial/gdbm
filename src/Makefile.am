@@ -27,10 +27,11 @@ noinst_HEADERS = \
  proto.h\
  systems.h
 
-EXTRA_DIST = gdbm.h.in gdbm.magic
-BUILT_SOURCES = gdbm.h gram.h
+EXTRA_DIST = gdbm.h.in gdbm.magic gram.y lex.l
+BUILT_SOURCES = gdbm.h gram.h gram.c lex.c
 
-gram.h: gram.c
+gram.c gram.h: gram.y
+lex.c: lex.l
 
 # The libraries
 VI_CURRENT  = 6
@@ -87,12 +88,12 @@ libgdbmapp_a_SOURCES =\
  parseopt.c\
  progname.c\
  datconv.c\
- gram.y\
+ gram.c\
  input-argv.c\
  input-file.c\
  input-null.c\
  input-std.c\
- lex.l\
+ lex.c\
  gdbmshell.c\
  var.c\
  util.c
@@ -115,6 +116,11 @@ gdbmtool_SOURCES = \
 
 AM_YFLAGS = -dv $(YFLAGS_DEBUG)
 AM_LFLAGS = $(LFLAGS_DEBUG)
+
+.l.c:
+	$(AM_V_GEN)$(FLEX) -o $@ $(AM_LFLAGS) $<
+.y.c:
+	$(AM_V_GEN)$(BISON) -o $@ $(AM_YFLAGS) $<
 
 if COND_GDBMTOOL_DEBUG
   AM_CPPFLAGS += -DGDBMTOOL_DEBUG=1

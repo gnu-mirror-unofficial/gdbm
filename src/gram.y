@@ -22,7 +22,7 @@ struct dsegm *dsdef[DS_MAX];
   
 %}
 
-%error-verbose
+%define parse.error verbose
 %locations
      
 %token <type> T_TYPE
@@ -419,11 +419,10 @@ dberror (char const *fmt, ...)
   fputc ('\n', stderr);
 }
 
-int
+void
 yyerror (char const *s)
 {
   terror ("%s", s);
-  return 0;
 }
 
 void
