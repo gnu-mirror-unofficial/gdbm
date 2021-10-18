@@ -913,12 +913,6 @@ correct information about the new file.  If an error is detected, the return
 value is negative.  The value zero is returned after a successful
 reorganization.
 
-@emph{Notice}, that calling this function disables crash tolerance
-(@pxref{Crash Tolerance}), reverting the effect of the recent
-@code{gdbm_failure_atomic} call.  You will have to call
-@code{gdbm_failure_atomic} again after @code{gdbm_reorganize} returns
-successfully.  This will be fixed in future releases.
-
 @node Sync
 @chapter Database Synchronization
 @cindex database synchronization

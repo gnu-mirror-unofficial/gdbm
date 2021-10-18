@@ -105,8 +105,6 @@ _gdbm_finish_transfer (GDBM_FILE dbf, GDBM_FILE new_dbf,
       return -1;
     }
   
-  _gdbmsync_done (dbf);
-  
 #if HAVE_MMAP
   _gdbm_mapped_unmap (dbf);
 #endif
