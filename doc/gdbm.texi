@@ -3654,7 +3654,7 @@ Synchronize after each write.  Default is @code{off}.
 @deffn {command verb} perror [@var{code}]
 Describe the given @command{GDBM} error code.
 
-The descripion occupies one or two lines.  The second line is present
+The description occupies one or two lines.  The second line is present
 if the system error number should be checked when handling this code.
 In this case, the second line states @samp{Examine errno}.
 
