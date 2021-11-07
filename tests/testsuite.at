@@ -69,6 +69,7 @@ AT_BANNER([DB options])
 
 m4_include([setopt00.at])
 m4_include([setopt01.at])
+m4_include([setopt02.at])
 
 AT_BANNER([Cloexec])
 

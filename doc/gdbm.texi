@@ -2083,20 +2083,19 @@ success.  The global variable @code{gdbm_errno} will be set upon failure.
 
 The valid options are:
 
-@table @asis
-@kwindex GDBM_CACHESIZE
-@kwindex GDBM_SETCACHESIZE
-@item GDBM_SETCACHESIZE
-@itemx GDBM_CACHESIZE
-@kwindex GDBM_CACHE_AUTO
+@defvr {Option} GDBM_SETCACHESIZE
+@defvrx {Option} GDBM_CACHESIZE
 Set the size of the internal bucket cache.  The @var{value} should
 point to a @code{size_t} holding the desired cache size, or the
-constant @code{GDBM_CACHE_AUTO}, to set the best cache size
+constant @code{GDBM_CACHE_AUTO}, to adjust the cache size
 automatically.
 
-By default, a newly open database is configured to adapt the cache
-size to the number of index buckets in the database file.  This
-provides for the best performance.
+By default, a newly open database is configured to dynamically
+accommodate the cache size to the number of index buckets in the
+database file.  This provides for the best performance.
+
+If another @var{value} is set, it is adjusted to the nearest larger
+power of two.
 
 Use this option if you wish to limit the memory usage at the expense
 of performance.  If you chose to do so, please bear in mind that cache
@@ -2110,41 +2109,84 @@ gdbm_bucket_count (dbf, &bn);
 ret = gdbm_setopt (dbf, GDBM_SETCACHESIZE, &bn, sizeof (bn));
 @end example
 
-To set the best cache size, use the constant @code{GDBM_CACHE_AUTO}:
+To request the automatically adjustable cache size, use the constant
+@code{GDBM_CACHE_AUTO}:
 
 @example
 size_t bn = GDBM_CACHE_AUTO;
 ret = gdbm_setopt (dbf, GDBM_SETCACHESIZE, &bn, sizeof (bn));
 @end example
+@end defvr
 
-@kwindex GDBM_GETCACHESIZE
-@item GDBM_GETCACHESIZE
-Return the size of the internal bucket cache.  The @var{value} should
-point to a @code{size_t} variable, where the size will be stored.
+@defvr {Option} GDBM_GETCACHESIZE
+Return the actual size of the internal bucket cache.  The @var{value}
+should point to a @code{size_t} variable, where the size will be
+stored.
+@end defvr
 
-@kwindex GDBM_GETFLAGS
-@item GDBM_GETFLAGS
+@defvr {Option} GDBM_SETCACHEAUTO
+Controls whether the cache size will be adjusted automatically as
+needed.  The @var{value} should point to an integer: @code{TRUE} to
+enable automatical cache adjustment and @code{FALSE} to disable it.
+
+The following two calls are equivalent:
+
+@example
+int t = TRUE;
+gdbm_setopt (dbf, GDBM_SETCACHEAUTO, &t, sizeof (t));
+
+size_t n = GDBM_CACHE_AUTO;
+gdbm_setopt (dbf, GDBM_SETCACHESIZE, &n, sizeof (n));
+@end example
+@end defvr
+
+@defvr {Option} GDBM_GETCACHEAUTO
+Return the state of the automatic cache size adjustment.  The
+@var{value} should point to an integer which, upon successful return,
+will have the value @code{TRUE} if the automatic cache size adjustment
+is enabled and @code{FALSE} otherwise.
+@end defvr
+
+@defvr {Option} GDBM_GETFLAGS
 Return the flags describing the state of the database.  The @var{value} should
 point to an @code{int} variable where to store the flags.  On success,
 its value will be similar to the flags used when opening the database
 (@pxref{Open, gdbm_open}), except that it will reflect the current state
 (which may have been altered by another calls to @code{gdbm_setopt}).
+@end defvr
 
-@kwindex GDBM_FASTMODE
-@item GDBM_FASTMODE
+@defvr {Option} GDBM_GETDBFORMAT
+Return the database format.  The @var{value} should point to an
+@code{int} variable.  Upon successful return, it will be set to
+@samp{0} if the database is in standard format and @code{GDBM_NUMSYNC}
+if it is in extended format.  @xref{Database format}.
+@end defvr
+
+@defvr {Option} GDBM_GETDIRDEPTH
+Returns the @dfn{directory depth}: the number of initial (most significant)
+bits in hash value that are interpreted as index to the directory.  The
+actual directory size can be computed as @code{1 << @var{value}}.
+
+The @var{value} argument should point to an @code{int}.  
+@end defvr
+
+@defvr {Option} GDBM_GETBUCKETSIZE
+Returns the @dfn{bucket capacity}: maximum number of keys per bucket
+(@code{int}).
+@end defvr
+
+@defvr {Option} GDBM_FASTMODE
 Enable or disable the @dfn{fast writes mode}, i.e.@: writes without
 subsequent synchronization.  The @var{value} should point
 to an integer: @code{TRUE} to enable fast mode, and @code{FALSE} to
 disable it.
 
 This option is retained for compatibility with previous versions of
-@command{GDBM}.  Its effect is the reverse of @code{GDBM_SETSYNCMODE}
-(see below).
+@command{GDBM}.  Its effect is the reverse of @code{GDBM_SETSYNCMODE}.
+@end defvr
 
-@kwindex GDBM_SETSYNCMODE
-@kwindex GDBM_SYNCMODE
-@item GDBM_SETSYNCMODE
-@itemx GDBM_SYNCMODE
+@defvr {Option} GDBM_SETSYNCMODE
+@defvrx {Option} GDBM_SYNCMODE
 Turn on or off file system synchronization operations.  This
 setting defaults to off.  The @var{value} should point
 to an integer: @code{TRUE} to turn synchronization on, and @code{FALSE} to
@@ -2156,16 +2198,15 @@ as calling @code{GDBM_FASTMODE} with @code{FALSE}.
 
 The @code{GDBM_SYNCMODE} option is provided for compatibility with
 earlier versions.
+@end defvr
 
-@kwindex GDBM_GETSYNCMODE
-@item GDBM_GETSYNCMODE
+@defvr {Option} GDBM_GETSYNCMODE
 Return the current synchronization status.  The @var{value} should
 point to an @code{int} where the status will be stored.
+@end defvr
 
-@kwindex GDBM_SETCENTFREE
-@kwindex GDBM_CENTFREE
-@item GDBM_SETCENTFREE
-@itemx GDBM_CENTFREE
+@defvr {Option} GDBM_SETCENTFREE
+@defvrx {Option} GDBM_CENTFREE
 @emph{NOTICE: This feature is still under study.}
 
 Set central free block pool to either on or off.  The default is off,
@@ -2177,11 +2218,10 @@ turn central block pool on, and @code{FALSE} to turn it off.
 
 The @code{GDBM_CENTFREE} option is provided for compatibility with
 earlier versions.
+@end defvr
 
-@kwindex GDBM_SETCOALESCEBLKS
-@kwindex GDBM_COALESCEBLKS
-@item GDBM_SETCOALESCEBLKS
-@itemx GDBM_COALESCEBLKS
+@defvr {Option} GDBM_SETCOALESCEBLKS
+@defvrx {Option} GDBM_COALESCEBLKS
 @emph{NOTICE: This feature is still under study.}
 
 Set free block merging to either on or off.  The default is off, which
@@ -2191,38 +2231,38 @@ a @acronym{CPU} expensive process with time, though, especially if
 used in conjunction with GDBM_CENTFREE.  The @var{value} should point
 to an integer: @code{TRUE} to turn free block merging on, and @code{FALSE} to
 turn it off.
+@end defvr
 
-@kwindex GDBM_GETCOALESCEBLKS
-@item GDBM_GETCOALESCEBLKS
+@defvr {Option} GDBM_GETCOALESCEBLKS
 Return the current status of free block merging.  The @var{value} should
 point to an @code{int} where the status will be stored.
+@end defvr
 
-@kwindex GDBM_SETMAXMAPSIZE
-@item GDBM_SETMAXMAPSIZE
+@defvr {Option} GDBM_SETMAXMAPSIZE
 Sets maximum size of a memory mapped region.  The @var{value} should
 point to a value of type @code{size_t}, @code{unsigned long} or
 @code{unsigned}.  The actual value is rounded to the nearest page
 boundary (the page size is obtained from
 @code{sysconf(_SC_PAGESIZE)}).
+@end defvr
 
-@kwindex GDBM_GETMAXMAPSIZE
-@item GDBM_GETMAXMAPSIZE
+@defvr {Option} GDBM_GETMAXMAPSIZE
 Return the maximum size of a memory mapped region.  The @var{value} should
 point to a value of type @code{size_t} where to return the data.
+@end defvr
 
-@kwindex GDBM_SETMMAP
-@item GDBM_SETMMAP
+@defvr {Option} GDBM_SETMMAP
 Enable or disable memory mapping mode.  The @var{value} should point
 to an integer: @code{TRUE} to enable memory mapping or @code{FALSE} to
 disable it.
+@end defvr
 
-@kwindex GDBM_GETMMAP
-@item GDBM_GETMMAP
+@defvr {Option} GDBM_GETMMAP
 Check whether memory mapping is enabled.  The @var{value} should point
 to an integer where to return the status.
+@end defvr
 
-@kwindex GDBM_GETDBNAME
-@item GDBM_GETDBNAME
+@defvr {Option} GDBM_GETDBNAME
 Return the name of the database disk file.  The @var{value} should
 point to a variable of type @code{char**}.  A pointer to the newly
 allocated copy of the file name will be placed there.  The caller is
@@ -2243,12 +2283,11 @@ else
     free (name);
   @}
 @end example
+@end defvr
 
-@kwindex GDBM_GETBLOCKSIZE
-@item GDBM_GETBLOCKSIZE
+@defvr {Option} GDBM_GETBLOCKSIZE
 Return the block size in bytes.  The @var{value} should point to @code{int}.
-
-@end table
+@end defvr
 
 @node Locking
 @chapter File Locking

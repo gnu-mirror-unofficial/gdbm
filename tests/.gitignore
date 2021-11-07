@@ -5,6 +5,7 @@ Makefile
 Makefile.in
 atconfig
 atlocal
+closerr
 d_creat_ce
 dtdel
 dtdump
@@ -13,6 +14,7 @@ dtload
 fdop
 g_open_ce
 g_reorg_ce
+gtcacheopt
 gtconv
 gtdel
 gtdump

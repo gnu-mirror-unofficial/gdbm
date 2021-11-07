@@ -126,6 +126,10 @@ _gdbm_finish_transfer (GDBM_FILE dbf, GDBM_FILE new_dbf,
 	}
       rcvr->backup_name = bkname;
     }
+
+  /* Restore cache settings */
+  if (!dbf->cache_auto)
+    _gdbm_cache_init (new_dbf, dbf->cache_size);
   
   /* Move the new file to old name. */
 
@@ -157,9 +161,10 @@ _gdbm_finish_transfer (GDBM_FILE dbf, GDBM_FILE new_dbf,
   dbf->avail_size        = new_dbf->avail_size;
   dbf->xheader           = new_dbf->xheader;
 
+  dbf->cache_bits        = new_dbf->cache_bits;  
   dbf->cache_size        = new_dbf->cache_size;  
   dbf->cache_num         = new_dbf->cache_num;   
-  dbf->cache_tree        = new_dbf->cache_tree;   
+  dbf->cache             = new_dbf->cache;   
   dbf->cache_mru         = new_dbf->cache_mru;   
   dbf->cache_lru         = new_dbf->cache_lru;   
   dbf->cache_avail       = new_dbf->cache_avail;
@@ -184,7 +189,7 @@ _gdbm_finish_transfer (GDBM_FILE dbf, GDBM_FILE new_dbf,
    
   /* Make sure the new database is all on disk. */
   gdbm_file_sync (dbf);
-  
+
   /* Force the right stuff for a correct bucket cache. */
   return _gdbm_get_bucket (dbf, 0);
 }

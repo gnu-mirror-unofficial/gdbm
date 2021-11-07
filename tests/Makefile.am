@@ -77,6 +77,7 @@ TESTSUITE_AT = \
  fetch01.at\
  setopt00.at\
  setopt01.at\
+ setopt02.at\
  version.at
 
 TESTSUITE = $(srcdir)/testsuite
@@ -114,6 +115,7 @@ check_PROGRAMS = \
  fdop\
  g_open_ce\
  g_reorg_ce\
+ gtcacheopt\
  gtconv\
  gtdel\
  gtdump\
@@ -138,4 +140,3 @@ dtdel_LDADD = ../src/libgdbm.la ../compat/libgdbm_compat.la
 d_creat_ce_LDADD = ../src/libgdbm.la ../compat/libgdbm_compat.la
 
 SUBDIRS = gdbmtool
-

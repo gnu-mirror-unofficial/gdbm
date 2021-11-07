@@ -271,10 +271,6 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
   dbf->bucket = NULL;
   dbf->header = NULL;
 
-  /* Initialize cache */
-  dbf->cache_tree = _gdbm_cache_tree_alloc ();
-  _gdbm_cache_init (dbf, DEFAULT_CACHESIZE);
-
   dbf->file_size = -1;
 
   dbf->memory_mapping = FALSE;
@@ -640,6 +636,17 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
 
     }
 
+  if (_gdbm_cache_init (dbf, DEFAULT_CACHESIZE))
+    {
+      GDBM_DEBUG (GDBM_DEBUG_ERR|GDBM_DEBUG_OPEN,
+		  "%s: error initializing cache: %s",
+		  dbf->name, gdbm_db_strerror (dbf));
+      if (!(flags & GDBM_CLOERROR))
+	dbf->desc = -1;
+      SAVE_ERRNO (gdbm_close (dbf));
+      return NULL;
+    }
+      
 #if HAVE_MMAP
   if (!(flags & GDBM_NOMMAP))
     {

@@ -179,15 +179,6 @@ typedef struct
 } data_cache_elem;
 
 typedef struct cache_elem cache_elem;
-typedef struct cache_node cache_node;
-
-struct cache_node
-{
-  cache_node *left, *right, *parent; 
-  int color;
-  off_t adr;
-  cache_elem *elem;
-};
 
 struct cache_elem
 {
@@ -195,18 +186,15 @@ struct cache_elem
   char            ca_changed;  /* Data in the bucket changed. */
   data_cache_elem ca_data;     /* Cached datum */
   cache_elem      *ca_prev,    /* Previous element in LRU list. */
-                  *ca_next;    /* Next elements in LRU list.
+                  *ca_next,    /* Next elements in LRU list.
 				  If the item is in cache_avail list, only
 				  ca_next is used.  It points to the next
 			          available element. */
+                  *ca_coll;    /* Next element in a collision sequence */
   size_t          ca_hits;     /* Number of times this element was requested */
-  cache_node      *ca_node;    /* Points back to the RBT node for this
-				  element. */
   hash_bucket     ca_bucket[1];/* Associated  bucket (dbf->header->bucket_size
 				  bytes). */
 };
-
-typedef struct cache_tree cache_tree;
 
 /* This final structure contains all main memory based information for
    a gdbm file.  This allows multiple gdbm files to be opened at the same
@@ -243,6 +231,9 @@ struct gdbm_file_info
   /* Last error was fatal, the database needs recovery */
   unsigned need_recovery :1;
 
+  /* Automatic bucket cache size */
+  unsigned cache_auto :1;
+  
   /* Last GDBM error number */
   gdbm_error last_error;
   /* Last system error number */
@@ -275,10 +266,12 @@ struct gdbm_file_info
   off_t *dir;
 
   /* The bucket cache. */
-  size_t cache_size;       /* Cache capacity */
+  int cache_bits;          /* Address bits used for compting bucket hash */
+  size_t cache_size;       /* Cache capacity: 2^cache_bits */
   size_t cache_num;        /* Actual number of elements in cache */
-  /* Cache elements form a binary search tree. */
-  cache_tree *cache_tree;  
+  /* Cache hash table. */
+  cache_elem **cache;
+  
   /* Cache elements are linked in a list sorted by relative access time */
   cache_elem *cache_mru;   /* Most recently used element - head of the list */
   cache_elem *cache_lru;   /* Last recently used element - tail of the list */ 

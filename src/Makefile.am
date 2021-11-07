@@ -42,7 +42,6 @@ lib_LTLIBRARIES = libgdbm.la
 libgdbm_la_LIBADD = @LTLIBINTL@
 
 libgdbm_la_SOURCES = \
- cachetree.c\
  gdbmclose.c\
  gdbmcount.c\
  gdbmdelete.c\
