@@ -1,8 +1,35 @@
-GNU dbm NEWS -- history of user-visible changes. 2021-10-19
+GNU dbm NEWS -- history of user-visible changes. 2021-11-14
 Copyright (C) 1990-2021 Free Software Foundation, Inc.
 See the end of file for copying conditions.
 
 Please send gdbm bug reports to <bug-gdbm@gnu.org>.
+
+Version 1.22.90 (git)
+
+* Bucket cache switched from balanced tree to hash table
+
+* New option codes for gdbm_setopt
+
+** GDBM_GETDBFORMAT
+
+Return the database format.
+
+** GDBM_GETDIRDEPTH
+
+Return the directory depth, i.e. the number of initial (most significant)
+bits in hash value that are interpreted as index to the directory.
+
+** GDBM_GETBUCKETSIZE
+
+Return maximum number of keys per bucket.
+
+** GDBM_GETCACHEAUTO
+
+Return the status of the automatic cache adjustment.
+
+** GDBM_SETCACHEAUTO
+
+Enable or disable automatic cache adjustment.
 
 Version 1.22, 2021-10-19
 
