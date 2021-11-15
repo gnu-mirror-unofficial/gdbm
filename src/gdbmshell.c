@@ -197,7 +197,7 @@ checkdb_begin (struct command_param *param GDBM_ARG_UNUSED,
 static size_t
 bucket_print_lines (hash_bucket *bucket)
 {
-  return 6 + gdbm_file->header->bucket_elems + 3 + bucket->av_count;
+  return 10 + gdbm_file->header->bucket_elems + 3 + bucket->av_count;
 }
 
 static void
@@ -215,21 +215,51 @@ format_key_start (FILE *fp, bucket_element *elt)
     }
 }
 
+static inline int
+bucket_refcount (void)
+{
+  return 1 << (gdbm_file->header->dir_bits - gdbm_file->bucket->bucket_bits);
+}
+
 /* Debug procedure to print the contents of the current hash bucket. */
 static void
-print_bucket (FILE *fp, hash_bucket *bucket, const char *mesg, ...)
+print_bucket (FILE *fp)
 {
   int index;
-  va_list ap;
+  int hash_prefix;
+  off_t adr = gdbm_file->dir[gdbm_file->bucket_dir];
+  hash_bucket *bucket = gdbm_file->bucket;
+  int dircount = bucket_refcount ();
+  
+  hash_prefix = gdbm_file->bucket_dir << (GDBM_HASH_BITS - gdbm_file->header->dir_bits);
 
   fprintf (fp, "******* ");
-  va_start(ap, mesg);
-  vfprintf (fp, mesg, ap);
-  va_end (ap);
+  fprintf (fp, _("Bucket #%d"), gdbm_file->bucket_dir);
   fprintf (fp, " **********\n\n");
   fprintf (fp,
-	   _("bits = %d\ncount= %d\nHash Table:\n"),
-	   bucket->bucket_bits, bucket->count);
+	   _("address     = %lu\n"
+	     "depth       = %d\n"
+	     "hash prefix = %08x\n"
+	     "references  = %u"),
+	   (unsigned long) adr,
+	   bucket->bucket_bits,
+	   hash_prefix,
+	   dircount);
+  if (dircount > 1)
+    {
+      int n = (hash_prefix >> (GDBM_HASH_BITS - bucket->bucket_bits))
+	        << (gdbm_file->header->dir_bits - bucket->bucket_bits);
+      fprintf (fp, " (%d-%d)", n, n + dircount - 1);
+    }
+  fprintf (fp, "\n");
+	     
+  fprintf (fp,
+	   _("count       = %d\n"
+             "load factor = %3d\n"),
+	   bucket->count,
+	   bucket->count * 100 / gdbm_file->header->bucket_elems);
+
+  fprintf (fp, "%s", _("Hash Table:\n"));
   fprintf (fp,
 	   _("    #    hash value     key size    data size     data adr home  key start\n"));
   for (index = 0; index < gdbm_file->header->bucket_elems; index++)
@@ -249,7 +279,7 @@ print_bucket (FILE *fp, hash_bucket *bucket, const char *mesg, ...)
       fprintf (fp, "\n");
     }
 
-  fprintf (fp, _("\nAvail count = %1d\n"), bucket->av_count);
+  fprintf (fp, _("\nAvail count = %d\n"), bucket->av_count);
   fprintf (fp, _("Address           size\n"));
   for (index = 0; index < bucket->av_count; index++)
     fprintf (fp, "%11lu%9d\n",
@@ -768,17 +798,7 @@ print_current_bucket_handler (struct command_param *param,
   if (!gdbm_file->bucket)
     fprintf (cenv->fp, _("no current bucket\n"));
   else
-    {
-      if (param->argc)
-	print_bucket (cenv->fp, gdbm_file->bucket, _("Bucket #%s"),
-		      PARAM_STRING (param, 0));
-      else
-	print_bucket (cenv->fp, gdbm_file->bucket, "%s", _("Current bucket"));
-      fprintf (cenv->fp, _("\n current directory entry = %d.\n"),
-	       gdbm_file->bucket_dir);
-      fprintf (cenv->fp, _(" current bucket address  = %lu.\n"),
-	       (unsigned long) gdbm_file->cache_entry->ca_adr);
-    }
+    print_bucket (cenv->fp);
   return GDBMSHELL_OK;
 }
 
@@ -813,29 +833,74 @@ print_bucket_begin (struct command_param *param,
 		    size_t *exp_count)
 {
   int rc;
-  int temp;
-
+  int n = -1;
+  
   if ((rc = checkdb ()) != GDBMSHELL_OK)
     return rc;
-  
-  if (getnum (&temp, PARAM_STRING (param, 0), NULL))
-    return GDBMSHELL_SYNTAX;
 
-  if (temp >= GDBM_DIR_COUNT (gdbm_file))
+  if (param->argc == 1)
     {
-      terror (_("bucket number out of range (0..%lu)"),
-	      GDBM_DIR_COUNT (gdbm_file));
-      return GDBMSHELL_SYNTAX;
+      if (getnum (&n, PARAM_STRING (param, 0), NULL))
+	return GDBMSHELL_SYNTAX;
+
+      if (n >= GDBM_DIR_COUNT (gdbm_file))
+	{
+	  terror (_("bucket number out of range (0..%lu)"),
+		  GDBM_DIR_COUNT (gdbm_file));
+	  return GDBMSHELL_SYNTAX;
+	}
     }
-  if (_gdbm_get_bucket (gdbm_file, temp))
+  else if (!gdbm_file->bucket)
+    n = 0;
+
+  if (n != -1)
     {
-      dberror (_("%s failed"), "_gdbm_get_bucket");
-      return GDBMSHELL_GDBM_ERR;
+      if (_gdbm_get_bucket (gdbm_file, n))
+	{
+	  dberror (_("%s failed"), "_gdbm_get_bucket");
+	  return GDBMSHELL_GDBM_ERR;
+	}
     }
+  
   if (exp_count)
     *exp_count = bucket_print_lines (gdbm_file->bucket) + 3;
   return GDBMSHELL_OK;
 }
+
+static int
+print_sibling_bucket_begin (struct command_param *param,
+			    struct command_environ *cenv GDBM_ARG_UNUSED,
+			    size_t *exp_count)
+{
+  int rc, n, sibling;
+  
+  if ((rc = checkdb ()) != GDBMSHELL_OK)
+    return rc;
+  if (!gdbm_file->bucket)
+    {
+      fprintf (stderr, _("no current bucket\n"));
+      return GDBMSHELL_ERR;
+    }
+
+  if (bucket_refcount () == 1 || gdbm_file->bucket->bucket_bits == 0)
+    {
+      fprintf (stderr, _("no sibling\n"));
+      return GDBMSHELL_ERR;
+    }
+      
+  n = 31 - gdbm_file->header->dir_bits;
+  sibling = ((gdbm_file->bucket_dir << n) ^ (1 << n)) >> n;
+
+  if (_gdbm_get_bucket (gdbm_file, sibling))
+    {
+      dberror (_("%s failed"), "_gdbm_get_bucket");
+      return GDBMSHELL_GDBM_ERR;
+    }
+  
+  if (exp_count)
+    *exp_count = bucket_print_lines (gdbm_file->bucket) + 3;
+  return GDBMSHELL_OK;
+}  
 
 /* dir - print hash directory */
 static int
@@ -870,15 +935,21 @@ print_dir_handler (struct command_param *param GDBM_ARG_UNUSED,
 		   struct command_environ *cenv)
 {
   int i;
-  
+
   fprintf (cenv->fp, _("Hash table directory.\n"));
-  fprintf (cenv->fp, _("  Size =  %d.  Bits = %d,  Buckets = %zu.\n\n"),
-	   gdbm_file->header->dir_size, gdbm_file->header->dir_bits,
+  fprintf (cenv->fp, _("  Size =  %d.  Capacity = %lu.  Bits = %d,  Buckets = %zu.\n\n"),
+	   gdbm_file->header->dir_size,
+	   GDBM_DIR_COUNT (gdbm_file),
+	   gdbm_file->header->dir_bits,
 	   bucket_count ());
-  
+
+  fprintf (cenv->fp, "#%11s  %8s  %s\n",
+	   _("Index"), _("Hash Pfx"), _("Bucket address"));
   for (i = 0; i < GDBM_DIR_COUNT (gdbm_file); i++)
-    fprintf (cenv->fp, "  %10d:  %12lu\n",
-	     i, (unsigned long) gdbm_file->dir[i]);
+    fprintf (cenv->fp, "  %10d: %08x %12lu\n",
+	     i,
+	     i << (GDBM_HASH_BITS - gdbm_file->header->dir_bits),
+	     (unsigned long) gdbm_file->dir[i]);
 
   return GDBMSHELL_OK;
 }
@@ -942,28 +1013,28 @@ print_header_handler (struct command_param *param GDBM_ARG_UNUSED,
     }
   
   fprintf (fp, _("\nFile Header: \n\n"));
-  fprintf (fp, _("  type         = %s\n"), type);
-  fprintf (fp, _("  table        = %lu\n"),
+  fprintf (fp, _("  type            = %s\n"), type);
+  fprintf (fp, _("  directory start = %lu\n"),
 	   (unsigned long) gdbm_file->header->dir);
-  fprintf (fp, _("  table size   = %d\n"), gdbm_file->header->dir_size);
-  fprintf (fp, _("  table bits   = %d\n"), gdbm_file->header->dir_bits);
-  fprintf (fp, _("  block size   = %d\n"), gdbm_file->header->block_size);
-  fprintf (fp, _("  bucket elems = %d\n"), gdbm_file->header->bucket_elems);
-  fprintf (fp, _("  bucket size  = %d\n"), gdbm_file->header->bucket_size);
-  fprintf (fp, _("  header magic = %x\n"), gdbm_file->header->header_magic);
-  fprintf (fp, _("  next block   = %lu\n"),
+  fprintf (fp, _("  directory size  = %d\n"), gdbm_file->header->dir_size);
+  fprintf (fp, _("  directory depth = %d\n"), gdbm_file->header->dir_bits);
+  fprintf (fp, _("  block size      = %d\n"), gdbm_file->header->block_size);
+  fprintf (fp, _("  bucket elems    = %d\n"), gdbm_file->header->bucket_elems);
+  fprintf (fp, _("  bucket size     = %d\n"), gdbm_file->header->bucket_size);
+  fprintf (fp, _("  header magic    = %x\n"), gdbm_file->header->header_magic);
+  fprintf (fp, _("  next block      = %lu\n"),
 	   (unsigned long) gdbm_file->header->next_block);
 
-  fprintf (fp, _("  avail size   = %d\n"), gdbm_file->avail->size);
-  fprintf (fp, _("  avail count  = %d\n"), gdbm_file->avail->count);
-  fprintf (fp, _("  avail nx blk = %lu\n"),
+  fprintf (fp, _("  avail size      = %d\n"), gdbm_file->avail->size);
+  fprintf (fp, _("  avail count     = %d\n"), gdbm_file->avail->count);
+  fprintf (fp, _("  avail next block= %lu\n"),
 	   (unsigned long) gdbm_file->avail->next_block);
 
   if (gdbm_file->xheader)
     {
       fprintf (fp, _("\nExtended Header: \n\n"));
-      fprintf (fp, _("       version = %d\n"), gdbm_file->xheader->version);  
-      fprintf (fp, _("       numsync = %u\n"), gdbm_file->xheader->numsync);
+      fprintf (fp, _("      version = %d\n"), gdbm_file->xheader->version);  
+      fprintf (fp, _("      numsync = %u\n"), gdbm_file->xheader->numsync);
     }
 
   return GDBMSHELL_OK;
@@ -1287,25 +1358,96 @@ list_begin (struct command_param *param GDBM_ARG_UNUSED,
   
   if ((rc = checkdb ()) == GDBMSHELL_OK)
     {
-      if (exp_count)
+      if (param->argc)
 	{
-	  gdbm_count_t count;
+	  if (strcmp (PARAM_STRING (param, 0), "bucket"))
+	    {
+	      fprintf (stderr, _("unrecognized parameter: %s\n"),
+		       PARAM_STRING (param, 0));
+	      return GDBMSHELL_ERR;
+	    }
 	  
-	  if (gdbm_count (gdbm_file, &count))
-	    *exp_count = 0;
-	  else if (count > SIZE_T_MAX)
-	    *exp_count = SIZE_T_MAX;
-	  else
-	    *exp_count = count;
+	  if (!gdbm_file->bucket)
+	    {
+	      fprintf (stderr, "%s", _("select bucket first\n"));
+	      return GDBMSHELL_ERR;
+	    }
+
+	  if (exp_count)
+	    {
+	      int n = 0, i;
+
+	      for (i = 0; i < gdbm_file->bucket->count; i++)
+		{
+		  if (gdbm_file->bucket->h_table[i].hash_value != -1)
+		    n++;
+		}
+	      *exp_count = n;
+	    }
+	}
+      else
+	{
+	  if (exp_count)
+	    {
+	      gdbm_count_t count;
+	      
+	      if (gdbm_count (gdbm_file, &count))
+		*exp_count = 0;
+	      else if (count > SIZE_T_MAX)
+		*exp_count = SIZE_T_MAX;
+	      else
+		*exp_count = count;
+	    }
 	}
     }
-
+  
   return rc;
 }
 
 static int
-list_handler (struct command_param *param GDBM_ARG_UNUSED,
-	      struct command_environ *cenv)
+list_bucket_keys (struct command_environ *cenv)
+{
+  int rc = GDBMSHELL_OK;
+  int i;
+  hash_bucket *bucket = gdbm_file->bucket;
+  
+  for (i = 0; i < bucket->count; i++)
+    {
+      if (bucket->h_table[i].hash_value != -1)
+	{
+	  datum key, content;
+	  
+	  key.dptr = _gdbm_read_entry (gdbm_file, i);
+	  if (!key.dptr)
+	    {
+	      dberror (_("error reading entry %d"),i);
+	      rc = GDBMSHELL_GDBM_ERR;
+	    }
+	  key.dsize = bucket->h_table[i].key_size;
+
+	  content = gdbm_fetch (gdbm_file, key);
+	  if (!content.dptr)
+	    {
+	      dberror ("%s", "gdbm_fetch");
+	      terror ("%s", _("the key was:"));
+	      datum_format (stderr, &key, dsdef[DS_KEY]);
+	      rc = GDBMSHELL_GDBM_ERR;
+	    }
+	  else
+	    {
+	      datum_format (cenv->fp, &key, dsdef[DS_KEY]);
+	      fputc (' ', cenv->fp);
+	      datum_format (cenv->fp, &content, dsdef[DS_CONTENT]);
+	      fputc ('\n', cenv->fp);
+	    }
+	  free (content.dptr);
+	}
+    }
+  return rc;
+}
+
+static int
+list_all_keys (struct command_environ *cenv)
 {
   datum key;
   datum data;
@@ -1347,6 +1489,16 @@ list_handler (struct command_param *param GDBM_ARG_UNUSED,
       rc = GDBMSHELL_GDBM_ERR;
     }
   return rc;
+}
+
+static int
+list_handler (struct command_param *param GDBM_ARG_UNUSED,
+	      struct command_environ *cenv)
+{
+  if (param->argc)
+    return list_bucket_keys (cenv);
+  else
+    return list_all_keys (cenv);
 }
 
 /* quit - quit the program */
@@ -1838,6 +1990,10 @@ static struct command command_tab[] = {
   },
   {
     .name = "list",
+    .args = {
+      { "[bucket]", GDBM_ARG_STRING },
+      { NULL },
+    },
     .doc = N_("list"),
     .tok = T_CMD,
     .begin = list_begin,
@@ -1921,7 +2077,7 @@ static struct command command_tab[] = {
   {
     .name = "bucket",
     .args = {
-      { N_("NUMBER"), GDBM_ARG_STRING },
+      { N_("[NUMBER]"), GDBM_ARG_STRING },
       { NULL }
     },
     .doc = N_("print a bucket"),
@@ -1936,6 +2092,15 @@ static struct command command_tab[] = {
     .doc = N_("print current bucket"),
     .tok = T_CMD,
     .begin = print_current_bucket_begin,
+    .handler = print_current_bucket_handler,
+    .variadic = FALSE,
+    .repeat = REPEAT_NEVER,
+  },
+  {
+    .name = "sibling",
+    .doc = N_("print sibling bucket"),
+    .tok = T_CMD,
+    .begin = print_sibling_bucket_begin,
     .handler = print_current_bucket_handler,
     .variadic = FALSE,
     .repeat = REPEAT_NEVER,
@@ -2739,31 +2904,18 @@ timing_stop (struct timing *t)
   t->sys = timeval_sub (r.ru_stime, t->sys);
 }
 
-int
-run_command (struct command *cmd, struct gdbmarglist *arglist)
+static int
+argsprep (struct command *cmd, struct gdbmarglist *arglist,
+	  struct command_param *param)
 {
   int i;
-  struct gdbmarg *arg;
-  char *pager = NULL;
+  struct gdbmarg *arg = arglist ? arglist->head : NULL;
   char argbuf[128];
-  size_t expected_lines, *expected_lines_ptr;
-  FILE *pagfp = NULL;
-  struct command_param param = HANDLER_PARAM_INITIALIZER;
-  struct command_environ cenv = COMMAND_ENVIRON_INITIALIZER;
-  int rc = 0;
-  struct timing tm;
   
-  variable_get ("pager", VART_STRING, (void**) &pager);
-  
-  arg = arglist ? arglist->head : NULL;
-
   for (i = 0; cmd->args[i].name && arg; i++, arg = arg->next)
     {
-      if (param_push_arg (&param, arg, &cmd->args[i]))
-	{
-	  param_free (&param);
-	  return 1;
-	}
+      if (param_push_arg (param, arg, &cmd->args[i]))
+	return 1;
     }
 
   for (; cmd->args[i].name; i++)
@@ -2778,23 +2930,21 @@ run_command (struct command *cmd, struct gdbmarglist *arglist)
       if (!interactive ())
 	{
 	  terror (_("%s: not enough arguments"), cmd->name);
-	  param_free (&param);
 	  return 1;
 	}
       printf ("%s? ", argname);
       fflush (stdout);
       if (fgets (argbuf, sizeof argbuf, stdin) == NULL)
 	{
-	  terror (_("unexpected eof"));
-	  exit (EXIT_USAGE);
+	  terror ("%s", _("unexpected eof"));
+	  return 1;
 	}
 
       trimnl (argbuf);
       
       t = gdbmarg_string (estrdup (argbuf), &yylloc);
-      if (param_push_arg (&param, t, &cmd->args[i]))
+      if (param_push_arg (param, t, &cmd->args[i]))
 	{
-	  param_free (&param);
 	  gdbmarg_free (t);
 	  return 1;
 	}
@@ -2803,87 +2953,121 @@ run_command (struct command *cmd, struct gdbmarglist *arglist)
   if (arg && !cmd->variadic)
     {
       terror (_("%s: too many arguments"), cmd->name);
-      param_free (&param);
       return 1;
     }
 
-  /* Prepare for calling the handler */
-  param_term (&param);
-  param.vararg = arg;
-  pagfp = NULL;
+  param_term (param);
+  param->vararg = arg;
   
-  if (variable_is_true ("trace"))
-    {
-      fprintf (stderr, "+ %s", cmd->name);
-      for (i = 0; i < param.argc; i++)
-	{
-	  format_arg (param.argv[i], &cmd->args[i], stderr);
-	}
+  return 0;
+}  
 
-      if (param.vararg)
-	{
-	  struct gdbmarg *arg;
-	  for (arg = param.vararg; arg; arg = arg->next)
-	    format_arg (arg, NULL, stderr);
-	}
-      fputc ('\n', stderr);
-    }
-  
-  expected_lines = 0;
-  expected_lines_ptr = (interactive () && pager) ? &expected_lines : NULL;
-  rc = 0;
-  if (!(cmd->begin && (rc = cmd->begin (&param, &cenv, expected_lines_ptr)) != 0))
+int
+run_command (struct command *cmd, struct gdbmarglist *arglist)
+{
+  int i;
+  char *pager = NULL;
+  size_t expected_lines, *expected_lines_ptr;
+  FILE *pagfp = NULL;
+  struct command_param param = HANDLER_PARAM_INITIALIZER;
+  struct command_environ cenv = COMMAND_ENVIRON_INITIALIZER;
+  int rc = 0;
+  struct timing tm;
+    
+  if (argsprep (cmd, arglist, &param))
+    rc = GDBMSHELL_ERR;
+  else
     {
-      if (pager && expected_lines > get_screen_lines ())
+      variable_get ("pager", VART_STRING, (void**) &pager);
+
+      /* Prepare for calling the handler */
+      pagfp = NULL;
+  
+      if (variable_is_true ("trace"))
 	{
-	  pagfp = popen (pager, "w");
-	  if (pagfp)
-	    cenv.fp = pagfp;
-	  else
+	  fprintf (stderr, "+ %s", cmd->name);
+	  for (i = 0; i < param.argc; i++)
 	    {
-	      terror (_("cannot run pager `%s': %s"), pager,
-		      strerror (errno));
-	      pager = NULL;
-	      cenv.fp = stdout;
-	    }	  
-	}
-      else
-	cenv.fp = stdout;
+	      format_arg (param.argv[i], &cmd->args[i], stderr);
+	    }
 
-      timing_start (&tm);
-      rc = cmd->handler (&param, &cenv);
-      timing_stop (&tm);
-      if (cmd->end)
-	cmd->end (cenv.data);
-      else if (cenv.data)
-	free (cenv.data);
-
-      if (variable_is_true ("timing"))
-	{
-	  fprintf (cenv.fp, "[%s r=%lu.%06lu u=%lu.%06lu s=%lu.%06lu]\n",
-		   cmd->name,
-		   tm.real.tv_sec, tm.real.tv_usec,
-		   tm.user.tv_sec, tm.user.tv_usec,
-		   tm.sys.tv_sec, tm.sys.tv_usec);
+	  if (param.vararg)
+	    {
+	      struct gdbmarg *arg;
+	      for (arg = param.vararg; arg; arg = arg->next)
+		format_arg (arg, NULL, stderr);
+	    }
+	  fputc ('\n', stderr);
 	}
       
-      if (pagfp)
-	pclose (pagfp);
+      expected_lines = 0;
+      expected_lines_ptr = (interactive () && pager) ? &expected_lines : NULL;
+      rc = 0;
+      if (!(cmd->begin &&
+	    (rc = cmd->begin (&param, &cenv, expected_lines_ptr)) != 0))
+	{
+	  if (pager && expected_lines > get_screen_lines ())
+	    {
+	      pagfp = popen (pager, "w");
+	      if (pagfp)
+		cenv.fp = pagfp;
+	      else
+		{
+		  terror (_("cannot run pager `%s': %s"), pager,
+			  strerror (errno));
+		  pager = NULL;
+		  cenv.fp = stdout;
+		}	  
+	    }
+	  else
+	    cenv.fp = stdout;
+	  
+	  timing_start (&tm);
+	  rc = cmd->handler (&param, &cenv);
+	  timing_stop (&tm);
+	  if (cmd->end)
+	    cmd->end (cenv.data);
+	  else if (cenv.data)
+	    free (cenv.data);
+
+	  if (variable_is_true ("timing"))
+	    {
+	      fprintf (cenv.fp, "[%s r=%lu.%06lu u=%lu.%06lu s=%lu.%06lu]\n",
+		       cmd->name,
+		       tm.real.tv_sec, tm.real.tv_usec,
+		       tm.user.tv_sec, tm.user.tv_usec,
+		       tm.sys.tv_sec, tm.sys.tv_usec);
+	    }
+	  
+	  if (pagfp)
+	    pclose (pagfp);
+	}
     }
 
   param_free (&param);
-  
-  last_cmd = cmd;
-  if (arglist->head != last_args.head)
-    {
-      gdbmarglist_free (&last_args);
-      last_args = *arglist;
-    }
 
-  if (rc == GDBMSHELL_GDBM_ERR && variable_has_errno ("errorexit", gdbm_errno))
-    rc = 1;
-  else
-    rc = 0;
+  switch (rc)
+    {
+    case GDBMSHELL_OK:
+      last_cmd = cmd;
+      if (arglist->head != last_args.head)
+	{
+	  gdbmarglist_free (&last_args);
+	  last_args = *arglist;
+	}
+      rc = 0;
+      break;
+
+    case GDBMSHELL_GDBM_ERR:
+      if (variable_has_errno ("errorexit", gdbm_errno))
+	rc = 1;
+      else
+	rc = 0;
+      break;
+
+    default:
+      rc = 0;
+    }
   
   return rc;
 }
