@@ -189,8 +189,8 @@ add_options (struct gdbm_option *options)
 #endif
 }
 
-int
-parseopt_first (int pc, char **pv, struct gdbm_option *opts)
+void
+parseopt_free (void)
 {
   free (option_tab);
   option_tab = NULL;
@@ -202,6 +202,12 @@ parseopt_first (int pc, char **pv, struct gdbm_option *opts)
   long_options = NULL;
   long_option_count = long_option_max = 0;
 #endif
+}
+
+int
+parseopt_first (int pc, char **pv, struct gdbm_option *opts)
+{
+  parseopt_free ();
   add_options (opts);
   add_options (parseopt_default_options);
   opterr = 0;
@@ -570,7 +576,7 @@ handle_option (int c)
 }
 
 int
-parseopt_next ()
+parseopt_next (void)
 {
   int rc;
   
@@ -583,5 +589,9 @@ parseopt_next ()
 #endif
     }
   while (handle_option (rc));
+
+  if (rc == EOF || rc == '?')
+    parseopt_free ();
+  
   return rc;
 }

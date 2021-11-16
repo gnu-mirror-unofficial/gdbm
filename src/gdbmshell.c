@@ -3084,6 +3084,7 @@ run_command (struct command *cmd, struct gdbmarglist *arglist)
       break;
 
     case GDBMSHELL_GDBM_ERR:
+      gdbmarglist_free (arglist);
       if (variable_has_errno ("errorexit", gdbm_errno))
 	rc = 1;
       else
@@ -3091,6 +3092,7 @@ run_command (struct command *cmd, struct gdbmarglist *arglist)
       break;
 
     default:
+      gdbmarglist_free (arglist);
       rc = 0;
     }
   

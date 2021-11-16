@@ -228,12 +228,6 @@ AM_CONDITIONAL([GDBM_COND_DEBUG_ENABLE], [test "$status_debug" = "yes"])
 AC_SUBST(YFLAGS_DEBUG)
 AC_SUBST(LFLAGS_DEBUG)
 if test "$want_gdbmtool_debug" = yes; then
-    if ! $LEX --version 2>/dev/null | grep -q flex; then
-       AC_MSG_ERROR([--enable-gdbmtool-debug requires flex, which is not available])
-    fi
-    if ! $YACC --version 2>/dev/null | grep -q bison; then
-       AC_MSG_ERROR([--enable-gdbmtool-debug requires bison, which is not available])
-    fi
     YFLAGS_DEBUG=-t
     LFLAGS_DEBUG=-d
 fi    

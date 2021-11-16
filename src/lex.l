@@ -67,6 +67,37 @@ void string_addc (int c);
 char *string_end (void);
 int unescape (int c);
 
+struct file_name
+{
+  struct file_name *next;
+  char str[1];
+};
+
+static struct file_name *file_head;
+
+static void
+file_names_free (void)
+{
+  while (file_head)
+    {
+      struct file_name *next = file_head->next;
+      free (file_head);
+      file_head = next;
+    }
+}
+ 
+char *
+file_name_alloc (char const *s)
+{
+  struct file_name *f = emalloc (sizeof (*f) + strlen (s));
+  strcpy (f->str, s);
+  f->next = file_head;
+  if (!file_head)
+    atexit (file_names_free);
+  file_head = f;
+  return f->str;
+}
+
 int
 interactive (void)
 {
@@ -123,7 +154,7 @@ input_context_push (instream_t input)
 
   cp = ecalloc (1, sizeof (*cp));
   cp->locus = yylloc;
-  cp->point.file = estrdup (instream_name (input));
+  cp->point.file = file_name_alloc (instream_name (input));
   cp->point.line = 1;
   cp->point.col = 0;
   
@@ -149,8 +180,6 @@ input_context_pop (void)
   if (!context_tos)
     return 1;
   instream_close (context_tos->input);
-  free (context_tos->point.file);
-  memset (&yylloc, 0, sizeof (yylloc));
   cp = context_tos->parent;
   free (context_tos);
   context_tos = cp;
@@ -499,6 +528,39 @@ escape (int c)
     }
   return 0;
 }
+
+void
+locus_print (FILE *fp, struct locus const *loc)
+{							  
+  if (loc->beg.file)
+    {
+      if (loc->beg.col == 0)
+	fprintf (fp, "%s:%u",
+		 loc->beg.file,
+		 loc->beg.line);
+      else if (strcmp (loc->beg.file, loc->end.file))
+	fprintf (fp, "%s:%u.%u-%s:%u.%u",
+		 loc->beg.file,
+		 loc->beg.line, loc->beg.col,
+		 loc->end.file,
+		 loc->end.line, loc->end.col);
+      else if (loc->beg.line != loc->end.line)
+	fprintf (fp, "%s:%u.%u-%u.%u",
+		 loc->beg.file,
+		 loc->beg.line, loc->beg.col,
+		 loc->end.line, loc->end.col);
+      else if (loc->beg.col != loc->end.col)
+	fprintf (fp, "%s:%u.%u-%u",
+		 loc->beg.file,
+		 loc->beg.line, loc->beg.col,
+		 loc->end.col);
+      else
+	fprintf (fp, "%s:%u.%u",
+		 loc->beg.file,
+		 loc->beg.line,
+		 loc->beg.col);
+    }
+}
 
 void
 vlerror (struct locus *loc, const char *fmt, va_list ap)
@@ -679,4 +741,4 @@ make_prompt (void)
   
   return ret;
 }
-
+  

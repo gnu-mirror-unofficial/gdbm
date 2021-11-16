@@ -41,6 +41,7 @@ struct variable
   void *data;
   int (*sethook) (struct variable *, union value *);
   int (*typeconv) (struct variable *, int, void **);
+  void (*freehook) (void *);
 };
 
 static int open_sethook (struct variable *, union value *);
@@ -53,6 +54,7 @@ static int coalesce_sethook (struct variable *var, union value *v);
 static int cachesize_sethook (struct variable *var, union value *v);
 static int errormask_sethook (struct variable *var, union value *v);
 static int errormask_typeconv (struct variable *var, int type, void **retptr);
+static void errormask_freehook (void *);
 static int errorexit_sethook (struct variable *var, union value *v);
 
 static struct variable vartab[] = {
@@ -180,13 +182,15 @@ static struct variable vartab[] = {
     .name = "errorexit",
     .type = VART_STRING,
     .sethook = errorexit_sethook,
-    .typeconv = errormask_typeconv
+    .typeconv = errormask_typeconv,
+    .freehook = errormask_freehook    
   },
   {
     .name = "errormask",
     .type = VART_STRING,
     .sethook = errormask_sethook,
-    .typeconv = errormask_typeconv
+    .typeconv = errormask_typeconv,
+    .freehook = errormask_freehook
   },
   {
     .name = "timing",
@@ -510,6 +514,8 @@ variables_free (void)
       if (vp->type == VART_STRING && (vp->flags & VARF_SET))
 	free (vp->v.string);
       vp->v.string = NULL;
+      if (vp->freehook && vp->data)
+	vp->freehook (vp->data);
       vp->flags &= ~VARF_SET;
     }
 }
@@ -807,6 +813,12 @@ errormask_typeconv (struct variable *var, int type, void **retptr)
 	return VAR_ERR_BADVALUE;
     }
   return VAR_ERR_BADTYPE;
+}
+
+static void
+errormask_freehook (void *data)
+{
+  free (data);
 }
 
 static int

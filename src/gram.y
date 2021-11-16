@@ -62,6 +62,15 @@ struct dsegm *dsdef[DS_MAX];
   struct command *cmd;
 }
 
+%destructor { gdbmarglist_free (&$$); } <arglist>
+%destructor { gdbmarg_free ($$); } <arg>
+%destructor { kvlist_free ($$.head); } <kvlist>
+%destructor { kvlist_free ($$); } <kvpair>
+%destructor { slist_free ($$.head); } <slist>
+%destructor { free ($$); } <string>
+%destructor { dsegm_list_free ($$); } <dsegm>
+%destructor { dsegm_list_free ($$.head); } <dsegmlist>
+
 %%
 
 input     : /* empty */

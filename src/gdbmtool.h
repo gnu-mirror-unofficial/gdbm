@@ -68,37 +68,9 @@ typedef struct locus gdbm_yyltype_t;
     }							      \
   while (0)
 
-#define YY_LOCATION_PRINT(File, Loc)			  \
-  do							  \
-    {							  \
-      if ((Loc).beg.col == 0)				  \
-	fprintf (File, "%s:%u",				  \
-		 (Loc).beg.file,			  \
-		 (Loc).beg.line);			  \
-      else if (strcmp ((Loc).beg.file, (Loc).end.file))	  \
-	fprintf (File, "%s:%u.%u-%s:%u.%u",		  \
-		 (Loc).beg.file,			  \
-		 (Loc).beg.line, (Loc).beg.col,		  \
-		 (Loc).end.file,			  \
-		 (Loc).end.line, (Loc).end.col);	  \
-      else if ((Loc).beg.line != (Loc).end.line)	  \
-	fprintf (File, "%s:%u.%u-%u.%u",		  \
-		 (Loc).beg.file,			  \
-		 (Loc).beg.line, (Loc).beg.col,		  \
-		 (Loc).end.line, (Loc).end.col);	  \
-      else if ((Loc).beg.col != (Loc).end.col)		  \
-	fprintf (File, "%s:%u.%u-%u",			  \
-		 (Loc).beg.file,			  \
-		 (Loc).beg.line, (Loc).beg.col,		  \
-		 (Loc).end.col);			  \
-      else						  \
-	fprintf (File, "%s:%u.%u",			  \
-		 (Loc).beg.file,			  \
-		 (Loc).beg.line,			  \
-		 (Loc).beg.col);			  \
-    }							  \
-  while (0)
+#define YY_LOCATION_PRINT(File, Loc) locus_print (File, &(Loc))
 
+void locus_print (FILE *fp, struct locus const *loc);
 void vlerror (struct locus *loc, const char *fmt, va_list ap);
 void lerror (struct locus *loc, const char *fmt, ...)
 	   GDBM_PRINTFLIKE (2, 3);
