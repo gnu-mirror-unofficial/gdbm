@@ -515,7 +515,10 @@ variables_free (void)
 	free (vp->v.string);
       vp->v.string = NULL;
       if (vp->freehook && vp->data)
-	vp->freehook (vp->data);
+	{
+	  vp->freehook (vp->data);
+	  vp->data = NULL;
+	}
       vp->flags &= ~VARF_SET;
     }
 }
