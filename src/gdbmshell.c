@@ -221,6 +221,20 @@ bucket_refcount (void)
   return 1 << (gdbm_file->header->dir_bits - gdbm_file->bucket->bucket_bits);
 }
 
+static inline int
+bucket_dir_start (void)
+{
+  int d = gdbm_file->header->dir_bits - gdbm_file->bucket->bucket_bits;
+  return (gdbm_file->bucket_dir >> d) << d;
+}
+
+static inline int
+bucket_dir_sibling (void)
+{
+  int d = gdbm_file->header->dir_bits - gdbm_file->bucket->bucket_bits;
+  return ((gdbm_file->bucket_dir >> d) ^ 1) << d;
+}
+
 /* Debug procedure to print the contents of the current hash bucket. */
 static void
 print_bucket (FILE *fp)
@@ -229,9 +243,10 @@ print_bucket (FILE *fp)
   int hash_prefix;
   off_t adr = gdbm_file->dir[gdbm_file->bucket_dir];
   hash_bucket *bucket = gdbm_file->bucket;
+  int start = bucket_dir_start ();
   int dircount = bucket_refcount ();
   
-  hash_prefix = gdbm_file->bucket_dir << (GDBM_HASH_BITS - gdbm_file->header->dir_bits);
+  hash_prefix = start << (GDBM_HASH_BITS - gdbm_file->header->dir_bits);
 
   fprintf (fp, "******* ");
   fprintf (fp, _("Bucket #%d"), gdbm_file->bucket_dir);
@@ -247,9 +262,7 @@ print_bucket (FILE *fp)
 	   dircount);
   if (dircount > 1)
     {
-      int n = (hash_prefix >> (GDBM_HASH_BITS - bucket->bucket_bits))
-	        << (gdbm_file->header->dir_bits - bucket->bucket_bits);
-      fprintf (fp, " (%d-%d)", n, n + dircount - 1);
+      fprintf (fp, " (%d-%d)", start, start + dircount - 1);
     }
   fprintf (fp, "\n");
 	     
@@ -872,7 +885,7 @@ print_sibling_bucket_begin (struct command_param *param,
 			    struct command_environ *cenv GDBM_ARG_UNUSED,
 			    size_t *exp_count)
 {
-  int rc, n, sibling;
+  int rc, n0, n, bucket_bits;
   
   if ((rc = checkdb ()) != GDBMSHELL_OK)
     return rc;
@@ -882,19 +895,31 @@ print_sibling_bucket_begin (struct command_param *param,
       return GDBMSHELL_ERR;
     }
 
-  if (bucket_refcount () == 1 || gdbm_file->bucket->bucket_bits == 0)
+  n0 = gdbm_file->bucket_dir;
+  bucket_bits = gdbm_file->bucket->bucket_bits;
+  n = bucket_dir_sibling ();
+
+  if (n > GDBM_DIR_COUNT (gdbm_file))
     {
       fprintf (stderr, _("no sibling\n"));
       return GDBMSHELL_ERR;
     }
       
-  n = 31 - gdbm_file->header->dir_bits;
-  sibling = ((gdbm_file->bucket_dir << n) ^ (1 << n)) >> n;
-
-  if (_gdbm_get_bucket (gdbm_file, sibling))
+  if (_gdbm_get_bucket (gdbm_file, n))
     {
       dberror (_("%s failed"), "_gdbm_get_bucket");
       return GDBMSHELL_GDBM_ERR;
+    }
+
+  if (bucket_bits != gdbm_file->bucket->bucket_bits)
+    {
+      fprintf (stderr, _("no sibling\n"));
+      if (_gdbm_get_bucket (gdbm_file, n0))
+	{
+	  dberror (_("%s failed"), "_gdbm_get_bucket");
+	  return GDBMSHELL_GDBM_ERR;
+	}
+      return GDBMSHELL_ERR;
     }
   
   if (exp_count)
