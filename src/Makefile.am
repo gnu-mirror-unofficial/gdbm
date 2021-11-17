@@ -95,7 +95,8 @@ libgdbmapp_a_SOURCES =\
  lex.c\
  gdbmshell.c\
  var.c\
- util.c
+ util.c\
+ wordwrap.c
 
 if GDBM_COND_READLINE
   libgdbmapp_a_SOURCES += input-rl.c

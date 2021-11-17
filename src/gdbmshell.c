@@ -2415,34 +2415,34 @@ help_handler (struct command_param *param GDBM_ARG_UNUSED,
 	      struct command_environ *cenv)
 {
   struct command *cmd;
-  FILE *fp = cenv->fp;
+  WORDWRAP_FILE wf;
+
+  fflush (cenv->fp);
+  wf = wordwrap_fdopen (fileno (cenv->fp));
   
   for (cmd = command_tab; cmd->name; cmd++)
     {
       int i;
       int n;
-      int optoff;
-      
-      n = fprintf (fp, " %s", cmd->name);
-      optoff = n;
-      
+
+      wordwrap_set_left_margin (wf, 1);
+      wordwrap_set_right_margin (wf, 0);
+      n = strlen (cmd->name);
+      wordwrap_write (wf, cmd->name, n);
+
+      wordwrap_set_left_margin (wf, n + 2);
       for (i = 0; i < NARGS && cmd->args[i].name; i++)
 	{
-	  if (n >= CMDCOLS)
-	    {
-	      fputc ('\n', fp);
-	      n = fprintf (fp, "%*.*s", optoff, optoff, "");
-	    }
-	  n += fprintf (fp, " %s", gettext (cmd->args[i].name));
+	  wordwrap_printf (wf, " %s", gettext (cmd->args[i].name));
 	} 
 
-      if (n < CMDCOLS)
-	fprintf (fp, "%*.s", CMDCOLS-n, "");
-      else
-	fprintf (fp, "\n%*.*s", CMDCOLS, CMDCOLS, "");
-      fprintf (fp, " %s", gettext (cmd->doc));
-      fputc ('\n', fp);
+      wordwrap_set_right_margin (wf, 0);
+      wordwrap_set_left_margin (wf, CMDCOLS);
+      
+      wordwrap_printf (wf, " %s", gettext (cmd->doc));
+      wordwrap_flush (wf);
     }
+  wordwrap_close (wf);
   return 0;
 }
 

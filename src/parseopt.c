@@ -216,50 +216,159 @@ parseopt_first (int pc, char **pv, struct gdbm_option *opts)
   return parseopt_next ();
 }
 
-#define LMARGIN 2
-#define DESCRCOLUMN 30
-#define RMARGIN 79
-#define GROUPCOLUMN 2
-#define USAGECOLUMN 13
+static unsigned short_opt_col = 2;
+static unsigned long_opt_col = 6;
+static unsigned doc_opt_col = 2;    /* FIXME: Not used: there are no doc
+				       options in this implementation */
+static unsigned header_col = 1;
+static unsigned opt_doc_col = 29;
+static unsigned usage_indent = 12;
+static unsigned rmargin = 79;
+
+static unsigned dup_args = 0;
+static unsigned dup_args_note = 1;
+
+enum usage_var_type
+  {
+    usage_var_column,
+    usage_var_bool
+  };
+
+struct usage_var_def
+{
+  char *name;
+  unsigned *valptr;
+  enum usage_var_type type;
+};
+
+static struct usage_var_def usage_var[] = {
+  { "short-opt-col", &short_opt_col, usage_var_column },
+  { "header-col",    &header_col,    usage_var_column },
+  { "opt-doc-col",   &opt_doc_col,   usage_var_column },
+  { "usage-indent",  &usage_indent,  usage_var_column },
+  { "rmargin",       &rmargin,       usage_var_column },
+  { "dup-args",      &dup_args,      usage_var_bool },
+  { "dup-args-note", &dup_args_note, usage_var_bool },
+  { "long-opt-col",  &long_opt_col,  usage_var_column },
+  { "doc-opt-col",   &doc_opt_col,   usage_var_column },
+  { NULL }
+};
 
 static void
-indent (size_t start, size_t col)
+set_usage_var (char const *text, char **end)
 {
-  for (; start < col; start++)
-    putchar (' ');
+  struct usage_var_def *p;
+  int boolval = 1;
+  char const *prog_name = parseopt_program_name ? parseopt_program_name : progname;
+  size_t len = strcspn (text, ",=");
+  char *endp;
+
+  if (len > 3 && memcmp (text, "no-", 3) == 0)
+    {
+      text += 3;
+      len -= 3;
+      boolval = 0;
+    }
+
+  for (p = usage_var; p->name; p++)
+    {
+      if (strlen (p->name) == len && memcmp (p->name, text, len) == 0)
+	break;
+    }
+
+  endp = (char*) text + len;
+  if (p)
+    {
+      if (p->type == usage_var_bool)
+	{
+	  if (*endp == '=')
+	    {
+	      if (prog_name)
+		fprintf (stderr, "%s: ", prog_name);
+	      fprintf (stderr,
+		       _("error in ARGP_HELP_FMT: improper usage of [no-]%s\n"),
+		       p->name);
+	      endp = strchr (text + len, ',');
+	    }
+	  else
+	    *p->valptr = boolval;
+	}
+      else if (*endp == '=')
+	{
+	  unsigned long val;
+	  
+	  errno = 0;
+	  val = strtoul (text + len + 1, &endp, 10);
+	  if (errno || (*endp && *endp != ','))
+	    {
+	      if (prog_name)
+		fprintf (stderr, "%s: ", prog_name);
+	      fprintf (stderr,
+		       _("error in ARGP_HELP_FMT: bad value for %s"),
+		       p->name);
+	      if (endp)
+		{
+		  fprintf (stderr, _(" (near %s)"), endp);
+		}
+	      fputc ('\n', stderr);
+	    }
+	  else if (val > UINT_MAX)
+	    {
+	      if (prog_name)
+		fprintf (stderr, "%s: ", prog_name);
+	      fprintf (stderr,
+		       _("error in ARGP_HELP_FMT: %s value is out of range\n"),
+		       p->name);
+	    }
+	  else
+	    *p->valptr = val;
+	}
+      else
+	{
+	  if (prog_name)
+	    fprintf (stderr, "%s: ", prog_name);
+	  fprintf (stderr,
+		   _("%s: ARGP_HELP_FMT parameter requires a value\n"),
+		   p->name);
+	}
+    }
+  else
+    {
+      if (prog_name)
+	fprintf (stderr, "%s: ", prog_name);
+      fprintf (stderr,
+	       _("%s: Unknown ARGP_HELP_FMT parameter\n"),
+	       text);
+    }
+  *end = endp;
 }
 
 static void
-print_option_descr (const char *descr, size_t lmargin, size_t rmargin)
+init_usage_vars (void)
 {
-  if (!(descr && descr[0]))
+  char *fmt, *p;
+  
+  fmt = getenv ("ARGP_HELP_FMT");
+  if (!fmt || !*fmt)
     return;
-  descr = gettext (descr);
-  while (*descr)
+
+  while (1)
     {
-      size_t s = 0;
-      size_t i;
-      size_t width = rmargin - lmargin;
-      
-      for (i = 0; ; i++)
+      set_usage_var (fmt, &p);
+      if (*p == 0)
+	break;
+      else if (*p == ',')
+	p++;
+      else
 	{
-	  if (descr[i] == 0 || descr[i] == ' ' || descr[i] == '\t')
-	    {
-	      if (i > width)
-		break;
-	      s = i;
-	      if (descr[i] == 0)
-		break;
-	    }
+	  char const *prog_name = parseopt_program_name ? parseopt_program_name : progname;
+	  if (prog_name)
+	    fprintf (stderr, "%s: ", prog_name);
+	  fprintf (stderr, _("ARGP_HELP_FMT: missing delimiter near %s\n"),
+		   p);
+	  break;
 	}
-      fwrite (descr, 1, s, stdout);
-      fputc ('\n', stdout);
-      descr += s;
-      if (*descr)
-	{
-	  indent (0, lmargin);
-	  descr++;
-	}
+      fmt = p;
     }
 }
 
@@ -269,8 +378,20 @@ void (*parseopt_help_hook) (FILE *stream);
 
 static int argsused;
 
+static int
+print_arg (WORDWRAP_FILE wf, struct gdbm_option *opt, int delim)
+{
+  if (opt->opt_arg)
+    {
+      argsused = 1;
+      return wordwrap_printf (wf, "%c%s", delim,
+			      opt->opt_arg[0] ? gettext (opt->opt_arg) : "");
+    }
+  return 0;
+}
+
 size_t
-print_option (size_t num)
+print_option (WORDWRAP_FILE wf, size_t num)
 {
   struct gdbm_option *opt = option_tab + num;
   size_t next, i;
@@ -279,9 +400,11 @@ print_option (size_t num)
   
   if (IS_GROUP_HEADER (opt))
     {
-      indent (0, GROUPCOLUMN);
-      print_option_descr (opt->opt_descr, GROUPCOLUMN, RMARGIN);
-      putchar ('\n');
+      wordwrap_set_left_margin (wf, header_col);
+      wordwrap_set_right_margin (wf,  rmargin);
+      if (opt->opt_descr[0])
+	wordwrap_puts (wf, gettext (opt->opt_descr));
+      wordwrap_putc (wf, '\n');
       return num + 1;
     }
 
@@ -293,55 +416,46 @@ print_option (size_t num)
   if (opt->opt_flags & PARSEOPT_HIDDEN)
     return next;
 
+  wordwrap_set_left_margin (wf, short_opt_col);
   w = 0;
   for (i = num; i < next; i++)
     {
       if (IS_VALID_SHORT_OPTION (&option_tab[i]))
 	{
-	  if (w == 0)
-	    {
-	      indent (0, LMARGIN);
-	      w = LMARGIN;
-	    }
-	  else
-	    w += printf (", ");
-	  w += printf ("-%c", option_tab[i].opt_short);
+	  if (w)
+	    wordwrap_write (wf, ", ", 2);
+	  wordwrap_printf (wf, "-%c", option_tab[i].opt_short);
 	  delim = ' ';
+	  if (dup_args)
+	    print_arg (wf, opt, delim);
+	  w = 1;
 	}
     }
+  
 #ifdef HAVE_GETOPT_LONG
+  w = 0;
+  wordwrap_set_left_margin (wf, long_opt_col);
   for (i = num; i < next; i++)
     {
       if (IS_VALID_LONG_OPTION (&option_tab[i]))
 	{
-	  if (w == 0)
-	    {
-	      indent (0, LMARGIN);
-	      w = LMARGIN;
-	    }
-	  else
-	    w += printf (", ");
-	  w += printf ("--%s", option_tab[i].opt_long);
+	  if (w)
+	    wordwrap_write (wf, ", ", 2);
+	  wordwrap_printf (wf, "--%s", option_tab[i].opt_long);
 	  delim = '=';
+	  if (dup_args)
+	    print_arg (wf, opt, delim);
+	  w = 1;
 	}
     }
-#else
-  if (!w)
-    return next;
 #endif
-  if (opt->opt_arg)
-    {
-      argsused = 1;
-      w += printf ("%c%s", delim, gettext (opt->opt_arg));
-    }
-  if (w >= DESCRCOLUMN)
-    {
-      putchar ('\n');
-      w = 0;
-    }
-  indent (w, DESCRCOLUMN);
-  print_option_descr (opt->opt_descr, DESCRCOLUMN, RMARGIN);
-
+  if (!dup_args)
+    print_arg (wf, opt, delim);
+  
+  wordwrap_set_left_margin (wf, opt_doc_col);
+  if (opt->opt_descr[0])
+    wordwrap_puts (wf, gettext (opt->opt_descr));
+ 
   return next;
 }
 
@@ -349,40 +463,53 @@ void
 parseopt_print_help (void)
 {
   unsigned i;
-
+  WORDWRAP_FILE wf;
+  
   argsused = 0;
 
-  printf ("%s %s [%s]... %s\n", _("Usage:"),
-	  parseopt_program_name ? parseopt_program_name : progname,
-	  _("OPTION"),
-	  gettext (parseopt_program_args));
-  print_option_descr (parseopt_program_doc, 0, RMARGIN);
-  putchar ('\n');
+  init_usage_vars ();
 
+  wf = wordwrap_fdopen (1);
+  
+  wordwrap_printf (wf, "%s %s [%s]... %s\n", _("Usage:"),
+		   parseopt_program_name ? parseopt_program_name : progname,
+		   _("OPTION"),
+		   gettext (parseopt_program_args));
+
+  wordwrap_set_right_margin (wf, rmargin);
+  if (parseopt_program_doc && parseopt_program_doc[0])
+    wordwrap_puts (wf, gettext (parseopt_program_doc));
+  wordwrap_para (wf);
+  
   sort_all_options ();
   for (i = 0; i < option_count; )
     {
-      i = print_option (i);
+      i = print_option (wf, i);
     }
-  putchar ('\n');
+  wordwrap_para (wf);
+
 #ifdef HAVE_GETOPT_LONG
-  if (argsused)
+  if (argsused && dup_args_note)
     {
-      print_option_descr (N_("Mandatory or optional arguments to long options are also mandatory or optional for any corresponding short options."), 0, RMARGIN);
-      putchar ('\n');
+      wordwrap_set_left_margin (wf, 0);
+      wordwrap_set_right_margin (wf, rmargin);
+      wordwrap_puts (wf, _("Mandatory or optional arguments to long options are also mandatory or optional for any corresponding short options."));
+      wordwrap_para (wf);
     }
 #endif
   if (parseopt_help_hook)
-    parseopt_help_hook (stdout);
+    parseopt_help_hook (stdout);//FIXME
 
+  wordwrap_set_left_margin (wf, 0);
+  wordwrap_set_right_margin (wf, rmargin);
  /* TRANSLATORS: The placeholder indicates the bug-reporting address
     for this package.  Please add _another line_ saying
     "Report translation bugs to <...>\n" with the address for translation
     bugs (typically your translation team's web or email address).  */
-  printf (_("Report bugs to %s.\n"), program_bug_address);
+  wordwrap_printf (wf, _("Report bugs to %s.\n"), program_bug_address);
   
 #ifdef PACKAGE_URL
-  printf (_("%s home page: <%s>\n"), PACKAGE_NAME, PACKAGE_URL);
+  wordwrap_printf (wf, _("%s home page: <%s>\n"), PACKAGE_NAME, PACKAGE_URL);
 #endif
 }
 
@@ -410,34 +537,21 @@ cmpidx_long (const void *a, const void *b)
 void
 print_usage (void)
 {
+  WORDWRAP_FILE wf;
   unsigned i;
-  unsigned n;
-  char buf[RMARGIN+1];
   unsigned *idxbuf;
   unsigned nidx;
-  
-#define FLUSH								\
-  do									\
-    {									\
-      buf[n] = 0;							\
-      printf ("%s\n", buf);						\
-      n = USAGECOLUMN;							\
-      memset (buf, ' ', n);						\
-    }									\
-  while (0)
-#define ADDC(c)							        \
-  do									\
-    {									\
-      if (n == RMARGIN) FLUSH;						\
-      buf[n++] = c;							\
-    }									\
-  while (0)
 
+  init_usage_vars ();
+  
   idxbuf = ecalloc (option_count, sizeof (idxbuf[0]));
 
-  n = snprintf (buf, sizeof buf, "%s %s ", _("Usage:"),
-		parseopt_program_name ? parseopt_program_name : progname);
-
+  wf = wordwrap_fdopen (1);
+  wordwrap_set_right_margin (wf, rmargin);
+  wordwrap_printf (wf, "%s %s ", _("Usage:"),
+		   parseopt_program_name ? parseopt_program_name : progname);
+  wordwrap_next_left_margin (wf, usage_indent);
+  
   /* Print a list of short options without arguments. */
   for (i = nidx = 0; i < option_count; i++)
     if (IS_VALID_SHORT_OPTION (&option_tab[i]) && !option_tab[i].opt_arg)
@@ -447,13 +561,12 @@ print_usage (void)
     {
       qsort (idxbuf, nidx, sizeof (idxbuf[0]), cmpidx_short);
 
-      ADDC ('[');
-      ADDC ('-');
+      wordwrap_puts (wf, "[-");
       for (i = 0; i < nidx; i++)
 	{
-	  ADDC (option_tab[idxbuf[i]].opt_short);
+	  wordwrap_putc (wf, option_tab[idxbuf[i]].opt_short);
 	}
-      ADDC (']');
+      wordwrap_putc (wf, ']');
     }
 
   /* Print a list of short options with arguments. */
@@ -471,17 +584,14 @@ print_usage (void)
 	{
 	  struct gdbm_option *opt = option_tab + idxbuf[i];
 	  const char *arg = gettext (opt->opt_arg);
-	  size_t len = 5 + strlen (arg) + 1;
-	  
-	  if (n + len > RMARGIN) FLUSH;
-	  buf[n++] = ' ';
-	  buf[n++] = '[';
-	  buf[n++] = '-';
-	  buf[n++] = opt->opt_short;
-	  buf[n++] = ' ';
-	  strcpy (&buf[n], arg);
-	  n += strlen (arg);
-	  buf[n++] = ']';
+
+	  wordwrap_word_start (wf);
+	  wordwrap_puts (wf, " [-");
+	  wordwrap_putc (wf, opt->opt_short);
+	  wordwrap_putc (wf, ' ');
+	  wordwrap_puts (wf, arg);
+	  wordwrap_putc (wf, ']');
+	  wordwrap_word_end (wf);
 	}
     }
   
@@ -501,26 +611,21 @@ print_usage (void)
 	{
 	  struct gdbm_option *opt = option_tab + idxbuf[i];
 	  const char *arg = opt->opt_arg ? gettext (opt->opt_arg) : NULL;
-	  size_t len = 5 + strlen (opt->opt_long)
-	                 + (arg ? 1 + strlen (arg) : 0);
-	  if (n + len > RMARGIN) FLUSH;
-	  buf[n++] = ' ';
-	  buf[n++] = '[';
-	  buf[n++] = '-';
-	  buf[n++] = '-';
-	  strcpy (&buf[n], opt->opt_long);
-	  n += strlen (opt->opt_long);
+
+	  wordwrap_word_start (wf);
+	  wordwrap_write (wf, " [--", 4);
+	  wordwrap_puts (wf, opt->opt_long);
 	  if (opt->opt_arg)
 	    {
-	      buf[n++] = '=';
-	      strcpy (&buf[n], arg);
-	      n += strlen (arg);
+	      wordwrap_putc (wf, '=');
+	      wordwrap_write (wf, arg, strlen (arg));
 	    }
-	  buf[n++] = ']';
+	  wordwrap_putc (wf, ']');
+	  wordwrap_word_end (wf);
 	}
     }
 #endif
-  FLUSH;
+  wordwrap_close (wf);
   free (idxbuf);
 }
 

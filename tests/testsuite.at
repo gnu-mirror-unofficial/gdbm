@@ -78,6 +78,9 @@ m4_include([cloexec01.at])
 m4_include([cloexec02.at])
 m4_include([cloexec03.at])
 
+AT_BANNER([Wordwrap])
+m4_include([wordwrap.at])
+
 AT_BANNER([gdbmtool])
 m4_include([gdbmtool00.at])
 m4_include([gdbmtool01.at])

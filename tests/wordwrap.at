@@ -1,0 +1,129 @@
+# This file is part of GDBM.                                   -*- autoconf -*-
+# Copyright (C) 2021 Free Software Foundation, Inc.
+#
+# GDBM is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2, or (at your option)
+# any later version.
+#
+# GDBM is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with GDBM. If not, see <http://www.gnu.org/licenses/>. */
+
+AT_SETUP([wordwrap])
+
+AT_CHECK([t_wordwrap -right=10 abcdefghi],
+[0],
+[abcdefghi
+])
+
+AT_CHECK([t_wordwrap -right=10 abcdefghijklmn],
+[0],
+[abcdefghi
+jklmn
+])
+
+AT_CHECK([t_wordwrap -right=10 abcd efg hijklmn],
+[0],
+[abcd efg
+hijklmn
+])
+
+AT_CHECK([t_wordwrap -left=2 -right=10 Donec condimentum orciluctus facilisis interdum],
+[0],
+[  Donec
+  condime
+  ntum
+  orciluc
+  tus
+  facilis
+  is
+  interdu
+  m
+])
+
+AT_DATA([1.in],
+[Cras non est eleifend diam placerat aliquet. Phasellus sem dui, tincidunt eget interdum sed, auctor nec nibh. Donec condimentum orci luctus facilisis interdum. Nam sed rhoncus neque. Aliquam pellentesque ligula massa, et maximus augue commodo et. Sed et mi dolor.
+])
+
+AT_CHECK([t_wordwrap -left=10 -right=30 -file=1.in],
+[0],
+[          Cras non est
+          eleifend diam
+          placerat aliquet.
+          Phasellus sem dui,
+          tincidunt eget
+          interdum sed,
+          auctor nec nibh.
+          Donec condimentum
+          orci luctus
+          facilisis interdum.
+          Nam sed rhoncus
+          neque. Aliquam
+          pellentesque ligula
+          massa, et maximus
+          augue commodo et.
+          Sed et mi dolor.
+])
+
+AT_DATA([2.in],
+[Cras non est eleifend diam placerat aliquet. Phasellus sem dui,
+tincidunt eget interdum sed, auctor nec
+nibh.
+Donec condimentum orci luctus facilisis interdum.
+
+Nam sed rhoncus neque.
+Aliquam pellentesque ligula massa,
+et maximus augue commodo et. Sed et mi dolor.
+])
+
+AT_CHECK([t_wordwrap -left=10 -right=30 -file=2.in],
+[0],
+[          Cras non est
+          eleifend diam
+          placerat aliquet.
+          Phasellus sem dui,
+          tincidunt eget
+          interdum sed,
+          auctor nec
+          nibh.
+          Donec condimentum
+          orci luctus
+          facilisis interdum.
+          
+          Nam sed rhoncus
+          neque.
+          Aliquam
+          pellentesque ligula
+          massa,
+          et maximus augue
+          commodo et. Sed et
+          mi dolor.
+])
+
+AT_CHECK([t_wordwrap -left=10 -right=64 \
+ -- '-a, --aenean' -left=30 'aenean quis posuere lacus a suscipit erat, donec sit amet pretium ligula, non ex et nisi placerat suscipit.' \
+ -left=10 \
+ -- -b \
+ -left=30 pulvinar tempor erat \
+ -left=10 \
+ -- '--porttitor, --ullamcore, --diam-velit-consecretur' \
+ -left=30 \
+ lorem ipsum uis aute irure dolor in reprehenderit in voluptate velit esse],
+[0],
+[          -a, --aenean        aenean quis posuere lacus a
+                              suscipit erat, donec sit amet
+                              pretium ligula, non ex et nisi
+                              placerat suscipit. 
+          -b                  pulvinar tempor erat 
+          --porttitor, --ullamcore, --diam-velit-consecretur 
+                              lorem ipsum uis aute irure dolor
+                              in reprehenderit in voluptate
+                              velit esse
+])
+
+AT_CLEANUP

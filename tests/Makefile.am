@@ -78,7 +78,8 @@ TESTSUITE_AT = \
  setopt00.at\
  setopt01.at\
  setopt02.at\
- version.at
+ version.at\
+ wordwrap.at
 
 TESTSUITE = $(srcdir)/testsuite
 M4=m4
@@ -125,6 +126,7 @@ check_PROGRAMS = \
  gtrecover\
  gtver\
  num2word\
+ t_wordwrap\
  $(DBMPROGS)
 
 AM_CPPFLAGS = -I$(top_srcdir)/src -I$(top_builddir)/src $(DBMINCLUDES)
@@ -138,5 +140,6 @@ dtdump_LDADD = ../src/libgdbm.la ../compat/libgdbm_compat.la
 dtfetch_LDADD = ../src/libgdbm.la ../compat/libgdbm_compat.la
 dtdel_LDADD = ../src/libgdbm.la ../compat/libgdbm_compat.la
 d_creat_ce_LDADD = ../src/libgdbm.la ../compat/libgdbm_compat.la
+t_wordwrap_LDADD = ../src/libgdbmapp.a
 
 SUBDIRS = gdbmtool

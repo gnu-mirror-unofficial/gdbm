@@ -61,4 +61,25 @@ extern char *parseopt_program_args;
 #define EXIT_FATAL   1
 #define EXIT_MILD    2
 #define EXIT_USAGE   3 
+
+/* Word-wrapping stream. */
+typedef struct wordwrap_file *WORDWRAP_FILE;
+
+WORDWRAP_FILE wordwrap_fdopen (int fd);
+int wordwrap_close (WORDWRAP_FILE wf);
+int wordwrap_flush (WORDWRAP_FILE wf);
+int wordwrap_error (WORDWRAP_FILE wf);
+int wordwrap_set_left_margin (WORDWRAP_FILE wf, unsigned left);
+int wordwrap_next_left_margin (WORDWRAP_FILE wf, unsigned left);
+int wordwrap_set_right_margin (WORDWRAP_FILE wf, unsigned right);
+int wordwrap_write (WORDWRAP_FILE wf, char const *str, size_t len);
+int wordwrap_puts (WORDWRAP_FILE wf, char const *str);
+int wordwrap_putc (WORDWRAP_FILE wf, int c);
+int wordwrap_para (WORDWRAP_FILE wf);
+int wordwrap_vprintf (WORDWRAP_FILE wf, char const *fmt, va_list ap);
+int wordwrap_printf (WORDWRAP_FILE wf, char const *fmt, ...);
+int wordwrap_at_bol (WORDWRAP_FILE wf);
+int wordwrap_at_eol (WORDWRAP_FILE wf);
+void wordwrap_word_start (WORDWRAP_FILE wf);
+void wordwrap_word_end (WORDWRAP_FILE wf);
 
