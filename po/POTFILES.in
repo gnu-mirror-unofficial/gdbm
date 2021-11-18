@@ -21,12 +21,15 @@ src/findkey.c
 src/gdbm_dump.c
 src/gdbm_load.c
 src/gdbmerrno.c
+src/gdbmshell.c
 src/gdbmstore.c
 src/gdbmtool.c
-src/gdbmshell.c
 src/gram.y
+src/input-file.c
 src/lex.l
 src/parseopt.c
 src/recover.c
 src/update.c
 src/util.c
+src/var.c
+
