@@ -661,7 +661,7 @@ err_printer (void *data GDBM_ARG_UNUSED, char const *fmt, ...)
   fprintf (stderr, "\n");
 }
 
-/* recover sumamry verbose backup max-failed-keys=N max-failed-buckets=N max-failures=N */
+/* recover summary verbose backup max-failed-keys=N max-failed-buckets=N max-failures=N */
 static int
 recover_handler (struct command_param *param, struct command_environ *cenv)
 {
@@ -1585,7 +1585,7 @@ import_handler (struct command_param *param,
   int rc = GDBMSHELL_OK;
   char *file_name;
   
-  for (i = 0; i < param->argc; i++)
+  for (i = 1; i < param->argc; i++)
     {
       if (strcmp (PARAM_STRING (param, i), "replace") == 0)
 	 flag = GDBM_REPLACE;
@@ -1637,7 +1637,6 @@ import_handler (struct command_param *param,
       return GDBMSHELL_GDBM_ERR;
     }
 
-  free (file_name);
   if (gdbm_setopt (gdbm_file, GDBM_GETDBNAME, &file_name, sizeof (file_name)))
     {
       dberror ("%s", "GDBM_GETDBNAME");
