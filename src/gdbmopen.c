@@ -704,7 +704,7 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
    not exist, create a new one.  If FLAGS is GDBM_NEWDB, the user want a
    new database created, regardless of whether one existed, and wants read
    and write access to the new database.  Any error detected will cause a 
-   return value of null and an approprate value will be in gdbm_errno.  If
+   return value of null and an appropriate value will be in gdbm_errno.  If
    no errors occur, a pointer to the "gdbm file descriptor" will be
    returned. */
    

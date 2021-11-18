@@ -1,4 +1,4 @@
-/* systems.h - Most of the system dependant code and defines are here. */
+/* systems.h - Most of the system dependent code and defines are here. */
 
 /* This file is part of GDBM, the GNU data base manager.
    Copyright (C) 1990-2021 Free Software Foundation, Inc.

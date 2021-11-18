@@ -25,7 +25,7 @@ DBM *_gdbm_file;
 
 /* Initialize dbm system.  FILE is a pointer to the file name.  In
    standard dbm, the database is found in files called FILE.pag and
-   FILE.dir.  To make gdbm compatable with dbm using the dbminit call,
+   FILE.dir.  To make gdbm compatible with dbm using the dbminit call,
    the same file names are used.  Specifically, dbminit will use the file
    name FILE.pag in its call to gdbm open.  If the file (FILE.pag) has a
    size of zero bytes, a file initialization procedure is performed,

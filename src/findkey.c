@@ -82,7 +82,7 @@ _gdbm_read_entry (GDBM_FILE dbf, int elem_loc)
   dsize = key_size + data_size;
   data_ca = &dbf->cache_entry->ca_data;
 
-  /* Make sure data_ca has sufficient space to accomodate both
+  /* Make sure data_ca has sufficient space to accommodate both
      key and content. */
   if (dsize <= data_ca->dsize)
     {

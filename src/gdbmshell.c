@@ -36,7 +36,7 @@ static GDBM_FILE gdbm_file = NULL;   /* Database to operate upon */
 static datum key_data;               /* Current key */
 static datum return_data;            /* Current data */
 
-/* Return values for hanlders: */
+/* Return values for handlers: */
 enum
   {
     GDBMSHELL_OK,       /* Success */

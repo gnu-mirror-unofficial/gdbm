@@ -42,7 +42,7 @@ gdbm_import_from_file (GDBM_FILE dbf, FILE *fp, int flag)
   kbuffer = NULL;
   dbuffer = NULL;
 
-  /* Read (and discard) four lines begining with ! and ending with \n. */
+  /* Read (and discard) four lines beginning with ! and ending with \n. */
   while (1)
     {
       if ((rret = fgetc (fp)) == -1)

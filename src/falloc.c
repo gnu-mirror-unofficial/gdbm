@@ -108,7 +108,7 @@ _gdbm_alloc (GDBM_FILE dbf, int num_bytes)
 }
 
 /* Free space of size NUM_BYTES in the file DBF at file address FILE_ADR.  Make
-   it avaliable for reuse through _gdbm_alloc.  This routine changes the
+   it available for reuse through _gdbm_alloc.  This routine changes the
    avail structure. */
 
 int

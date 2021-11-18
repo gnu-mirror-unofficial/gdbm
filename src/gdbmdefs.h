@@ -65,7 +65,7 @@ off_t_sum_ok (off_t a, off_t b)
    stack."  When the active avail table is empty and the "avail stack" is
    not empty, the top of the stack is popped into the active avail table. */
 
-/* The following structure is the element of the avaliable table.  */
+/* The following structure is the element of the available table.  */
 typedef struct
 {
   int   av_size;                /* The size of the available block. */
@@ -266,7 +266,7 @@ struct gdbm_file_info
   off_t *dir;
 
   /* The bucket cache. */
-  int cache_bits;          /* Address bits used for compting bucket hash */
+  int cache_bits;          /* Address bits used for computing bucket hash */
   size_t cache_size;       /* Cache capacity: 2^cache_bits */
   size_t cache_num;        /* Actual number of elements in cache */
   /* Cache hash table. */

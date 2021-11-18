@@ -1,4 +1,4 @@
-/* gdbmerrno.c - convert gdbm errors into english. */
+/* gdbmerrno.c - convert gdbm errors into English. */
 
 /* This file is part of GDBM, the GNU data base manager.
    Copyright (C) 1993-2021 Free Software Foundation, Inc.

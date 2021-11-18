@@ -1,5 +1,5 @@
 /* seq.c - This is the sequential visit of the database.  This defines two
-   user-visable routines that are used together. This is the DBM interface. */
+   user-visible routines that are used together. This is the DBM interface. */
 
 /* This file is part of GDBM, the GNU data base manager.
    Copyright (C) 1990-2021 Free Software Foundation, Inc.

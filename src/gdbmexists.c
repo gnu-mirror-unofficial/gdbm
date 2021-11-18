@@ -22,7 +22,7 @@
 #include "gdbmdefs.h"
 
 /* This is nothing more than a wrapper around _gdbm_findkey().  The
-   point?  It doesn't alloate any memory. */
+   point?  It doesn't allocate any memory. */
 
 int
 gdbm_exists (GDBM_FILE dbf, datum key)

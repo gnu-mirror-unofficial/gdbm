@@ -2127,7 +2127,7 @@ stored.
 @defvr {Option} GDBM_SETCACHEAUTO
 Controls whether the cache size will be adjusted automatically as
 needed.  The @var{value} should point to an integer: @code{TRUE} to
-enable automatical cache adjustment and @code{FALSE} to disable it.
+enable automatic cache adjustment and @code{FALSE} to disable it.
 
 The following two calls are equivalent:
 

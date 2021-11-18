@@ -1,5 +1,5 @@
 /* delete.c - Remove the key and its associated data from the database.
-   This is the original unix interface name.  */
+   This is the original UNIX interface name.  */
 
 /* This file is part of GDBM, the GNU data base manager.
    Copyright (C) 1990-2021 Free Software Foundation, Inc.
