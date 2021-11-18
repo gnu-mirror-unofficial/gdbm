@@ -1771,6 +1771,7 @@ shell_handler (struct command_param *param,
   if (pid == 0)
     {
       execv (argv[0], argv);
+      perror (argv[0]);
       _exit (127);
     }
 

@@ -64,7 +64,7 @@ advance_line (void)
 void string_begin (void);
 void string_add (const char *s, int l);
 void string_addc (int c);
-char *string_end (void);
+char *string_end (int empty_null);
 int unescape (int c);
 
 struct file_name
@@ -341,7 +341,7 @@ pad           { return T_PAD; }
 <STR,MLSTR>{
 [^\\\"\n]*\"       { if (yyleng > 1)
 		       string_add (yytext, yyleng - 1);
-		     yylval.string = string_end ();
+		     yylval.string = string_end (FALSE);
 		     BEGIN (CMD);
 		     return T_WORD; }
 [^\\\"\n]*\\\n     { advance_line ();
@@ -376,8 +376,8 @@ pad           { return T_PAD; }
     BEGIN (INITIAL);
     advance_line ();
     yyless (0);
-    yylval.string = string_end ();
-    return T_WORD;    
+    if ((yylval.string = string_end (TRUE)) != NULL)
+      return T_WORD;    
  }
 .   string_addc (yytext[0]);
 }
@@ -475,28 +475,38 @@ string_addc (int c)
   strseg_attach (seg);
 }
 
+/*
+ * Compose the collected string segments into a nul-terminated string.
+ * Return the allocated string.
+ * If EMPTY_NULL is TRUE and the resulting string length is 0, return
+ * NULL instead.
+ */
 char *
-string_end (void)
+string_end (int empty_null)
 {
-  int len = 1;
+  int len = 0;
   struct strseg *seg;
   char *ret, *p;
   
   for (seg = strseg_head; seg; seg = seg->next)
     len += seg->len;
 
-  ret = emalloc (len);
-  p = ret;
-  for (seg = strseg_head; seg; )
+  if (len == 0 && empty_null)
+    ret = NULL;
+  else
     {
-      struct strseg *next = seg->next;
-      memcpy (p, seg->ptr, seg->len);
-      p += seg->len;
-      free (seg);
-      seg = next;
+      ret = emalloc (len + 1);
+      p = ret;
+      for (seg = strseg_head; seg; )
+	{
+	  struct strseg *next = seg->next;
+	  memcpy (p, seg->ptr, seg->len);
+	  p += seg->len;
+	  free (seg);
+	  seg = next;
+	}
+      *p = 0;
     }
-  *p = 0;
-
   strseg_head = strseg_tail = NULL;
 
   return ret;
