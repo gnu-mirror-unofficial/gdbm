@@ -15,21 +15,22 @@
 # along with GDBM. If not, see <http://www.gnu.org/licenses/>.
 
 src/bucket.c
-src/datconv.c
 src/falloc.c
 src/findkey.c
-src/gdbm_dump.c
-src/gdbm_load.c
 src/gdbmerrno.c
-src/gdbmshell.c
 src/gdbmstore.c
-src/gdbmtool.c
-src/gram.y
-src/input-file.c
-src/lex.l
-src/parseopt.c
 src/recover.c
 src/update.c
-src/util.c
-src/var.c
+
+tools/datconv.c
+tools/gdbm_dump.c
+tools/gdbm_load.c
+tools/gdbmshell.c
+tools/gdbmtool.c
+tools/gram.y
+tools/input-file.c
+tools/lex.l
+tools/parseopt.c
+tools/util.c
+tools/var.c
 

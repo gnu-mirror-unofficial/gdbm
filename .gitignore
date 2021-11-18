@@ -13,6 +13,7 @@
 *.cflow
 .deps
 .emacs*
+.gdbinit
 .libs
 ABOUT-NLS
 ChangeLog

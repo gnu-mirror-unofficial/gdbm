@@ -129,7 +129,7 @@ check_PROGRAMS = \
  t_wordwrap\
  $(DBMPROGS)
 
-AM_CPPFLAGS = -I$(top_srcdir)/src -I$(top_builddir)/src $(DBMINCLUDES)
+AM_CPPFLAGS = -I$(top_srcdir)/src -I$(top_builddir)/src -I$(top_srcdir)/tools $(DBMINCLUDES)
 
 noinst_HEADERS=progname.h
 
@@ -140,6 +140,6 @@ dtdump_LDADD = ../src/libgdbm.la ../compat/libgdbm_compat.la
 dtfetch_LDADD = ../src/libgdbm.la ../compat/libgdbm_compat.la
 dtdel_LDADD = ../src/libgdbm.la ../compat/libgdbm_compat.la
 d_creat_ce_LDADD = ../src/libgdbm.la ../compat/libgdbm_compat.la
-t_wordwrap_LDADD = ../src/libgdbmapp.a
+t_wordwrap_LDADD = ../tools/libgdbmapp.a
 
 SUBDIRS = gdbmtool

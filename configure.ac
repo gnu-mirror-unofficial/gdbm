@@ -275,6 +275,7 @@ status_ficlone=$status_ficlone])
 AC_CONFIG_FILES([Makefile
                  src/Makefile
 		 src/gdbm.h
+		 tools/Makefile
 		 doc/Makefile
 		 compat/Makefile])
 

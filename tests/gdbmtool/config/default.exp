@@ -11,7 +11,7 @@ proc gdbmtool_start {args} {
     global top_builddir
     global gdbmtool_prompt
 
-    set cmd "$top_builddir/src/gdbmtool -q $args"
+    set cmd "$top_builddir/tools/gdbmtool -q $args"
     verbose "running $cmd" 1
 
     set gdbmtool_spawn_id [remote_spawn host $cmd]

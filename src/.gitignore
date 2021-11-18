@@ -1,14 +1,1 @@
-.deps
-.libs
-.gdbinit
-Makefile
-Makefile.in
 gdbm.h
-*.lo
-libgdbm.la
-gdbmtool
-gdbm_dump
-gdbm_load
-gram.[ch]
-gram.output
-lex.c

@@ -19,7 +19,7 @@ EXTRA_DIST = build-aux/config.rpath NOTE-WARNING
 if COMPAT_OPT
   MAYBE_COMPAT = compat
 endif
-SUBDIRS = po src doc $(MAYBE_COMPAT) tests
+SUBDIRS = po src tools doc $(MAYBE_COMPAT) tests
 
 AM_DISTCHECK_CONFIGURE_FLAGS = --enable-libgdbm-compat
 
