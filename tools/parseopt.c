@@ -1,5 +1,5 @@
 /* This file is part of GDBM, the GNU data base manager.
-   Copyright (C) 2011-2021 Free Software Foundation, Inc.
+   Copyright (C) 2011-2022 Free Software Foundation, Inc.
 
    GDBM is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -650,7 +650,7 @@ print_version_only (void)
   /* TRANSLATORS: Translate "(C)" to the copyright symbol
      (C-in-a-circle), if this symbol is available in the user's
      locale.  Otherwise, do not translate "(C)"; leave it as-is.  */
-  printf (version_etc_copyright, _("(C)"), "2011-2019");
+  printf (version_etc_copyright, _("(C)"), "2011-2022");
   putchar ('\n');
   puts (license_text);
   putchar ('\n');

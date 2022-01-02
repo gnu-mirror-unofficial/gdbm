@@ -45,7 +45,7 @@
 	  
   LICENSE
     This file is part of GDBM test suite.
-    Copyright (C) 2021 Free Software Foundation, Inc.
+    Copyright (C) 2021-2022 Free Software Foundation, Inc.
 
     GDBM is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
