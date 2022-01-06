@@ -96,6 +96,7 @@ main (int argc, char **argv)
   int recover = 0;
   gdbm_recovery rcvr;
   int rcvr_flags = 0;
+  size_t cache_size = 0;
   
   progname = canonical_progname (argv[0]);
 #ifdef GDBM_DEBUG_ENABLE
@@ -135,6 +136,8 @@ main (int argc, char **argv)
 	delim = arg[7];
       else if (strcmp (arg, "-recover") == 0)
 	recover = 1;
+      else if (strncmp (arg, "-cachesize=", 11) == 0)
+	cache_size = read_size (arg + 11);
       else if (strcmp (arg, "-verbose") == 0)
 	{
 	  verbose = 1;
@@ -213,7 +216,17 @@ main (int argc, char **argv)
 		   gdbm_strerror (gdbm_errno));
 	  exit (1);
 	}
-    }  
+    }
+  if (cache_size)
+    {
+      if (gdbm_setopt (dbf, GDBM_SETCACHESIZE, &cache_size,
+		       sizeof (cache_size)))
+	{
+	  fprintf (stderr, "GDBM_SETCACHESIZE failed: %s\n",
+		   gdbm_strerror (gdbm_errno));
+	  exit (1);
+	}
+    }	  
 
   if (verbose)
     {

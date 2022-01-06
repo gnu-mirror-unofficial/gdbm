@@ -202,7 +202,7 @@ main (int argc, char **argv)
   i = CACHE_SIZE;
   if (gdbm_setopt (dbf, GDBM_SETCACHESIZE, &i, sizeof (i)))
     {
-      fprintf (stderr, "GDBM_GETCACHESIZE: %s\n", gdbm_strerror (gdbm_errno));
+      fprintf (stderr, "GDBM_SETCACHESIZE: %s\n", gdbm_strerror (gdbm_errno));
       return 1;
     }
   

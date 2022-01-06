@@ -373,7 +373,7 @@ _gdbm_print_bucket_cache (FILE *fp, GDBM_FILE dbf)
       fprintf (fp,
 	_("Bucket Cache (size %zu/%zu):\n  Index:         Address  Changed  Data_Hash \n"),
 	       dbf->cache_num, dbf->cache_size);
-      for (elem = dbf->cache_entry, i = 0; elem; elem = elem->ca_next, i++)
+      for (elem = dbf->cache_mru, i = 0; elem; elem = elem->ca_next, i++)
 	{
 	  fprintf (fp, "  %5d:  %15lu %7s  %x\n",
 		   i,

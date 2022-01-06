@@ -27,6 +27,13 @@ int _gdbm_cache_init   (GDBM_FILE, size_t);
 void _gdbm_cache_free  (GDBM_FILE dbf);
 int _gdbm_cache_flush  (GDBM_FILE dbf);
 
+/* Mark current bucket as changed. */
+static inline void
+_gdbm_current_bucket_changed (GDBM_FILE dbf)
+{
+  dbf->cache_mru->ca_changed = TRUE;
+}
+
 /* Return true if the directory entry at DIR_INDEX can be considered
    valid. This means that DIR_INDEX is in the valid range for addressing
    the dir array, and the offset stored in dir[DIR_INDEX] points past

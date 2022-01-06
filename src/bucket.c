@@ -41,14 +41,6 @@ _gdbm_new_bucket (GDBM_FILE dbf, hash_bucket *bucket, int bits)
   for (index = 0; index < dbf->header->bucket_elems; index++)
     bucket->h_table[index].hash_value = -1;
 }
-
-static void
-set_cache_entry (GDBM_FILE dbf, cache_elem *elem)
-{
-  dbf->cache_entry = elem;
-  dbf->bucket = dbf->cache_entry->ca_bucket;
-}
-
 
 /* Bucket cache table functions */
 
@@ -90,7 +82,10 @@ cache_tab_lookup_slot (GDBM_FILE dbf, off_t adr)
 
 /* LRU list management */
 
-/* Link ELEM after REF in DBF cache.  If REF is NULL, link at head */
+/*
+ * Link ELEM after REF in DBF cache.  If REF is NULL, link at head and
+ * set DBF->bucket to point to the ca_bucket of ELEM.
+ */
 static void
 lru_link_elem (GDBM_FILE dbf, cache_elem *elem, cache_elem *ref)
 {
@@ -103,6 +98,7 @@ lru_link_elem (GDBM_FILE dbf, cache_elem *elem, cache_elem *ref)
       else
 	dbf->cache_lru = elem;
       dbf->cache_mru = elem;
+      dbf->bucket = dbf->cache_mru->ca_bucket;
     }
   else
     {
@@ -118,7 +114,10 @@ lru_link_elem (GDBM_FILE dbf, cache_elem *elem, cache_elem *ref)
     }
 }
 
-/* Unlink ELEM from the list of cache elements in DBF. */
+/*
+ * Unlink ELEM from the list of cache elements in DBF.
+ * If cache_mru gets updated, update DBF->bucket accordingly.
+ */
 static void
 lru_unlink_elem (GDBM_FILE dbf, cache_elem *elem)
 {
@@ -127,7 +126,10 @@ lru_unlink_elem (GDBM_FILE dbf, cache_elem *elem)
   if ((x = elem->ca_prev))
     x->ca_next = elem->ca_next;
   else
-    dbf->cache_mru = elem->ca_next;
+    {
+      dbf->cache_mru = elem->ca_next;
+      dbf->bucket = dbf->cache_mru->ca_bucket;
+    }
   if ((x = elem->ca_next))
     x->ca_prev = elem->ca_prev;
   else
@@ -334,19 +336,34 @@ cache_lookup (GDBM_FILE dbf, off_t adr, cache_elem *ref, cache_elem **ret_elem)
 	  dbf->cache_num++;
 	}
     }
+
+  /*
+   * If the obtained bucket is not changed and is going to become current,
+   * flush all changed cache elements.  This ensures that changed cache
+   * elements form a contiguous sequence at the head of the cache list (see
+   * _gdbm_cache_flush).
+   */
+  if (ref == NULL && !elem->ca_changed)
+    _gdbm_cache_flush (dbf);
+  
   lru_link_elem (dbf, elem, ref);
   if (rc != cache_failure)
     *ret_elem = elem;
   return rc;
 }
 
-/* Find a bucket for DBF that is pointed to by the bucket directory from
-   location DIR_INDEX.   The bucket cache is first checked to see if it
-   is already in memory.  If not, a bucket may be tossed to read the new
-   bucket.  On success, the requested bucket becomes the "current" bucket
-   and dbf->bucket points to the correct bucket. On error, the current
-   bucket remains unchanged. */
-
+/*
+ * Find a bucket for DBF that is pointed to by the bucket directory from
+ * location DIR_INDEX.   The bucket cache is first checked to see if it
+ * is already in memory.  If not, the last recently used bucket may be
+ * tossed (if the cache is full) to read the new bucket.
+ *
+ * On success, the cached entry with the requested bucket is placed at
+ * the head of the cache list (cache_mru) and the requested bucket becomes
+ * "current".
+ *
+ * On error, the current bucket remains unchanged.
+ */
 int
 _gdbm_get_bucket (GDBM_FILE dbf, int dir_index)
 {
@@ -367,9 +384,6 @@ _gdbm_get_bucket (GDBM_FILE dbf, int dir_index)
   dbf->bucket_dir = dir_index;
   bucket_adr = dbf->dir[dir_index];
 
-  if (dbf->cache_entry && dbf->cache_entry->ca_adr == bucket_adr)
-    return 0;
-  
   switch (cache_lookup (dbf, bucket_adr, NULL, &elem))
     {
     case cache_found:
@@ -427,7 +441,6 @@ _gdbm_get_bucket (GDBM_FILE dbf, int dir_index)
     case cache_failure:
       return -1;
     }
-  set_cache_entry (dbf, elem);
   
   return 0;
 }
@@ -462,7 +475,14 @@ _gdbm_split_bucket (GDBM_FILE dbf, int next_insert)
 
       new_bits = dbf->bucket->bucket_bits + 1;
 
-      /* Allocate two new buckets */
+      /*
+       * Allocate two new buckets.  They will be populated with the entries
+       * from the current bucket (cache_mru->bucket), so make sure that
+       * cache_mru remains unchanged until both buckets are fully formed.
+       * Newly allocated buckets must be linked right after cache_mru, so
+       * that all changed buckets form a contiguous sequence at the beginning
+       * of the cache list (this is needed by _gdbm_cache_flush).
+       */
       adr_0 = _gdbm_alloc (dbf, dbf->header->bucket_size);
       switch (cache_lookup (dbf, adr_0, dbf->cache_mru, &newcache[0]))
 	{
@@ -603,17 +623,15 @@ _gdbm_split_bucket (GDBM_FILE dbf, int next_insert)
       /* Set changed flags. */
       newcache[0]->ca_changed = TRUE;
       newcache[1]->ca_changed = TRUE;
-      dbf->bucket_changed = TRUE;
       dbf->directory_changed = TRUE;
-      dbf->second_changed = TRUE;
       
       /* Update the cache! */
       dbf->bucket_dir = _gdbm_bucket_dir (dbf, next_insert);
       
       /* Invalidate old cache entry. */
-      old_bucket.av_adr  = dbf->cache_entry->ca_adr;
+      old_bucket.av_adr  = dbf->cache_mru->ca_adr;
       old_bucket.av_size = dbf->header->bucket_size;
-      cache_elem_free (dbf, dbf->cache_entry);
+      cache_elem_free (dbf, dbf->cache_mru);
       
       /* Set dbf->bucket to the proper bucket. */
       if (dbf->dir[dbf->bucket_dir] != adr_0)
@@ -630,7 +648,6 @@ _gdbm_split_bucket (GDBM_FILE dbf, int next_insert)
 
       lru_unlink_elem (dbf, newcache[0]);
       lru_link_elem (dbf, newcache[0], NULL);
-      set_cache_entry (dbf, newcache[0]);
     }
 
   /* Get rid of old directories. */
@@ -725,18 +742,19 @@ _gdbm_cache_free (GDBM_FILE dbf)
     }
 }
 
-/* Flush cache content to disk. */
+/*
+ * Flush cache content to disk.
+ * All cache elements with the changed buckets form a contiguous sequence
+ * at the head of the cache list (starting with cache_mru).
+ */
 int
 _gdbm_cache_flush (GDBM_FILE dbf)
 {
   cache_elem *elem;
-  for (elem = dbf->cache_lru; elem; elem = elem->ca_prev)
+  for (elem = dbf->cache_mru; elem && elem->ca_changed; elem = elem->ca_next)
     {
-      if (elem->ca_changed)
-	{
-	  if (_gdbm_write_bucket (dbf, elem))
-	    return -1;
-	}
+      if (_gdbm_write_bucket (dbf, elem))
+	return -1;
     }
   return 0;
 }

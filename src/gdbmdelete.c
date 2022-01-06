@@ -85,12 +85,12 @@ gdbm_delete (GDBM_FILE dbf, datum key)
     return -1;
 
   /* Set the flags. */
-  dbf->bucket_changed = TRUE;
+  _gdbm_current_bucket_changed (dbf);
 
   /* Invalidate data cache for the current bucket. */
-  dbf->cache_entry->ca_data.hash_val = -1;
-  dbf->cache_entry->ca_data.key_size = 0;
-  dbf->cache_entry->ca_data.elem_loc = -1;
+  dbf->cache_mru->ca_data.hash_val = -1;
+  dbf->cache_mru->ca_data.key_size = 0;
+  dbf->cache_mru->ca_data.elem_loc = -1;
 
   /* Do the writes. */
   return _gdbm_end_update (dbf);

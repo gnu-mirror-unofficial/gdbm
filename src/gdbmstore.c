@@ -190,8 +190,7 @@ gdbm_store (GDBM_FILE dbf, datum key, datum content, int flags)
     }
 
   /* Current bucket has changed. */
-  dbf->cache_entry->ca_changed = TRUE;
-  dbf->bucket_changed = TRUE;
+  _gdbm_current_bucket_changed (dbf);
 
   /* Write everything that is needed to the disk. */
   return _gdbm_end_update (dbf);

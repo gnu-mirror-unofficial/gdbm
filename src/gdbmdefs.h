@@ -277,10 +277,7 @@ struct gdbm_file_info
   cache_elem *cache_lru;   /* Last recently used element - tail of the list */ 
   cache_elem *cache_avail; /* Pool of available elements (linked by prev, next)
 			    */
-  /* Pointer to the current bucket's cache entry. */
-  cache_elem *cache_entry;
-  
-  /* Points to the current hash bucket in the cache. */
+  /* Points to dbf->cache_mru.ca_bucket -- the current hash bucket */
   hash_bucket *bucket;
   
   /* The directory entry used to get the current hash bucket. */
@@ -294,8 +291,6 @@ struct gdbm_file_info
      end of an update. */
   unsigned header_changed :1;
   unsigned directory_changed :1;
-  unsigned bucket_changed :1;
-  unsigned second_changed :1;
 
   off_t file_size;       /* Cached value of the current disk file size.
 			    If -1, fstat will be used to retrieve it. */

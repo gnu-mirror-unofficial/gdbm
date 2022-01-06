@@ -515,7 +515,7 @@ adjust_bucket_avail (GDBM_FILE dbf)
 	  av_el = dbf->avail->av_table[dbf->avail->count];
 	  _gdbm_put_av_elem (av_el, dbf->bucket->bucket_avail,
 			     &dbf->bucket->av_count, dbf->coalesce_blocks);
-	  dbf->bucket_changed = TRUE;
+	  _gdbm_current_bucket_changed (dbf);
 	}
       return 0;
     }
@@ -533,7 +533,7 @@ adjust_bucket_avail (GDBM_FILE dbf)
       _gdbm_put_av_elem (av_el, dbf->avail->av_table,
 			 &dbf->avail->count,
 			 dbf->coalesce_blocks);
-      dbf->bucket_changed = TRUE;
+      _gdbm_current_bucket_changed (dbf);
     }
   return 0;
 }

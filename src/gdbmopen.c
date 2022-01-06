@@ -673,8 +673,6 @@ gdbm_fd_open (int fd, const char *file_name, int block_size,
   dbf->bucket_dir = 0;
   dbf->header_changed = FALSE;
   dbf->directory_changed = FALSE;
-  dbf->bucket_changed = FALSE;
-  dbf->second_changed = FALSE;
 
   if (flags & GDBM_XVERIFY)
     {

@@ -168,12 +168,9 @@ _gdbm_finish_transfer (GDBM_FILE dbf, GDBM_FILE new_dbf,
   dbf->cache_mru         = new_dbf->cache_mru;   
   dbf->cache_lru         = new_dbf->cache_lru;   
   dbf->cache_avail       = new_dbf->cache_avail;
-  dbf->cache_entry       = new_dbf->cache_entry;  
   
   dbf->header_changed    = new_dbf->header_changed;
   dbf->directory_changed = new_dbf->directory_changed;
-  dbf->bucket_changed    = new_dbf->bucket_changed;
-  dbf->second_changed    = new_dbf->second_changed;
 
   dbf->file_size = -1;
   

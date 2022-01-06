@@ -63,20 +63,8 @@ _gdbm_end_update (GDBM_FILE dbf)
   off_t file_pos;	/* Return value for lseek. */
   int rc;
   
-  /* Write the current bucket. */
-  if (dbf->bucket_changed && (dbf->cache_entry != NULL))
-    {
-      if (_gdbm_write_bucket (dbf, dbf->cache_entry))
-	return -1;
-      dbf->bucket_changed = FALSE;
-    }
-
-  /* Write the other changed buckets if there are any. */
-  if (dbf->second_changed)
-    {
-      _gdbm_cache_flush (dbf);
-      dbf->second_changed = FALSE;
-    }
+  /* Write the changed buckets if there are any. */
+  _gdbm_cache_flush (dbf);
   
   /* Write the directory. */
   if (dbf->directory_changed)

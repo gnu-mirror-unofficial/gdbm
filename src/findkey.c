@@ -67,8 +67,8 @@ _gdbm_read_entry (GDBM_FILE dbf, int elem_loc)
   data_cache_elem *data_ca;
 
   /* Is it already in the cache? */
-  if (dbf->cache_entry->ca_data.elem_loc == elem_loc)
-    return dbf->cache_entry->ca_data.dptr;
+  if (dbf->cache_mru->ca_data.elem_loc == elem_loc)
+    return dbf->cache_mru->ca_data.dptr;
 
   if (!gdbm_bucket_element_valid_p (dbf, elem_loc))
     {
@@ -80,7 +80,7 @@ _gdbm_read_entry (GDBM_FILE dbf, int elem_loc)
   key_size = dbf->bucket->h_table[elem_loc].key_size;
   data_size = dbf->bucket->h_table[elem_loc].data_size;
   dsize = key_size + data_size;
-  data_ca = &dbf->cache_entry->ca_data;
+  data_ca = &dbf->cache_mru->ca_data;
 
   /* Make sure data_ca has sufficient space to accommodate both
      key and content. */
@@ -179,17 +179,17 @@ _gdbm_findkey (GDBM_FILE dbf, datum key, char **ret_dptr, int *ret_hash_val)
     return -1;
   
   /* Is the element the last one found for this bucket? */
-  if (dbf->cache_entry->ca_data.elem_loc != -1 
-      && new_hash_val == dbf->cache_entry->ca_data.hash_val
-      && dbf->cache_entry->ca_data.key_size == key.dsize
-      && dbf->cache_entry->ca_data.dptr != NULL
-      && memcmp (dbf->cache_entry->ca_data.dptr, key.dptr, key.dsize) == 0)
+  if (dbf->cache_mru->ca_data.elem_loc != -1 
+      && new_hash_val == dbf->cache_mru->ca_data.hash_val
+      && dbf->cache_mru->ca_data.key_size == key.dsize
+      && dbf->cache_mru->ca_data.dptr != NULL
+      && memcmp (dbf->cache_mru->ca_data.dptr, key.dptr, key.dsize) == 0)
     {
       GDBM_DEBUG (GDBM_DEBUG_LOOKUP, "%s: found in cache", dbf->name);
       /* This is it. Return the cache pointer. */
       if (ret_dptr)
-	*ret_dptr = dbf->cache_entry->ca_data.dptr + key.dsize;
-      return dbf->cache_entry->ca_data.elem_loc;
+	*ret_dptr = dbf->cache_mru->ca_data.dptr + key.dsize;
+      return dbf->cache_mru->ca_data.elem_loc;
     }
       
   /* It is not the cached value, search for element in the bucket. */
