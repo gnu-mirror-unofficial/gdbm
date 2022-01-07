@@ -128,7 +128,7 @@ lru_unlink_elem (GDBM_FILE dbf, cache_elem *elem)
   else
     {
       dbf->cache_mru = elem->ca_next;
-      dbf->bucket = dbf->cache_mru->ca_bucket;
+      dbf->bucket = dbf->cache_mru ? dbf->cache_mru->ca_bucket : NULL;
     }
   if ((x = elem->ca_next))
     x->ca_prev = elem->ca_prev;
