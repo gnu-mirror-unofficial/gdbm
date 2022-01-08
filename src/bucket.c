@@ -707,8 +707,7 @@ _gdbm_cache_init (GDBM_FILE dbf, size_t size)
       cache_auto = TRUE;
       bits = dbf->cache ? dbf->cache_bits : INIT_CACHE_BITS;
     }
-  else if (size > GDBM_DIR_COUNT (dbf) ||
-	   size > SIZE_T_MAX / sizeof (dbf->cache[0]))
+  else if (size > SIZE_T_MAX / sizeof (dbf->cache[0]))
     {
       GDBM_SET_ERRNO (dbf, GDBM_OPT_BADVAL, FALSE);
       return -1;

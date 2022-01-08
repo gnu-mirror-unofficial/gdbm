@@ -352,6 +352,7 @@ setopt_gdbm_getdbformat (GDBM_FILE dbf, void *optval, int optlen)
 	case GDBM_NUMSYNC_MAGIC:
 	  *(int*)optval = GDBM_NUMSYNC;
 	}
+      return 0;
     }
   
   GDBM_SET_ERRNO (dbf, GDBM_OPT_BADVAL, FALSE);
