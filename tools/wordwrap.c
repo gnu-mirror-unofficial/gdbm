@@ -281,7 +281,7 @@ flush_line (WORDWRAP_FILE wf, size_t size)
   else
     len = size;
   
-  if (len >= wf->left_margin)
+  if (len >= wf->left_margin && wf->offset > wf->left_margin)
     {
       n = full_write (wf, len);
       if (n == -1)
