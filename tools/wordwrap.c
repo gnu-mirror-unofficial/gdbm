@@ -281,7 +281,7 @@ flush_line (WORDWRAP_FILE wf, size_t size)
   else
     len = size;
   
-  if (len > wf->left_margin)
+  if (len >= wf->left_margin)
     {
       n = full_write (wf, len);
       if (n == -1)
@@ -365,16 +365,15 @@ wordwrap_set_left_margin (WORDWRAP_FILE wf, unsigned left)
 
   bol = wordwrap_at_bol (wf);
   wf->left_margin = left;
+  wf->indent = 1;
   if (left < wf->offset)
     {
-      wf->indent = 1;
       if (!bol)
       	flush_line (wf, wf->offset);//FIXME: remove trailing ws
     }
   else
     {
-      wf->indent = left > wf->offset;
-      if (wf->indent)
+      if (left > wf->offset)
 	memset (wf->buffer + wf->offset, ' ', wf->left_margin - wf->offset);
     }
   wordwrap_line_init (wf);

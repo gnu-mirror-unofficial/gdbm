@@ -403,7 +403,11 @@ print_option (WORDWRAP_FILE wf, size_t num)
       wordwrap_set_left_margin (wf, header_col);
       wordwrap_set_right_margin (wf,  rmargin);
       if (opt->opt_descr[0])
-	wordwrap_puts (wf, gettext (opt->opt_descr));
+	{
+	  wordwrap_putc (wf, '\n');
+	  wordwrap_puts (wf, gettext (opt->opt_descr));
+	  wordwrap_putc (wf, '\n');
+	}
       wordwrap_putc (wf, '\n');
       return num + 1;
     }
@@ -433,9 +437,18 @@ print_option (WORDWRAP_FILE wf, size_t num)
     }
   
 #ifdef HAVE_GETOPT_LONG
-  w = 0;
-  wordwrap_set_left_margin (wf, long_opt_col);
   for (i = num; i < next; i++)
+    {
+      if (IS_VALID_LONG_OPTION (&option_tab[i]))
+	{
+	  if (w)
+	    wordwrap_write (wf, ", ", 2);
+	  wordwrap_set_left_margin (wf, long_opt_col);
+	  w = 0;
+	  break;
+	}
+    }
+  for (; i < next; i++)
     {
       if (IS_VALID_LONG_OPTION (&option_tab[i]))
 	{
@@ -474,7 +487,8 @@ parseopt_print_help (void)
   wordwrap_printf (wf, "%s %s [%s]... %s\n", _("Usage:"),
 		   parseopt_program_name ? parseopt_program_name : progname,
 		   _("OPTION"),
-		   gettext (parseopt_program_args));
+		   (parseopt_program_args && parseopt_program_args[0])
+		     ? gettext (parseopt_program_args) : "");
 
   wordwrap_set_right_margin (wf, rmargin);
   if (parseopt_program_doc && parseopt_program_doc[0])
