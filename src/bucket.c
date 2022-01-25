@@ -571,9 +571,18 @@ _gdbm_split_bucket (GDBM_FILE dbf, int next_insert)
       for (index = 0; index < dbf->header->bucket_elems; index++)
 	{
 	  bucket_element *old_el = &dbf->bucket->h_table[index];
-	  hash_bucket *bucket =
+	  hash_bucket *bucket;
+	  int elem_loc;
+	  
+	  if (old_el->hash_value < 0)
+	    {
+	      GDBM_SET_ERRNO (dbf, GDBM_BAD_BUCKET, TRUE);
+	      return -1;
+	    }
+
+	  bucket =
 	    newcache[(old_el->hash_value >> (GDBM_HASH_BITS - new_bits)) & 1]->ca_bucket;
-	  int elem_loc = old_el->hash_value % dbf->header->bucket_elems;
+	  elem_loc = old_el->hash_value % dbf->header->bucket_elems;
 	  while (bucket->h_table[elem_loc].hash_value != -1)
 	    elem_loc = (elem_loc + 1) % dbf->header->bucket_elems;
 	  bucket->h_table[elem_loc] = *old_el;
