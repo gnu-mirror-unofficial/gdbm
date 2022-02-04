@@ -1,12 +1,16 @@
-GNU dbm NEWS -- history of user-visible changes. 2021-11-14
+GNU dbm NEWS -- history of user-visible changes. 2022-02-04
 Copyright (C) 1990-2022 Free Software Foundation, Inc.
 See the end of file for copying conditions.
 
 Please send gdbm bug reports to <bug-gdbm@gnu.org>.
 
-Version 1.22.90 (git)
+Version 1.23, 2022-02-04
 
 * Bucket cache switched from balanced tree to hash table
+
+Change suggested by Terence Kelly.
+
+* Speed up flushing the changed buckets on disk
 
 * New option codes for gdbm_setopt
 
