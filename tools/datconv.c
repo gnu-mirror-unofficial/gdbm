@@ -81,7 +81,7 @@ f_string (FILE *fp, void *ptr, int size)
       int n = mbtowc (&wc, &str[i], MB_CUR_MAX);
       if (n == 0)
 	{
-	  fprintf (fp, "\\%03o", *(unsigned char*)str);
+	  fprintf (fp, "\\%03o", *(unsigned char*)(str+i));
 	  i++;
 	}
       else if (n == -1 || !iswprint (wc))
