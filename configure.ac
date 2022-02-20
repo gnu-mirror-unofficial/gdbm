@@ -121,7 +121,7 @@ AM_GNU_GETTEXT_VERSION
 
 AC_CHECK_HEADERS([sys/file.h string.h locale.h getopt.h])
 
-AC_CHECK_FUNCS([ftruncate flock lockf fsync setlocale getopt_long])
+AC_CHECK_FUNCS([ftruncate flock lockf fsync setlocale getopt_long getline])
 
 if test x$mapped_io = xyes
 then

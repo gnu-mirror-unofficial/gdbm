@@ -2929,14 +2929,43 @@ timing_stop (struct timing *t)
   t->sys = timeval_sub (r.ru_stime, t->sys);
 }
 
+#ifndef HAVE_GETLINE
+ssize_t
+getline (char **pbuf, size_t *psize, FILE *fp)
+{
+  char *buf = *pbuf;
+  size_t size = *psize;
+  ssize_t off = 0;
+  
+  do
+    {
+      if (!buf || size == 0 || off == size - 1)
+	{
+	  buf = e2nrealloc (buf, &size, 1);
+	}
+      if (!fgets (buf + off, size - off, fp))
+	{
+	  if (off == 0)
+	    off = -1;
+	  break;
+	}
+      off += strlen (buf + off);
+    }
+  while (buf[off - 1] != '\n');
+
+  *pbuf = buf;
+  *psize = size;
+  return off;
+}
+#endif
+
 static int
 argsprep (struct command *cmd, struct gdbmarglist *arglist,
 	  struct command_param *param)
 {
   int i;
   struct gdbmarg *arg = arglist ? arglist->head : NULL;
-  char argbuf[128];
-  
+
   for (i = 0; cmd->args[i].name && arg; i++, arg = arg->next)
     {
       if (param_push_arg (param, arg, &cmd->args[i]))
@@ -2946,6 +2975,9 @@ argsprep (struct command *cmd, struct gdbmarglist *arglist,
   for (; cmd->args[i].name; i++)
     {
       char *argname = cmd->args[i].name;
+      char *argbuf = NULL;
+      size_t argsize =0;
+      ssize_t n;
       struct gdbmarg *t;
       
       if (*argname == '[')
@@ -2959,15 +2991,16 @@ argsprep (struct command *cmd, struct gdbmarglist *arglist,
 	}
       printf ("%s? ", argname);
       fflush (stdout);
-      if (fgets (argbuf, sizeof argbuf, stdin) == NULL)
+      errno = 0;
+      if ((n = getline (&argbuf, &argsize, stdin)) < 0)
 	{
-	  terror ("%s", _("unexpected eof"));
+	  terror ("%s", errno ? strerror (errno) : _("unexpected eof"));
 	  return 1;
 	}
 
       trimnl (argbuf);
       
-      t = gdbmarg_string (estrdup (argbuf), &yylloc);
+      t = gdbmarg_string (argbuf, &yylloc);
       if (param_push_arg (param, t, &cmd->args[i]))
 	{
 	  gdbmarg_free (t);
