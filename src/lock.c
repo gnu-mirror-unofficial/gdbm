@@ -47,94 +47,99 @@
 # define HAVE_FCNTL_LOCK 0
 #endif
 
-#if 0
-int
-gdbm_locked (GDBM_FILE dbf)
+/* Return values for try_lock_ functions: */
+enum
+  {
+    TRY_LOCK_OK,    /* Locking succeeded */
+    TRY_LOCK_FAIL,  /* File already locked by another process. */
+    TRY_LOCK_NEXT   /* Another error (including locking mechanism not
+		       available).  The caller should try next locking
+		       mechanism. */
+		       
+  };
+
+/*
+ * Locking using flock().
+ */
+static int
+try_lock_flock (GDBM_FILE dbf)
 {
-  return (dbf->lock_type != LOCKING_NONE);
-}
+#if HAVE_FLOCK
+  if (flock (dbf->desc,
+	     ((dbf->read_write == GDBM_READER) ? LOCK_SH : LOCK_EX)
+	     | LOCK_NB) == 0)
+    {
+      return TRY_LOCK_OK;
+    }
+  else if (errno == EWOULDBLOCK)
+    {
+      return TRY_LOCK_FAIL;
+    }
 #endif
+  return TRY_LOCK_NEXT;
+}
 
-void
-_gdbm_unlock_file (GDBM_FILE dbf)
+static void
+unlock_flock (GDBM_FILE dbf)
+{
+#if HAVE_FLOCK
+  flock (dbf->desc, LOCK_UN);
+#endif
+}
+
+/*
+ * Locking via lockf.
+ */
+
+static int
+try_lock_lockf (GDBM_FILE dbf)
+{
+#if HAVE_LOCKF
+  /*
+   * NOTE: lockf will fail with EINVAL unless the database file was opened
+   * with write-only permission (O_WRONLY) or with read/write permission
+   * (O_RDWR).  This means that this locking mechanism will always fail for
+   * databases opened with GDBM_READER,
+   */
+  if (dbf->read_write != GDBM_READER)
+    {
+      if (lockf (dbf->desc, F_TLOCK, (off_t)0L) == 0)
+	return TRY_LOCK_OK;
+
+      switch (errno)
+	{
+	case EACCES:
+	case EAGAIN:
+	case EDEADLK:
+	  return TRY_LOCK_FAIL;
+	  
+	default:
+	  /* try next locking method */
+	  break;
+	}
+    }
+#endif
+  return TRY_LOCK_NEXT;
+}
+
+static void
+unlock_lockf (GDBM_FILE dbf)
+{
+#if HAVE_LOCKF
+  lockf (dbf->desc, F_ULOCK, (off_t)0L);
+#endif
+}
+
+/*
+ * Locking via fcntl().
+ */
+
+static int
+try_lock_fcntl (GDBM_FILE dbf)
 {
 #if HAVE_FCNTL_LOCK
   struct flock fl;
-#endif
 
-  switch (dbf->lock_type)
-    {
-      case LOCKING_FLOCK:
-#if HAVE_FLOCK
-	flock (dbf->desc, LOCK_UN);
-#endif
-	break;
-
-      case LOCKING_LOCKF:
-#if HAVE_LOCKF
-	lockf (dbf->desc, F_ULOCK, (off_t)0L);
-#endif
-	break;
-
-      case LOCKING_FCNTL:
-#if HAVE_FCNTL_LOCK
-	fl.l_type = F_UNLCK;
-	fl.l_whence = SEEK_SET;
-	fl.l_start = fl.l_len = (off_t)0L;
-	fcntl (dbf->desc, F_SETLK, &fl);
-#endif
-	break;
-
-      case LOCKING_NONE:
-        break;
-    }
-
-  dbf->lock_type = LOCKING_NONE;
-}
-
-/* Try each supported locking mechanism. */
-int
-_gdbm_lock_file (GDBM_FILE dbf)
-{
-#if HAVE_FCNTL_LOCK
-  struct flock fl;
-#endif
-  int lock_val = -1;
-
-#if HAVE_FLOCK
-  if (dbf->read_write == GDBM_READER)
-    lock_val = flock (dbf->desc, LOCK_SH + LOCK_NB);
-  else
-    lock_val = flock (dbf->desc, LOCK_EX + LOCK_NB);
-
-  if ((lock_val == -1) && (errno == EWOULDBLOCK))
-    {
-      dbf->lock_type = LOCKING_NONE;
-      return lock_val;
-    }
-  else if (lock_val != -1)
-    {
-      dbf->lock_type = LOCKING_FLOCK;
-      return lock_val;
-    }
-#endif
-
-#if HAVE_LOCKF
-  /* Mask doesn't matter for lockf. */
-  lock_val = lockf (dbf->desc, F_LOCK, (off_t)0L);
-  if ((lock_val == -1) && (errno == EDEADLK))
-    {
-      dbf->lock_type = LOCKING_NONE;
-      return lock_val;
-    }
-  else if (lock_val != -1)
-    {
-      dbf->lock_type = LOCKING_LOCKF;
-      return lock_val;
-    }
-#endif
-
-#if HAVE_FCNTL_LOCK
   /* If we're still here, try fcntl. */
   if (dbf->read_write == GDBM_READER)
     fl.l_type = F_RDLCK;
@@ -142,13 +147,74 @@ _gdbm_lock_file (GDBM_FILE dbf)
     fl.l_type = F_WRLCK;
   fl.l_whence = SEEK_SET;
   fl.l_start = fl.l_len = (off_t)0L;
-  lock_val = fcntl (dbf->desc, F_SETLK, &fl);
+  if (fcntl (dbf->desc, F_SETLK, &fl) == 0)
+    return TRY_LOCK_OK;
 
-  if (lock_val != -1)
-    dbf->lock_type = LOCKING_FCNTL;
+  switch (errno)
+    {
+    case EACCES:
+    case EAGAIN:
+    case EDEADLK:
+      return TRY_LOCK_FAIL;
+
+    default:
+      /* try next locking method */
+      break;
+    }
+  
 #endif
-
-  if (lock_val == -1)
-    dbf->lock_type = LOCKING_NONE;
-  return lock_val;
+  return TRY_LOCK_NEXT;
 }
+
+static void
+unlock_fcntl (GDBM_FILE dbf)
+{
+#if HAVE_FCNTL_LOCK
+  struct flock fl;
+
+  fl.l_type = F_UNLCK;
+  fl.l_whence = SEEK_SET;
+  fl.l_start = fl.l_len = (off_t)0L;
+  fcntl (dbf->desc, F_SETLK, &fl);
+#endif
+}
+
+/* Try each supported locking mechanism. */
+int
+_gdbm_lock_file (GDBM_FILE dbf)
+{
+  int res;
+
+  dbf->lock_type = LOCKING_NONE;
+  if ((res = try_lock_flock (dbf)) == TRY_LOCK_OK)
+    dbf->lock_type = LOCKING_FLOCK;
+  else if (res == TRY_LOCK_NEXT)
+    {
+      if ((res = try_lock_lockf (dbf)) == TRY_LOCK_OK)
+	dbf->lock_type = LOCKING_LOCKF;
+      else if (res == TRY_LOCK_NEXT)
+	{
+	  if (try_lock_fcntl (dbf) == TRY_LOCK_OK)
+	    dbf->lock_type = LOCKING_FCNTL;
+	}
+    }
+
+  return dbf->lock_type == LOCKING_NONE ? -1 : 0;
+}
+
+void
+_gdbm_unlock_file (GDBM_FILE dbf)
+{
+  void (*unlock_fn[]) (GDBM_FILE) = {
+    [LOCKING_FLOCK] = unlock_flock,
+    [LOCKING_LOCKF] = unlock_lockf,
+    [LOCKING_FCNTL] = unlock_fcntl
+  };
+
+  if (dbf->lock_type != LOCKING_NONE)
+    {
+      unlock_fn[dbf->lock_type] (dbf);
+      dbf->lock_type = LOCKING_NONE;
+    }
+}
+

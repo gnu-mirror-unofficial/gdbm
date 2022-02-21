@@ -196,6 +196,15 @@ struct cache_elem
 				  bytes). */
 };
 
+/* Type of file locking in use. */
+enum lock_type
+  {
+    LOCKING_NONE = 0,
+    LOCKING_FLOCK,
+    LOCKING_LOCKF,
+    LOCKING_FCNTL
+  };
+
 /* This final structure contains all main memory based information for
    a gdbm file.  This allows multiple gdbm files to be opened at the same
    time by one program. */
@@ -240,11 +249,9 @@ struct gdbm_file_info
   int last_syserror;
   /* Last formatted error */
   char *last_errstr;
-  
-  /* Type of file locking in use. */
-  enum { LOCKING_NONE = 0, LOCKING_FLOCK, LOCKING_LOCKF,
-	 LOCKING_FCNTL } lock_type;
 
+  enum lock_type lock_type;
+  
   /* The fatal error handling routine. */
   void (*fatal_err) (const char *);
 
